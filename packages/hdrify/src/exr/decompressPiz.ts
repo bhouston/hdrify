@@ -3,16 +3,8 @@
  * PIZ compression uses blocks of 32 scanlines (or fewer for the last block)
  */
 
+import { A_OFFSET, BITMAP_SIZE, INT8_SIZE, INT16_SIZE, INT32_SIZE, MOD_MASK, USHORT_RANGE } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import {
-  A_OFFSET,
-  BITMAP_SIZE,
-  INT16_SIZE,
-  INT32_SIZE,
-  INT8_SIZE,
-  MOD_MASK,
-  USHORT_RANGE,
-} from './exrConstants.js';
 import { hufUncompress } from './pizHuffman.js';
 
 function UInt16(value: number): number {
@@ -76,15 +68,7 @@ function applyLut(lut: Uint16Array, data: Uint16Array, nData: number): void {
   }
 }
 
-function wav2Decode(
-  buffer: Uint16Array,
-  j: number,
-  nx: number,
-  ox: number,
-  ny: number,
-  oy: number,
-  mx: number,
-): void {
+function wav2Decode(buffer: Uint16Array, j: number, nx: number, ox: number, ny: number, oy: number, mx: number): void {
   const w14 = mx < 1 << 14;
   const n = nx > ny ? ny : nx;
   let p = 1;

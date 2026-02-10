@@ -67,6 +67,7 @@ function reinhard(r: number, g: number, b: number): [number, number, number] {
 }
 
 export function getToneMapping(type: ToneMappingType): ToneMappingFn {
+  // biome-ignore lint/nursery/noUnnecessaryConditions: exhaustive switch over union type
   switch (type) {
     case 'aces':
       return acesFilmic;

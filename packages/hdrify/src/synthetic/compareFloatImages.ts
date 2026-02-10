@@ -93,18 +93,8 @@ export function compareFloatImages(
           pixelIndex: p,
           x,
           y,
-          expected: [
-            a.data[p * 4] ?? 0,
-            a.data[p * 4 + 1] ?? 0,
-            a.data[p * 4 + 2] ?? 0,
-            a.data[p * 4 + 3] ?? 0,
-          ],
-          actual: [
-            b.data[p * 4] ?? 0,
-            b.data[p * 4 + 1] ?? 0,
-            b.data[p * 4 + 2] ?? 0,
-            b.data[p * 4 + 3] ?? 0,
-          ],
+          expected: [a.data[p * 4] ?? 0, a.data[p * 4 + 1] ?? 0, a.data[p * 4 + 2] ?? 0, a.data[p * 4 + 3] ?? 0],
+          actual: [b.data[p * 4] ?? 0, b.data[p * 4 + 1] ?? 0, b.data[p * 4 + 2] ?? 0, b.data[p * 4 + 3] ?? 0],
         });
       }
     }

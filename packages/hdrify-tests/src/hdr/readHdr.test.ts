@@ -30,7 +30,7 @@ const hdrFiles = fs.existsSync(assetsDir)
   : [];
 
 describe('hdrReader', () => {
-  describe.each(hdrFiles)('readHdr (%s)', (filename, filepath) => {
+  describe.each(hdrFiles)('readHdr (%s)', (_filename, filepath) => {
     it('should parse a valid HDR file', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const result = readHdr(hdrBuffer);
@@ -74,7 +74,7 @@ describe('hdrReader', () => {
     });
   });
 
-  describe.each(hdrFiles)('hdrToLdr (%s)', (filename, filepath) => {
+  describe.each(hdrFiles)('hdrToLdr (%s)', (_filename, filepath) => {
     it('should convert HDR data to LDR uint8 buffer', { timeout: 30000 }, () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const hdrImage = readHdr(hdrBuffer);
@@ -157,6 +157,7 @@ describe('hdrReader', () => {
             break;
           }
         }
+        // biome-ignore lint/nursery/noUnnecessaryConditions: match is set false in loop when bytes differ
         if (match) {
           idx = i;
           break;
@@ -219,7 +220,7 @@ describe('hdrReader', () => {
     });
   });
 
-  describe.each(hdrFiles)('convertHDRToLDR (%s)', (filename, filepath) => {
+  describe.each(hdrFiles)('convertHDRToLDR (%s)', (_filename, filepath) => {
     it('should convert HDR buffer to LDR buffer', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const result = convertHDRToLDR(hdrBuffer);

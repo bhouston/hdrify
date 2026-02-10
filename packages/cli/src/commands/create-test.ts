@@ -39,9 +39,7 @@ export const command = defineCommand({
     const ext = path.extname(output).toLowerCase();
 
     if (ext !== '.exr' && ext !== '.hdr') {
-      console.error(
-        `Error: Unsupported output format: ${ext}. Only .exr and .hdr are supported for create-test.`,
-      );
+      console.error(`Error: Unsupported output format: ${ext}. Only .exr and .hdr are supported for create-test.`);
       process.exit(1);
     }
 

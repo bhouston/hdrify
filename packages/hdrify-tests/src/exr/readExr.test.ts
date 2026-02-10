@@ -162,25 +162,28 @@ const hasOpenExrImages = fs.existsSync(openExrImagesPath);
 
 describe.skipIf(!hasOpenExrImages)('openexr-images', () => {
   const files = hasOpenExrImages ? findExrFiles(openExrImagesPath) : [];
-  it.each(files.map((f) => [path.relative(openExrImagesPath, f), f] as [string, string]))('handles %s', (_relPath, filePath) => {
-    const buffer = new Uint8Array(fs.readFileSync(filePath));
-    try {
-      const result = readExr(buffer);
-      expect(result.width).toBeGreaterThan(0);
-      expect(result.height).toBeGreaterThan(0);
-      expect(result.data).toBeInstanceOf(Float32Array);
-      expect(result.data.length).toBe(result.width * result.height * 4);
-    } catch (e) {
-      const msg = (e as Error).message;
-      if (msg.includes('Unsupported EXR compression')) {
-        expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ\./);
-      } else if (msg.includes('Multi-part') || msg.includes('tiled') || msg.includes('deep data')) {
-        expect(msg).toContain('not supported');
-      } else if (msg.includes('Non-RGB')) {
-        expect(msg).toContain('not supported');
-      } else {
-        throw e;
+  it.each(files.map((f) => [path.relative(openExrImagesPath, f), f] as [string, string]))(
+    'handles %s',
+    (_relPath, filePath) => {
+      const buffer = new Uint8Array(fs.readFileSync(filePath));
+      try {
+        const result = readExr(buffer);
+        expect(result.width).toBeGreaterThan(0);
+        expect(result.height).toBeGreaterThan(0);
+        expect(result.data).toBeInstanceOf(Float32Array);
+        expect(result.data.length).toBe(result.width * result.height * 4);
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.includes('Unsupported EXR compression')) {
+          expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ\./);
+        } else if (msg.includes('Multi-part') || msg.includes('tiled') || msg.includes('deep data')) {
+          expect(msg).toContain('not supported');
+        } else if (msg.includes('Non-RGB')) {
+          expect(msg).toContain('not supported');
+        } else {
+          throw e;
+        }
       }
-    }
-  });
+    },
+  );
 });

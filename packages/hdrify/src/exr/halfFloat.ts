@@ -11,7 +11,7 @@ const _int32View = new Int32Array(_floatView.buffer);
  */
 export function encodeFloat16(float32: number): number {
   _floatView[0] = float32;
-  const x = _int32View[0]!;
+  const x = _int32View[0] ?? 0;
 
   const bits = (x >> 16) & 0x8000;
   const m = (x >> 12) & 0x07ff;
@@ -19,14 +19,14 @@ export function encodeFloat16(float32: number): number {
 
   if (e < 103) return bits;
   if (e > 142) {
-    if (e === 255 && (x & 0x007fffff)) return bits | 0x7e00; // NaN
+    if (e === 255 && x & 0x007fffff) return bits | 0x7e00; // NaN
     return bits | 0x7c00; // Inf or overflow
   }
   if (e < 113) {
     const mm = m | 0x0800;
     return bits | ((mm >> (114 - e)) + ((mm >> (113 - e)) & 1));
   }
-  return bits | (((e - 112) << 10) | (m >> 1)) + (m & 1);
+  return bits | ((((e - 112) << 10) | (m >> 1)) + (m & 1));
 }
 
 /**

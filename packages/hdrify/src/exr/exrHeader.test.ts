@@ -7,20 +7,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { NO_COMPRESSION, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
+import { buildExrHeaderForParsing } from './exrHeaderBuilder.js';
 import { writeExr } from './writeExr.js';
-import {
-  buildExrHeader,
-  buildExrHeaderForParsing,
-  buildMagicAndVersion,
-} from './exrHeaderBuilder.js';
-import {
-  NO_COMPRESSION,
-  PIZ_COMPRESSION,
-  RLE_COMPRESSION,
-  ZIPS_COMPRESSION,
-  ZIP_COMPRESSION,
-} from './exrConstants.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../../..');
@@ -133,9 +124,7 @@ describe('EXR header parsing - chlist', () => {
 
   it('parses custom xSampling and ySampling', () => {
     const buffer = buildExrHeaderForParsing({
-      channels: [
-        { name: 'Y', pixelType: 1, xSampling: 2, ySampling: 2 },
-      ],
+      channels: [{ name: 'Y', pixelType: 1, xSampling: 2, ySampling: 2 }],
     });
     const { header } = parseExrHeader(buffer);
     expect(header.channels[0]).toMatchObject({
@@ -257,9 +246,7 @@ describe('EXR header parsing - offset position', () => {
     expect(offset).toBeLessThan(buffer.length);
 
     // Offset table follows header - first entry should be valid
-    const firstOffset = Number(
-      new DataView(buffer.buffer, buffer.byteOffset + offset, 8).getBigUint64(0, true),
-    );
+    const firstOffset = Number(new DataView(buffer.buffer, buffer.byteOffset + offset, 8).getBigUint64(0, true));
     expect(firstOffset).toBeGreaterThan(offset);
     expect(firstOffset).toBeLessThan(buffer.length);
   });

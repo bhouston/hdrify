@@ -4,21 +4,23 @@
  */
 
 import type { FloatImageData } from '../floatImage.js';
-import type { ExrChannel } from './exrTypes.js';
+import { compressPizBlock } from './compressPiz.js';
+import { compressRleBlock } from './compressRle.js';
+import { compressZipBlock } from './compressZip.js';
 import {
-  FLOAT32_SIZE,
   FLOAT,
+  FLOAT32_SIZE,
   HALF,
   INT16_SIZE,
   INT32_SIZE,
   NO_COMPRESSION,
+  PIZ_COMPRESSION,
   RLE_COMPRESSION,
   UINT,
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
-import { compressRleBlock } from './compressRle.js';
-import { compressZipBlock } from './compressZip.js';
+import type { ExrChannel } from './exrTypes.js';
 import { encodeFloat16 } from './halfFloat.js';
 
 function getPixelTypeSize(pixelType: number): number {
@@ -42,11 +44,7 @@ export interface WriteExrScanBlockOptions {
   channels: ExrChannel[];
 }
 
-function getChannelValue(
-  data: Float32Array,
-  pixelIndex: number,
-  channelName: string,
-): number {
+function getChannelValue(data: Float32Array, pixelIndex: number, channelName: string): number {
   const n = channelName.toLowerCase();
   if (n === 'r' || n === 'red') return data[pixelIndex] ?? 0;
   if (n === 'g' || n === 'green') return data[pixelIndex + 1] ?? 0;
@@ -66,35 +64,60 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   const { width, height, data } = floatImageData;
 
   const numChannels = channels.length;
-  const useCompression = compression === RLE_COMPRESSION || compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION;
+  const useCompression =
+    compression === RLE_COMPRESSION ||
+    compression === ZIP_COMPRESSION ||
+    compression === ZIPS_COMPRESSION ||
+    compression === PIZ_COMPRESSION;
 
   if (useCompression) {
     const pixelsPerBlock = width * lineCount;
     const interleaved = new Uint8Array(pixelsPerBlock * numChannels * 2);
 
-    // Per scanline, channel-major (per OpenEXR planar layout): for each line, for each channel, for each pixel, [low, high]
-    let outOffset = 0;
-    for (let ly = 0; ly < lineCount; ly++) {
-      const y = firstLineY + ly;
-      if (y >= height) break;
-
-      for (let c = 0; c < numChannels; c++) {
-        const ch = channels[c];
-        if (!ch) continue;
+    if (compression === PIZ_COMPRESSION) {
+      // PIZ: scanline-interleaved [R0,G0,B0,A0, R1,G1,B1,A1, ...] per scanline
+      let outOffset = 0;
+      for (let ly = 0; ly < lineCount; ly++) {
+        const y = firstLineY + ly;
+        if (y >= height) break;
         for (let x = 0; x < width; x++) {
           const pixelIndex = (y * width + x) * 4;
-          const value = getChannelValue(data, pixelIndex, ch.name);
-          const half = encodeFloat16(value);
-          interleaved[outOffset++] = half & 0xff;
-          interleaved[outOffset++] = (half >> 8) & 0xff;
+          for (let c = 0; c < numChannels; c++) {
+            const ch = channels[c];
+            if (!ch) continue;
+            const value = getChannelValue(data, pixelIndex, ch.name);
+            const half = encodeFloat16(value);
+            interleaved[outOffset++] = half & 0xff;
+            interleaved[outOffset++] = (half >> 8) & 0xff;
+          }
+        }
+      }
+    } else {
+      // RLE/ZIP: per scanline, channel-major
+      let outOffset = 0;
+      for (let ly = 0; ly < lineCount; ly++) {
+        const y = firstLineY + ly;
+        if (y >= height) break;
+        for (let c = 0; c < numChannels; c++) {
+          const ch = channels[c];
+          if (!ch) continue;
+          for (let x = 0; x < width; x++) {
+            const pixelIndex = (y * width + x) * 4;
+            const value = getChannelValue(data, pixelIndex, ch.name);
+            const half = encodeFloat16(value);
+            interleaved[outOffset++] = half & 0xff;
+            interleaved[outOffset++] = (half >> 8) & 0xff;
+          }
         }
       }
     }
 
     const pixelData =
-      compression === RLE_COMPRESSION || compression === ZIPS_COMPRESSION
-        ? compressRleBlock(interleaved)
-        : compressZipBlock(interleaved); // ZIP_COMPRESSION
+      compression === PIZ_COMPRESSION
+        ? compressPizBlock(interleaved, width, lineCount, channels)
+        : compression === RLE_COMPRESSION || compression === ZIPS_COMPRESSION
+          ? compressRleBlock(interleaved)
+          : compressZipBlock(interleaved);
 
     const blockSize = INT32_SIZE + INT32_SIZE + pixelData.length;
     const result = new Uint8Array(blockSize);
@@ -106,9 +129,7 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   }
 
   if (compression !== NO_COMPRESSION) {
-    throw new Error(
-      `Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS.`,
-    );
+    throw new Error(`Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ.`);
   }
 
   const bytesPerChannel = getPixelTypeSize(channels[0]?.pixelType ?? FLOAT);
@@ -123,9 +144,7 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   view.setUint32(4, pixelDataSize, true);
 
   if (bytesPerChannel !== FLOAT32_SIZE) {
-    throw new Error(
-      `Only FLOAT (32-bit) pixel type is supported for uncompressed. Got ${channels[0]?.pixelType}.`,
-    );
+    throw new Error(`Only FLOAT (32-bit) pixel type is supported for uncompressed. Got ${channels[0]?.pixelType}.`);
   }
 
   let offset = 8;

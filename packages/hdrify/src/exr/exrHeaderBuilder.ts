@@ -1,15 +1,11 @@
+// biome-ignore-all lint/security/noSecrets: EXR attribute names (displayWindow, pixelAspectRatio, etc.) are spec strings, not secrets
 /**
  * EXR header builder for writing
  * Builds header bytes from options. Output parses correctly via parseExrHeader.
  */
 
+import { EXR_MAGIC, FLOAT, INT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import {
-  EXR_MAGIC,
-  FLOAT,
-  INT32_SIZE,
-  NO_COMPRESSION,
-} from './exrConstants.js';
 import { concatUint8Arrays } from './exrUtils.js';
 
 export interface WriteExrHeaderOptions {
@@ -30,13 +26,7 @@ const DEFAULT_CHANNELS: ExrChannel[] = [
   { name: 'A', pixelType: FLOAT, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
 ];
 
-function addAttribute(
-  parts: Uint8Array[],
-  name: string,
-  type: string,
-  value: Uint8Array,
-): void {
-  // biome-ignore lint/security/noSecrets: EXR header attribute names
+function addAttribute(parts: Uint8Array[], name: string, type: string, value: Uint8Array): void {
   parts.push(new TextEncoder().encode(`${name}\0`));
   parts.push(new TextEncoder().encode(`${type}\0`));
   const size = new Uint8Array(INT32_SIZE);
@@ -49,10 +39,7 @@ function addAttribute(
  * Build magic number and version field (8 bytes).
  * For single-part scanline files, version is 2.
  */
-export function buildMagicAndVersion(options?: {
-  magic?: number;
-  version?: number;
-}): Uint8Array {
+export function buildMagicAndVersion(options?: { magic?: number; version?: number }): Uint8Array {
   const magic = options?.magic ?? EXR_MAGIC;
   const version = options?.version ?? 2;
   const result = new Uint8Array(8);
@@ -71,12 +58,7 @@ export function buildExrHeader(options: WriteExrHeaderOptions = {}): Uint8Array 
     width = 10,
     height = 10,
     compression = NO_COMPRESSION,
-    channels = [
-      { name: 'R', pixelType: FLOAT },
-      { name: 'G' },
-      { name: 'B' },
-      { name: 'A' },
-    ],
+    channels = [{ name: 'R', pixelType: FLOAT }, { name: 'G' }, { name: 'B' }, { name: 'A' }],
     extraAttributes = [],
     omitAttributes = [],
   } = options;

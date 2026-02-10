@@ -108,6 +108,19 @@ describe('CLI convert command', () => {
       expect(meta.width).toBeGreaterThan(0);
       expect(meta.height).toBeGreaterThan(0);
     });
+
+    it('converts HDR to EXR with --compression piz', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output, '--compression', 'piz']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
   });
 
   describe('SDR conversions', () => {

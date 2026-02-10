@@ -4,21 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { EXR_MAGIC, FLOAT, NO_COMPRESSION, PIZ_COMPRESSION } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
-import {
-  buildExrHeader,
-  buildExrHeaderForParsing,
-  buildMagicAndVersion,
-} from './exrHeaderBuilder.js';
-import {
-  EXR_MAGIC,
-  FLOAT,
-  NO_COMPRESSION,
-  PIZ_COMPRESSION,
-  RLE_COMPRESSION,
-  ZIPS_COMPRESSION,
-  ZIP_COMPRESSION,
-} from './exrConstants.js';
+import { buildExrHeader, buildExrHeaderForParsing, buildMagicAndVersion } from './exrHeaderBuilder.js';
 import { concatUint8Arrays } from './exrUtils.js';
 
 describe('buildMagicAndVersion', () => {
@@ -47,20 +35,14 @@ describe('buildExrHeader round-trip', () => {
   });
 
   it('parses via parseExrHeader with custom dimensions', () => {
-    const full = concatUint8Arrays([
-      buildMagicAndVersion(),
-      buildExrHeader({ width: 100, height: 50 }),
-    ]);
+    const full = concatUint8Arrays([buildMagicAndVersion(), buildExrHeader({ width: 100, height: 50 })]);
     const { header } = parseExrHeader(full);
     expect(header.displayWindow).toEqual({ xMin: 0, yMin: 0, xMax: 99, yMax: 49 });
     expect(header.dataWindow).toEqual({ xMin: 0, yMin: 0, xMax: 99, yMax: 49 });
   });
 
   it('parses via parseExrHeader with custom compression', () => {
-    const full = concatUint8Arrays([
-      buildMagicAndVersion(),
-      buildExrHeader({ compression: PIZ_COMPRESSION }),
-    ]);
+    const full = concatUint8Arrays([buildMagicAndVersion(), buildExrHeader({ compression: PIZ_COMPRESSION })]);
     const { header } = parseExrHeader(full);
     expect(header.compression).toBe(PIZ_COMPRESSION);
   });

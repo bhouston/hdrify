@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { RLE_COMPRESSION, ZIP_COMPRESSION } from './exrConstants.js';
+import { PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION } from './exrConstants.js';
 import { readExr } from './readExr.js';
 import { writeExr } from './writeExr.js';
 
@@ -89,7 +89,7 @@ describe('exrWriter', () => {
 
       // Fill with test pattern (use simpler values that round-trip better)
       for (let i = 0; i < originalData.data.length; i += 4) {
-        const pixelIndex = i / 4;
+        const _pixelIndex = i / 4;
         originalData.data[i] = 0.25; // R - simple value
         originalData.data[i + 1] = 0.5; // G - simple value
         originalData.data[i + 2] = 0.75; // B - simple value
@@ -160,6 +160,34 @@ describe('exrWriter', () => {
       }
 
       const exrBuffer = writeExr(originalData, { compression: ZIP_COMPRESSION });
+      const parsedData = readExr(exrBuffer);
+
+      expect(parsedData.width).toBe(originalData.width);
+      expect(parsedData.height).toBe(originalData.height);
+      const tolerance = 0.01; // half-float precision
+      for (let i = 0; i < originalData.data.length; i++) {
+        const original = originalData.data[i];
+        const parsed = parsedData.data[i];
+        if (original !== undefined && parsed !== undefined) {
+          expect(Math.abs(original - parsed)).toBeLessThan(tolerance);
+        }
+      }
+    });
+
+    it('should round-trip EXR with PIZ compression', () => {
+      const originalData: FloatImageData = {
+        width: 32,
+        height: 32,
+        data: new Float32Array(32 * 32 * 4),
+      };
+      for (let i = 0; i < originalData.data.length; i += 4) {
+        originalData.data[i] = 0.25;
+        originalData.data[i + 1] = 0.5;
+        originalData.data[i + 2] = 0.75;
+        originalData.data[i + 3] = 1.0;
+      }
+
+      const exrBuffer = writeExr(originalData, { compression: PIZ_COMPRESSION });
       const parsedData = readExr(exrBuffer);
 
       expect(parsedData.width).toBe(originalData.width);

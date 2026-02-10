@@ -53,6 +53,7 @@ function extractExif(jpegData: Uint8Array): { data: Uint8Array; pos: number; siz
         }
       }
 
+      // biome-ignore lint/nursery/noUnnecessaryConditions: isExif set true when EXIF signature matches
       if (isExif) {
         const exifSize = length - 2;
         const exifData = jpegData.slice(dataStart, dataStart + exifSize);

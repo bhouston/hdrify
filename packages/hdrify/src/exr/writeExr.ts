@@ -7,8 +7,10 @@
  */
 
 import type { FloatImageData } from '../floatImage.js';
+import { HALF, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
 import { buildExrHeader, buildMagicAndVersion, DEFAULT_CHANNELS } from './exrHeaderBuilder.js';
 import type { ExrChannel } from './exrTypes.js';
+import { concatUint8Arrays } from './exrUtils.js';
 import {
   buildExrOffsetTable,
   buildExrOffsetTableFromBlocks,
@@ -16,17 +18,9 @@ import {
   getBlockHeight,
 } from './writeExrOffsetTable.js';
 import { writeExrScanBlock } from './writeExrScanBlock.js';
-import { concatUint8Arrays } from './exrUtils.js';
-import {
-  HALF,
-  NO_COMPRESSION,
-  RLE_COMPRESSION,
-  ZIP_COMPRESSION,
-  ZIPS_COMPRESSION,
-} from './exrConstants.js';
 
 export interface WriteExrOptions {
-  /** Compression: 0=none, 1=RLE, 2=ZIPS, 3=ZIP */
+  /** Compression: 0=none, 1=RLE, 2=ZIPS, 3=ZIP, 4=PIZ */
   compression?: number;
 }
 
@@ -35,7 +29,8 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
   if (
     compression === RLE_COMPRESSION ||
     compression === ZIP_COMPRESSION ||
-    compression === ZIPS_COMPRESSION
+    compression === ZIPS_COMPRESSION ||
+    compression === PIZ_COMPRESSION
   ) {
     return base.map((ch) => ({ ...ch, pixelType: HALF }));
   }
@@ -49,10 +44,7 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
  * @param options - Optional compression (default: none)
  * @returns Uint8Array containing EXR file data
  */
-export function writeExr(
-  floatImageData: FloatImageData,
-  options?: WriteExrOptions,
-): Uint8Array {
+export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptions): Uint8Array {
   const { width, height } = floatImageData;
   const compression = options?.compression ?? ZIP_COMPRESSION;
   const channels = getChannelsForCompression(compression);
@@ -81,7 +73,8 @@ export function writeExr(
   const useCompression =
     compression === RLE_COMPRESSION ||
     compression === ZIP_COMPRESSION ||
-    compression === ZIPS_COMPRESSION;
+    compression === ZIPS_COMPRESSION ||
+    compression === PIZ_COMPRESSION;
   const offsetTable = useCompression
     ? buildExrOffsetTableFromBlocks({ offsetTableStart, blocks })
     : buildExrOffsetTable({

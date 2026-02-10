@@ -21,34 +21,31 @@ export function compressRLE(rawData: Uint8Array): Uint8Array {
   let i = 0;
 
   while (i < rawData.length) {
-    let runStart = i;
+    const runStart = i;
     let runEnd = i + 1;
 
-    while (
-      runEnd < rawData.length &&
-      rawData[runEnd] === rawData[runStart] &&
-      runEnd - runStart - 1 < MAX_RUN_LENGTH
-    ) {
+    while (runEnd < rawData.length && rawData[runEnd] === rawData[runStart] && runEnd - runStart - 1 < MAX_RUN_LENGTH) {
       runEnd++;
     }
 
     if (runEnd - runStart >= MIN_RUN_LENGTH) {
       out.push((runEnd - runStart - 1) & 0xff);
-      out.push(rawData[runStart]!);
+      out.push(rawData[runStart] ?? 0);
       i = runEnd;
     } else {
       while (
         runEnd < rawData.length &&
         (runEnd + 1 >= rawData.length ||
           rawData[runEnd] !== rawData[runEnd + 1] ||
-          (runEnd + 2 >= rawData.length || rawData[runEnd + 1] !== rawData[runEnd + 2])) &&
+          runEnd + 2 >= rawData.length ||
+          rawData[runEnd + 1] !== rawData[runEnd + 2]) &&
         runEnd - runStart < MAX_RUN_LENGTH
       ) {
         runEnd++;
       }
       out.push((runStart - runEnd) & 0xff);
       for (let j = runStart; j < runEnd; j++) {
-        out.push(rawData[j]!);
+        out.push(rawData[j] ?? 0);
       }
       i = runEnd;
     }

@@ -1,8 +1,8 @@
 import { getToneMapping } from './mappers.js';
 import type { ApplyToneMappingOptions } from './types.js';
 
-export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './types.js';
 export { getToneMapping } from './mappers.js';
+export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './types.js';
 
 /**
  * Apply full HDR-to-LDR tone mapping pipeline.
@@ -21,8 +21,7 @@ export function applyToneMapping(
 ): Uint8Array {
   const toneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
-  const gamma =
-    options.gamma ?? (toneMappingType === 'aces' ? 1 : 2.2);
+  const gamma = options.gamma ?? (toneMappingType === 'aces' ? 1 : 2.2);
 
   const mapper = getToneMapping(toneMappingType);
   const totalPixels = width * height;

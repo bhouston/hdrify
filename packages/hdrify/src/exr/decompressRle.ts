@@ -19,7 +19,7 @@ export function decompressRLE(compressedData: Uint8Array, expectedSize: number):
   let dst = 0;
 
   while (src < compressedData.length && dst < expectedSize) {
-    const count = (compressedData[src++]! << 24) >> 24; // signed byte
+    const count = ((compressedData[src++] ?? 0) << 24) >> 24; // signed byte
 
     if (count < 0) {
       const n = -count;
@@ -29,13 +29,13 @@ export function decompressRLE(compressedData: Uint8Array, expectedSize: number):
         );
       }
       for (let i = 0; i < n && dst < expectedSize; i++) {
-        out[dst++] = compressedData[src++]!;
+        out[dst++] = compressedData[src++] ?? 0;
       }
     } else {
       if (src >= compressedData.length) {
         throw new Error('RLE decompression: truncated repeat run (missing value byte)');
       }
-      const value = compressedData[src++]!;
+      const value = compressedData[src++] ?? 0;
       for (let i = 0; i <= count && dst < expectedSize; i++) {
         out[dst++] = value;
       }
@@ -51,10 +51,7 @@ export function decompressRLE(compressedData: Uint8Array, expectedSize: number):
 /**
  * Decompress RLE and apply predictor + reorder (full pipeline for RLE blocks)
  */
-export function decompressRleBlock(
-  compressedData: Uint8Array,
-  expectedSize: number,
-): Uint8Array {
+export function decompressRleBlock(compressedData: Uint8Array, expectedSize: number): Uint8Array {
   const rleOut = decompressRLE(compressedData, expectedSize);
   applyExrPredictor(rleOut);
   const decompressedData = new Uint8Array(expectedSize);

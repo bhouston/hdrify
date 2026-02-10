@@ -4,12 +4,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  buildExrOffsetTable,
-  buildExrOffsetTableFromBlocks,
-  getBlockCount,
-  getBlockHeight,
-} from './writeExrOffsetTable.js';
-import {
   NO_COMPRESSION,
   PIZ_COMPRESSION,
   RLE_COMPRESSION,
@@ -17,6 +11,12 @@ import {
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
+import {
+  buildExrOffsetTable,
+  buildExrOffsetTableFromBlocks,
+  getBlockCount,
+  getBlockHeight,
+} from './writeExrOffsetTable.js';
 
 describe('getBlockHeight', () => {
   it('returns 1 for NO_COMPRESSION', () => {
@@ -113,11 +113,7 @@ describe('buildExrOffsetTable', () => {
 describe('buildExrOffsetTableFromBlocks', () => {
   it('produces offsets from variable-size blocks', () => {
     const offsetTableStart = 500;
-    const blocks = [
-      new Uint8Array(100),
-      new Uint8Array(80),
-      new Uint8Array(120),
-    ];
+    const blocks = [new Uint8Array(100), new Uint8Array(80), new Uint8Array(120)];
     const table = buildExrOffsetTableFromBlocks({ offsetTableStart, blocks });
     expect(table.length).toBe(3 * ULONG_SIZE);
     const view = new DataView(table.buffer, table.byteOffset, table.byteLength);

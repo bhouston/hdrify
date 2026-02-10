@@ -8,8 +8,8 @@ import {
   HUF_DECMASK,
   HUF_DECSIZE,
   HUF_ENCSIZE,
-  INT32_SIZE,
   INT8_SIZE,
+  INT32_SIZE,
   LONG_ZEROCODE_RUN,
   SHORT_ZEROCODE_RUN,
   SHORTEST_LONG_RUN,
@@ -369,6 +369,207 @@ function hufDecode(
       throw new Error('hufDecode issues');
     }
   }
+}
+
+const LONGEST_LONG_RUN = 255 + SHORTEST_LONG_RUN;
+
+function countFrequencies(freq: number[], data: Uint16Array, n: number): void {
+  for (let i = 0; i < HUF_ENCSIZE; i++) freq[i] = 0;
+  for (let i = 0; i < n; i++) {
+    const d = data[i];
+    if (d !== undefined) freq[d] = (freq[d] ?? 0) + 1;
+  }
+}
+
+function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: number }): void {
+  const hlink = new Array<number>(HUF_ENCSIZE);
+  const fHeap: number[] = [];
+  const scode = new Array<number>(HUF_ENCSIZE).fill(0);
+
+  im.value = 0;
+  while (!(frq[im.value] ?? 0)) im.value++;
+
+  let nf = 0;
+  for (let i = im.value; i < HUF_ENCSIZE; i++) {
+    hlink[i] = i;
+    if (frq[i] ?? 0) {
+      fHeap.push(i);
+      nf++;
+      iM.value = i;
+    }
+  }
+
+  iM.value++;
+  frq[iM.value] = 1;
+  fHeap.push(iM.value);
+  nf++;
+
+  const FHeapCompare = (a: number, b: number) =>
+    (frq[a] ?? 0) > (frq[b] ?? 0) || ((frq[a] ?? 0) === (frq[b] ?? 0) && a > b);
+  fHeap.sort((a, b) => (FHeapCompare(a, b) ? 1 : -1));
+
+  while (nf > 1) {
+    const mm = fHeap.shift();
+    const m = fHeap[0];
+    if (mm === undefined || m === undefined) break;
+    fHeap.splice(0, 1);
+
+    frq[m] = (frq[m] ?? 0) + (frq[mm] ?? 0);
+
+    for (let j = m; ; ) {
+      const s = (scode[j] ?? 0) + 1;
+      scode[j] = s;
+      if (s > 58) throw new Error('Huffman code length > 58');
+      const next = hlink[j];
+      if (next === j) {
+        hlink[j] = mm;
+        break;
+      }
+      j = next ?? j;
+    }
+    for (let j = mm; ; ) {
+      const s = (scode[j] ?? 0) + 1;
+      scode[j] = s;
+      if (s > 58) throw new Error('Huffman code length > 58');
+      const next = hlink[j];
+      if (next === j) break;
+      j = next ?? j;
+    }
+
+    fHeap.push(m);
+    fHeap.sort((a, b) => (FHeapCompare(a, b) ? 1 : -1));
+    nf--;
+  }
+
+  hufCanonicalCodeTable(scode);
+  for (let i = 0; i < HUF_ENCSIZE; i++) {
+    const s = scode[i];
+    if (s !== undefined) frq[i] = s;
+  }
+}
+
+function outputBits(nBits: number, bits: number, c: { value: number }, lc: { value: number }, out: number[]): void {
+  c.value <<= nBits;
+  lc.value += nBits;
+  c.value |= bits;
+  while (lc.value >= 8) {
+    out.push((c.value >> (lc.value - 8)) & 0xff);
+    lc.value -= 8;
+  }
+}
+
+function hufPackEncTable(hcode: number[], im: number, iM: number, out: number[]): void {
+  const c = { value: 0 };
+  const lc = { value: 0 };
+  let currentIm = im;
+
+  while (currentIm <= iM) {
+    const l = hufLength(hcode[currentIm] ?? 0);
+
+    if (l === 0) {
+      let zerun = 1;
+      while (currentIm < iM && zerun < LONGEST_LONG_RUN) {
+        if (hufLength(hcode[currentIm + 1] ?? 0) > 0) break;
+        currentIm++;
+        zerun++;
+      }
+      if (zerun >= 2) {
+        if (zerun >= SHORTEST_LONG_RUN) {
+          outputBits(6, LONG_ZEROCODE_RUN, c, lc, out);
+          outputBits(8, zerun - SHORTEST_LONG_RUN, c, lc, out);
+        } else {
+          outputBits(6, SHORT_ZEROCODE_RUN + zerun - 2, c, lc, out);
+        }
+        currentIm++;
+        continue;
+      }
+    }
+    outputBits(6, l, c, lc, out);
+    currentIm++;
+  }
+  if (lc.value > 0) out.push((c.value << (8 - lc.value)) & 0xff);
+}
+
+function outputCode(code: number, c: { value: number }, lc: { value: number }, out: number[]): void {
+  outputBits(hufLength(code), hufCode(code), c, lc, out);
+}
+
+function sendCode(
+  sCode: number,
+  runCount: number,
+  runCode: number,
+  c: { value: number },
+  lc: { value: number },
+  out: number[],
+): void {
+  const sLen = hufLength(sCode);
+  const rLen = hufLength(runCode);
+  if (sLen + rLen + 8 < sLen * (runCount + 1)) {
+    outputCode(sCode, c, lc, out);
+    outputCode(runCode, c, lc, out);
+    outputBits(8, runCount, c, lc, out);
+  } else {
+    for (let i = 0; i <= runCount; i++) outputCode(sCode, c, lc, out);
+  }
+}
+
+function hufEncode(hcode: number[], inData: Uint16Array, ni: number, rlc: number, out: number[]): number {
+  const c = { value: 0 };
+  const lc = { value: 0 };
+  let s = inData[0] ?? 0;
+  let cs = 0;
+
+  for (let i = 1; i < ni; i++) {
+    const ns = inData[i] ?? 0;
+    if (s === ns && cs < 255) {
+      cs++;
+    } else {
+      sendCode(hcode[s] ?? 0, cs, hcode[rlc] ?? 0, c, lc, out);
+      cs = 0;
+    }
+    s = ns;
+  }
+  sendCode(hcode[s] ?? 0, cs, hcode[rlc] ?? 0, c, lc, out);
+
+  if (lc.value > 0) out.push((c.value << (8 - lc.value)) & 0xff);
+  return lc.value > 0 ? (out.length - 1) * 8 + lc.value : out.length * 8;
+}
+
+/**
+ * Compress raw uint16 data using Huffman encoding.
+ * Output format matches what hufUncompress expects: im(4), iM(4), tableLength(4), nBits(4), reserved(4), packed table, data.
+ */
+export function hufCompress(raw: Uint16Array): Uint8Array {
+  const n = raw.length;
+  if (n === 0) return new Uint8Array(0);
+
+  const freq = new Array<number>(HUF_ENCSIZE);
+  countFrequencies(freq, raw, n);
+
+  const im = { value: 0 };
+  const iM = { value: 0 };
+  hufBuildEncTable(freq, im, iM);
+
+  const tableOut: number[] = [];
+  hufPackEncTable(freq, im.value, iM.value, tableOut);
+  const tableLength = tableOut.length;
+
+  const dataOut: number[] = [];
+  const nBits = hufEncode(freq, raw, n, iM.value, dataOut);
+  const dataLength = Math.ceil(nBits / 8);
+
+  const totalSize = 20 + tableLength + dataLength;
+  const result = new Uint8Array(totalSize);
+  const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
+  view.setUint32(0, im.value, true);
+  view.setUint32(4, iM.value, true);
+  view.setUint32(8, tableLength, true);
+  view.setUint32(12, nBits, true);
+  view.setUint32(16, 0, true);
+  result.set(tableOut, 20);
+  result.set(dataOut, 20 + tableLength);
+
+  return result;
 }
 
 /**

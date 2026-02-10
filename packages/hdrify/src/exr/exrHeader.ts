@@ -3,17 +3,17 @@
  * Parses magic, version, and attributes including chlist, displayWindow, dataWindow, compression
  */
 
-import type { ExrBox2i, ExrChannel, ParsedExrHeader } from './exrTypes.js';
 import {
   COMPRESSION_NAMES,
   EXR_MAGIC,
   FLOAT32_SIZE,
+  INT8_SIZE,
   INT16_SIZE,
   INT32_SIZE,
-  INT8_SIZE,
   NO_COMPRESSION,
   SUPPORTED_COMPRESSION,
 } from './exrConstants.js';
+import type { ExrBox2i, ExrChannel, ParsedExrHeader } from './exrTypes.js';
 
 function readNullTerminatedString(buffer: Uint8Array, offset: number): string {
   const bytes: number[] = [];
@@ -131,8 +131,7 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
 
         // OpenEXR chlist: pixelType is int (4 bytes), pLinear u8 (1), reserved (2 or 3 bytes)
         const pixelTypeRaw = dataView.getInt32(offset, true);
-        const pixelType =
-          pixelTypeRaw >= 0 && pixelTypeRaw <= 2 ? pixelTypeRaw : dataView.getUint8(offset);
+        const pixelType = pixelTypeRaw >= 0 && pixelTypeRaw <= 2 ? pixelTypeRaw : dataView.getUint8(offset);
         offset += INT32_SIZE; // pixelType as int
         const pLinear = dataView.getUint8(offset);
         offset += INT8_SIZE;
@@ -201,9 +200,7 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
 
   if (!SUPPORTED_COMPRESSION.includes(compression)) {
     const name = COMPRESSION_NAMES[compression] ?? `unknown (${compression})`;
-    throw new Error(
-      `Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ.`,
-    );
+    throw new Error(`Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ.`);
   }
 
   // Check if required attributes exist and are valid

@@ -3,6 +3,14 @@ import * as path from 'node:path';
 import { addRangeMetadata, type FloatImageData, readExr, readHdr } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
+function yamlStringNeedsEscape(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c <= 31 || c === 127 || c === 10 || c === 13 || c === 34 || c === 39) return true;
+  }
+  return false;
+}
+
 const COMPRESSION_NAMES: Record<number, string> = {
   0: 'NO_COMPRESSION',
   1: 'RLE',
@@ -33,7 +41,7 @@ function stringifyYamlValue(value: unknown, indent: number): string {
     return value ? 'true' : 'false';
   }
   if (typeof value === 'string') {
-    if (/[\n\r'"\x00-\x1f]/.test(value) || value.includes('#')) {
+    if (yamlStringNeedsEscape(value) || value.includes('#')) {
       return JSON.stringify(value);
     }
     return value.includes(':') || value.includes(' ') ? `"${value}"` : value;
@@ -44,7 +52,7 @@ function stringifyYamlValue(value: unknown, indent: number): string {
     for (const item of value) {
       if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
         const objStr = stringifyYaml(item as Record<string, unknown>, indent + 1);
-        const objLines = objStr.split('\n').map((line) => '  ' + line);
+        const objLines = objStr.split('\n').map((line) => `  ${line}`);
         parts.push(`${itemPad}-`);
         parts.push(objLines.join('\n'));
       } else {

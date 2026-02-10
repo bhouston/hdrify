@@ -4,9 +4,9 @@
 
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { writeExrScanBlock } from './writeExrScanBlock.js';
+import { FLOAT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
 import { DEFAULT_CHANNELS } from './exrHeaderBuilder.js';
-import { FLOAT32_SIZE, INT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
+import { writeExrScanBlock } from './writeExrScanBlock.js';
 
 function createTestImage(width: number, height: number): FloatImageData {
   const data = new Float32Array(width * height * 4);
@@ -91,7 +91,7 @@ describe('writeExrScanBlock', () => {
         floatImageData: img,
         firstLineY: 0,
         lineCount: 1,
-        compression: 4, // PIZ - not implemented
+        compression: 5, // PXR24 - not implemented
         channels: DEFAULT_CHANNELS,
       }),
     ).toThrow('not implemented');

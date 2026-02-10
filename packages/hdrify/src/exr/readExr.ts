@@ -6,7 +6,9 @@
  */
 
 import type { FloatImageData } from '../floatImage.js';
-import { parseExrHeader } from './exrHeader.js';
+import { decompressPiz } from './decompressPiz.js';
+import { decompressRleBlock } from './decompressRle.js';
+import { decompressZip } from './decompressZip.js';
 import {
   FLOAT32_SIZE,
   INT16_SIZE,
@@ -18,9 +20,7 @@ import {
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
-import { decompressPiz } from './decompressPiz.js';
-import { decompressRleBlock } from './decompressRle.js';
-import { decompressZip } from './decompressZip.js';
+import { parseExrHeader } from './exrHeader.js';
 import { decodeFloat16 } from './halfFloat.js';
 
 function getPixelTypeSize(pixelType: number): number {
@@ -70,27 +70,18 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
   const height = dataWindow.yMax - dataWindow.yMin + 1;
 
   // Find RGB channels (case-insensitive, check exact match first)
-  const rChannel = channels.find(
-    (ch) => ch.name === 'R' || ch.name === 'r' || ch.name.toLowerCase() === 'red',
-  );
-  const gChannel = channels.find(
-    (ch) => ch.name === 'G' || ch.name === 'g' || ch.name.toLowerCase() === 'green',
-  );
-  const bChannel = channels.find(
-    (ch) => ch.name === 'B' || ch.name === 'b' || ch.name.toLowerCase() === 'blue',
-  );
+  const rChannel = channels.find((ch) => ch.name === 'R' || ch.name === 'r' || ch.name.toLowerCase() === 'red');
+  const gChannel = channels.find((ch) => ch.name === 'G' || ch.name === 'g' || ch.name.toLowerCase() === 'green');
+  const bChannel = channels.find((ch) => ch.name === 'B' || ch.name === 'b' || ch.name.toLowerCase() === 'blue');
 
   if (!rChannel || !gChannel || !bChannel) {
-    throw new Error(
-      'Non-RGB EXR files are not supported. This reader requires R, G, and B channels.',
-    );
+    throw new Error('Non-RGB EXR files are not supported. This reader requires R, G, and B channels.');
   }
 
   const numChannels = channels.length;
 
   // Determine block height based on compression type (OpenEXR spec: ZIP=16, PIZ=32, others=1)
-  const blockHeight =
-    compression === PIZ_COMPRESSION ? 32 : compression === ZIP_COMPRESSION ? 16 : 1;
+  const blockHeight = compression === PIZ_COMPRESSION ? 32 : compression === ZIP_COMPRESSION ? 16 : 1;
   const expectedBlockCount = Math.ceil(height / blockHeight);
 
   // Read scanline offsets - exactly one offset per block
@@ -189,8 +180,7 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
     const available = exrBuffer.length - scanlinePos;
     if (dataSize <= 0 || dataSize > available) {
-      const looksLikeFormatMismatch =
-        dataSize > exrBuffer.length || dataSize > 100 * 1024 * 1024;
+      const looksLikeFormatMismatch = dataSize > exrBuffer.length || dataSize > 100 * 1024 * 1024;
       if (looksLikeFormatMismatch) {
         throw new Error(
           `Unsupported or invalid EXR format: scanline block ${blockIdx} has invalid data size (${dataSize} bytes, ${available} available). ` +
@@ -209,39 +199,18 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     if (compression === NO_COMPRESSION) {
       decompressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
     } else if (compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION) {
-      const compressedData = new Uint8Array(
-        exrBuffer.buffer,
-        exrBuffer.byteOffset + scanlinePos,
-        dataSize,
-      );
+      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressZip(compressedData);
     } else if (compression === RLE_COMPRESSION) {
-      const compressedData = new Uint8Array(
-        exrBuffer.buffer,
-        exrBuffer.byteOffset + scanlinePos,
-        dataSize,
-      );
-      const expectedSize =
-        linesInBlock * width * numChannels * getPixelTypeSize(rChannel.pixelType);
+      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
+      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(rChannel.pixelType);
       decompressedData = decompressRleBlock(compressedData, expectedSize);
     } else if (compression === PIZ_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
-        throw new Error(
-          `Invalid PIZ data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`,
-        );
+        throw new Error(`Invalid PIZ data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
       }
-      const compressedData = new Uint8Array(
-        exrBuffer.buffer,
-        exrBuffer.byteOffset + scanlinePos,
-        dataSize,
-      );
-      decompressedData = decompressPiz(
-        compressedData,
-        width,
-        channels,
-        dataSize,
-        actualBlockHeightFinal,
-      );
+      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
+      decompressedData = decompressPiz(compressedData, width, channels, dataSize, actualBlockHeightFinal);
     } else {
       throw new Error(`Unsupported compression type: ${compression}`);
     }
@@ -257,9 +226,7 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     const bytesPerChannel = getPixelTypeSize(rChannel.pixelType);
 
     const isPlanar =
-      compression === RLE_COMPRESSION ||
-      compression === ZIP_COMPRESSION ||
-      compression === ZIPS_COMPRESSION;
+      compression === RLE_COMPRESSION || compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION;
 
     for (let lineInBlock = 0; lineInBlock < linesInBlock; lineInBlock++) {
       const y = firstLineY + lineInBlock;

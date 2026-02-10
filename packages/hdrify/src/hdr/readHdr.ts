@@ -217,16 +217,16 @@ function RGBE_ReadHeader(
 
   header.valid |= RGBE_VALID_PROGRAMTYPE;
   header.programtype = match[1];
-  header.string += line + '\n';
+  header.string += `${line}\n`;
 
   // biome-ignore lint/nursery/noUnnecessaryConditions: loop breaks when line is false
   while (true) {
     line = fgets();
     if (false === line) break;
-    header.string += line + '\n';
+    header.string += `${line}\n`;
 
     if ('#' === line.charAt(0)) {
-      header.comments += line + '\n';
+      header.comments += `${line}\n`;
       continue; // comment line
     }
 
@@ -266,7 +266,7 @@ function RGBE_ReadHeader(
         header.valid |= RGBE_VALID_DIMENSIONS;
         header.height = parseInt(num1 ?? '0', 10);
         header.width = parseInt(num2 ?? '0', 10);
-        metadata['RESOLUTION'] = line.trim();
+        metadata.RESOLUTION = line.trim();
         break;
       }
 

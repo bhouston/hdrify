@@ -2,15 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  compareFloatImages,
-  createHsvRainbowImage,
-  readExr,
-  readHdr,
-  writeExr,
-  writeHdr,
-} from 'hdrify';
 import type { FloatImageData } from 'hdrify';
+import { compareFloatImages, createHsvRainbowImage, readExr, readHdr, writeExr, writeHdr } from 'hdrify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,14 +39,20 @@ describe('conversion round-trip', () => {
     const buffer = writeExr(original);
     const parsed = readExr(buffer);
     const result = compareFloatImages(original, parsed, TOLERANCE);
-    expect(result.match, `EXR round-trip failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `EXR round-trip failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('HDR round-trip: writeHdr -> readHdr matches original', () => {
     const buffer = writeHdr(original);
     const parsed = readHdr(buffer);
     const result = compareFloatImages(original, parsed, TOLERANCE);
-    expect(result.match, `HDR round-trip failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `HDR round-trip failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('EXR -> HDR -> EXR: intermediate HDR matches writeHdr(original)', () => {
@@ -64,7 +63,10 @@ describe('conversion round-trip', () => {
 
     const expectedHdr = readHdr(writeHdr(original));
     const result = compareFloatImages(expectedHdr, fromHdr, TOLERANCE);
-    expect(result.match, `EXR->HDR path failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `EXR->HDR path failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('HDR -> EXR -> HDR: intermediate EXR matches writeExr(original)', () => {
@@ -75,7 +77,10 @@ describe('conversion round-trip', () => {
 
     const expectedExr = readExr(writeExr(original));
     const result = compareFloatImages(expectedExr, fromExr, TOLERANCE);
-    expect(result.match, `HDR->EXR path failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `HDR->EXR path failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 });
 
@@ -91,7 +96,10 @@ describe('reference asset comparison', () => {
     const reference = readExr(refBuffer);
 
     const result = compareFloatImages(generated, reference, TOLERANCE);
-    expect(result.match, `Generated vs rainbow.exr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `Generated vs rainbow.exr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('generated synthetic image matches reference rainbow.hdr', () => {
@@ -102,6 +110,9 @@ describe('reference asset comparison', () => {
     const reference = readHdr(refBuffer);
 
     const result = compareFloatImages(generated, reference, TOLERANCE);
-    expect(result.match, `Generated vs rainbow.hdr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+    expect(
+      result.match,
+      `Generated vs rainbow.hdr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 });

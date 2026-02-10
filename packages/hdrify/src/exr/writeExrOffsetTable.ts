@@ -4,7 +4,6 @@
  */
 
 import {
-  FLOAT32_SIZE,
   INT32_SIZE,
   NO_COMPRESSION,
   PIZ_COMPRESSION,
@@ -52,11 +51,7 @@ export interface BuildExrOffsetTableOptions {
  * Compute the size in bytes of a single scan line block.
  * Block layout: y (4) + dataSize (4) + pixelData.
  */
-function getBlockSize(
-  width: number,
-  lineCount: number,
-  bytesPerPixel: number,
-): number {
+function getBlockSize(width: number, lineCount: number, bytesPerPixel: number): number {
   const pixelDataSize = width * lineCount * bytesPerPixel;
   return INT32_SIZE + INT32_SIZE + pixelDataSize;
 }
@@ -103,9 +98,7 @@ export interface BuildExrOffsetTableFromBlocksOptions {
 /**
  * Build offset table from actual block data (for variable-size compressed blocks)
  */
-export function buildExrOffsetTableFromBlocks(
-  options: BuildExrOffsetTableFromBlocksOptions,
-): Uint8Array {
+export function buildExrOffsetTableFromBlocks(options: BuildExrOffsetTableFromBlocksOptions): Uint8Array {
   const { offsetTableStart, blocks } = options;
   const blockCount = blocks.length;
   const result = new Uint8Array(blockCount * ULONG_SIZE);
@@ -115,7 +108,7 @@ export function buildExrOffsetTableFromBlocks(
 
   for (let b = 0; b < blockCount; b++) {
     view.setBigUint64(b * ULONG_SIZE, BigInt(currentOffset), true);
-    currentOffset += blocks[b]!.length;
+    currentOffset += (blocks[b]?.length ?? 0);
   }
 
   return result;

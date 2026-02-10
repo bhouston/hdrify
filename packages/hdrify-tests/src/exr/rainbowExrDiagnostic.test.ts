@@ -1,12 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  compareFloatImages,
-  createHsvRainbowImage,
-  readExr,
-} from 'hdrify';
 import type { CompareFloatImagesResult, FloatImageData, MismatchSample } from 'hdrify';
+import { compareFloatImages, createHsvRainbowImage, readExr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { compareFloatImages } from './compareFloatImages.js';
 
-function makeImage(width: number, height: number, fill: (i: number) => number): { width: number; height: number; data: Float32Array } {
+function makeImage(
+  width: number,
+  height: number,
+  fill: (i: number) => number,
+): { width: number; height: number; data: Float32Array } {
   const data = new Float32Array(width * height * 4);
   for (let i = 0; i < data.length; i++) {
     data[i] = fill(i);
@@ -69,7 +73,7 @@ describe('compareFloatImages', () => {
     expect(result.match).toBe(false);
     expect(result.mismatchSamples).toBeDefined();
     expect(result.mismatchSamples).toHaveLength(1);
-    expect(result.mismatchSamples![0]).toEqual({
+    expect(result.mismatchSamples?.[0]).toEqual({
       pixelIndex: 0,
       x: 0,
       y: 0,
