@@ -51,7 +51,7 @@ MIT
 
 ## Author
 
-Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)
+Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
 
 [npm]: https://img.shields.io/npm/v/hdrify-cli
 [npm-url]: https://www.npmjs.com/package/hdrify-cli
