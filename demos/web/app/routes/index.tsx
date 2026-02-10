@@ -1,13 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef, useCallback } from 'react';
-import { Buffer } from 'buffer';
-import { parseEXRFile } from 'exr-image';
-import { parseHDRFile } from 'hdr-image';
-
-// Make Buffer available globally for browser
-if (typeof window !== 'undefined' && !window.Buffer) {
-  (window as any).Buffer = Buffer;
-}
+import { parseEXRFile, parseHDRFile } from 'hdrify';
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -67,7 +60,7 @@ function Index() {
     async (file: File) => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const buffer = new Uint8Array(arrayBuffer);
 
         const ext = file.name.toLowerCase().split('.').pop();
         let parsed;

@@ -1,0 +1,31 @@
+{
+  "name": "hdrify-cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "CLI tool for converting between EXR and HDR formats",
+  "main": "dist/index.js",
+  "bin": {
+    "hdrify": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsgo",
+    "dev": "tsgo --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "hdrify": "workspace:*",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/yargs": "^17.0.33",
+    "@typescript/native-preview": "7.0.0-dev.20251202.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "hdrify-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "tsgo": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "hdrify": "workspace:*",
+    "vitest": "^2.1.9",
+    "@types/node": "^24",
+    "typescript": "^5.6.0"
+  }
+}

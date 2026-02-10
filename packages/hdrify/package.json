@@ -1,0 +1,56 @@
+{
+  "name": "hdrify",
+  "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
+  "keywords": [
+    "exr",
+    "openexr",
+    "hdr",
+    "radiance",
+    "rgbe",
+    "gainmap",
+    "jpeg-r",
+    "ultra-hdr",
+    "image",
+    "format",
+    "parser",
+    "writer",
+    "browser",
+    "universal"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhouston/exr-image.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bhouston/exr-image/issues"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "jpeg-js": "^0.4.4"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "build": "tsgo",
+    "dev": "tsgo --watch",
+    "tsgo": "tsgo",
+    "test": "vitest"
+  },
+  "files": [
+    "dist"
+  ]
+}
