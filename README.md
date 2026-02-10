@@ -7,9 +7,16 @@
 
 The only full implementation of HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
-Convert EXR or HDR files to the highly compressible JPEG-R format (JPEG with embedded gain maps), a new industry-standard HDR format widely supported in modern browsers and mobile devices.
+## Features
 
-The core library has no dependencies on the DOM or Node.js APIs. It uses only standard JavaScript (`Uint8Array`, `DataView`, `ArrayBuffer`) and pure-JS dependencies (fflate, jpeg-js). Use it in Node.js, browsers, Deno, Workers, or any JavaScript runtime.
+- Read and write EXR files (PIZ, ZIP, RLE compression)
+- Read and write HDR (Radiance RGBE) files
+- **Write JPEGs with gain maps (JPEG-R / Ultra HDR)** — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
+- Convert HDR to LDR with tone mapping
+- Universal `Uint8Array`-based API (no Node.js Buffer dependency)
+- Full TypeScript support
+- No DOM or Node.js dependencies (runtime-agnostic)
+- hdrify CLI
 
 ## Installation
 
@@ -39,16 +46,6 @@ interface FloatImageData {
   metadata?: Record<string, unknown>;  // Format-specific header metadata (e.g. compression, exposure)
 }
 ```
-
-## Features
-
-- Read and write EXR files (PIZ, ZIP, RLE compression)
-- Read and write HDR (Radiance RGBE) files
-- **Write JPEGs with gain maps (JPEG-R / Ultra HDR)**—a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
-- Convert HDR to LDR with tone mapping
-- Universal `Uint8Array`-based API (no Node.js Buffer dependency)
-- Full TypeScript support
-- No DOM or Node.js dependencies (runtime-agnostic)
 
 ## Usage
 
