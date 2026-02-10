@@ -27,6 +27,19 @@ pnpm add hdrify
 | `writeExr(imageData, options?)` | Encode `FloatImageData` → EXR bytes |
 | `writeJpegGainMap(encodingResult, options?)` | Encode HDR as JPEG-R (JPEG with gain map) for highly compressible storage |
 
+All read functions return `FloatImageData`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
+
+### FloatImageData
+
+```ts
+interface FloatImageData {
+  width: number;           // Image width in pixels
+  height: number;          // Image height in pixels
+  data: Float32Array;     // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]
+  metadata?: Record<string, unknown>;  // Format-specific header metadata (e.g. compression, exposure)
+}
+```
+
 ## Features
 
 - Read and write EXR files (PIZ, ZIP, RLE compression)
