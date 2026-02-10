@@ -83,6 +83,44 @@ export function writeExr(floatImageData: FloatImageData): Uint8Array {
   dataWindowView.setInt32(12, height - 1, true); // yMax
   headerParts.push(dataWindow);
 
+  // Required attributes: lineOrder, pixelAspectRatio, screenWindowCenter, screenWindowWidth
+  headerParts.push(new TextEncoder().encode('lineOrder\0'));
+  headerParts.push(new TextEncoder().encode('lineOrder\0'));
+  const lineOrderSize = new Uint8Array(INT32_SIZE);
+  new DataView(lineOrderSize.buffer).setUint32(0, 1, true);
+  headerParts.push(lineOrderSize);
+  const lineOrder = new Uint8Array(1);
+  lineOrder[0] = 0; // INCREASING_Y
+  headerParts.push(lineOrder);
+
+  headerParts.push(new TextEncoder().encode('pixelAspectRatio\0'));
+  headerParts.push(new TextEncoder().encode('float\0'));
+  const pixelAspectSize = new Uint8Array(INT32_SIZE);
+  new DataView(pixelAspectSize.buffer).setUint32(0, 4, true);
+  headerParts.push(pixelAspectSize);
+  const pixelAspect = new Uint8Array(4);
+  new DataView(pixelAspect.buffer).setFloat32(0, 1.0, true);
+  headerParts.push(pixelAspect);
+
+  headerParts.push(new TextEncoder().encode('screenWindowCenter\0'));
+  headerParts.push(new TextEncoder().encode('v2f\0'));
+  const screenCenterSize = new Uint8Array(INT32_SIZE);
+  new DataView(screenCenterSize.buffer).setUint32(0, 8, true);
+  headerParts.push(screenCenterSize);
+  const screenCenter = new Uint8Array(8);
+  new DataView(screenCenter.buffer).setFloat32(0, 0, true);
+  new DataView(screenCenter.buffer).setFloat32(4, 0, true);
+  headerParts.push(screenCenter);
+
+  headerParts.push(new TextEncoder().encode('screenWindowWidth\0'));
+  headerParts.push(new TextEncoder().encode('float\0'));
+  const screenWidthSize = new Uint8Array(INT32_SIZE);
+  new DataView(screenWidthSize.buffer).setUint32(0, 4, true);
+  headerParts.push(screenWidthSize);
+  const screenWidth = new Uint8Array(4);
+  new DataView(screenWidth.buffer).setFloat32(0, 1.0, true);
+  headerParts.push(screenWidth);
+
   // Compression
   headerParts.push(new TextEncoder().encode('compression\0'));
   headerParts.push(new TextEncoder().encode('compression\0'));
@@ -97,55 +135,52 @@ export function writeExr(floatImageData: FloatImageData): Uint8Array {
   headerParts.push(new TextEncoder().encode('channels\0'));
   headerParts.push(new TextEncoder().encode('chlist\0'));
 
-  // Calculate channels size: R + G + B + A + null terminator
-  // Each channel: name (null-term) + pixelType (1) + pLinear (1) + reserved (2) + xSampling (4) + ySampling (4)
-  const channelDataSize = (1 + 1 + 1 + 2 + 4 + 4) * 4 + 1; // 4 channels + null terminator
+  // Calculate channels size: R + G + B + A + null terminator (OpenEXR chlist format)
+  // Each channel: name (2 bytes for "X\0") + pixelType (4) + pLinear (1) + reserved (3) + xSampling (4) + ySampling (4) = 18 bytes
+  const channelDataSize = 18 * 4 + 1; // 4 channels * 18 + null terminator = 73
   const channelsSize = new Uint8Array(INT32_SIZE);
   new DataView(channelsSize.buffer).setUint32(0, channelDataSize, true);
   headerParts.push(channelsSize);
 
-  // R channel
+  // R channel (OpenEXR chlist: pixelType int, pLinear u8, reserved 3 bytes, xSampling int, ySampling int)
   headerParts.push(new TextEncoder().encode('R\0'));
-  const rChannel = new Uint8Array(12);
+  const rChannel = new Uint8Array(16);
   const rChannelView = new DataView(rChannel.buffer);
-  rChannelView.setUint8(0, FLOAT); // pixelType
-  rChannelView.setUint8(1, 0); // pLinear
-  rChannelView.setUint16(2, 0, true); // reserved
-  rChannelView.setInt32(4, 1, true); // xSampling
-  rChannelView.setInt32(8, 1, true); // ySampling
+  rChannelView.setInt32(0, FLOAT, true); // pixelType
+  rChannelView.setUint8(4, 0); // pLinear
+  // reserved: 3 bytes at 5,6,7 (zeros)
+  rChannelView.setInt32(8, 1, true); // xSampling
+  rChannelView.setInt32(12, 1, true); // ySampling
   headerParts.push(rChannel);
 
   // G channel
   headerParts.push(new TextEncoder().encode('G\0'));
-  const gChannel = new Uint8Array(12);
+  const gChannel = new Uint8Array(16);
   const gChannelView = new DataView(gChannel.buffer);
-  gChannelView.setUint8(0, FLOAT);
-  gChannelView.setUint8(1, 0);
-  gChannelView.setUint16(2, 0, true);
-  gChannelView.setInt32(4, 1, true);
+  gChannelView.setInt32(0, FLOAT, true);
+  gChannelView.setUint8(4, 0);
   gChannelView.setInt32(8, 1, true);
+  gChannelView.setInt32(12, 1, true);
   headerParts.push(gChannel);
 
   // B channel
   headerParts.push(new TextEncoder().encode('B\0'));
-  const bChannel = new Uint8Array(12);
+  const bChannel = new Uint8Array(16);
   const bChannelView = new DataView(bChannel.buffer);
-  bChannelView.setUint8(0, FLOAT);
-  bChannelView.setUint8(1, 0);
-  bChannelView.setUint16(2, 0, true);
-  bChannelView.setInt32(4, 1, true);
+  bChannelView.setInt32(0, FLOAT, true);
+  bChannelView.setUint8(4, 0);
   bChannelView.setInt32(8, 1, true);
+  bChannelView.setInt32(12, 1, true);
   headerParts.push(bChannel);
 
   // A channel
   headerParts.push(new TextEncoder().encode('A\0'));
-  const aChannel = new Uint8Array(12);
+  const aChannel = new Uint8Array(16);
   const aChannelView = new DataView(aChannel.buffer);
-  aChannelView.setUint8(0, FLOAT);
-  aChannelView.setUint8(1, 0);
-  aChannelView.setUint16(2, 0, true);
-  aChannelView.setInt32(4, 1, true);
+  aChannelView.setInt32(0, FLOAT, true);
+  aChannelView.setUint8(4, 0);
   aChannelView.setInt32(8, 1, true);
+  aChannelView.setInt32(12, 1, true);
   headerParts.push(aChannel);
 
   // Null terminator for channel list

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   compareFloatImages,
   createHsvRainbowImage,
@@ -11,6 +12,10 @@ import {
 } from 'hdrify';
 import type { FloatImageData } from 'hdrify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(__dirname, '../../../..');
+const assetsDir = path.join(workspaceRoot, 'assets');
 
 const W = 16;
 const H = 16;
@@ -71,5 +76,32 @@ describe('conversion round-trip', () => {
     const expectedExr = readExr(writeExr(original));
     const result = compareFloatImages(expectedExr, fromExr, TOLERANCE);
     expect(result.match, `HDR->EXR path failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+  });
+});
+
+describe('reference asset comparison', () => {
+  const refExrPath = path.join(assetsDir, 'rainbow.exr');
+  const refHdrPath = path.join(assetsDir, 'rainbow.hdr');
+
+  it('generated synthetic image matches reference rainbow.exr', () => {
+    if (!fs.existsSync(refExrPath)) return;
+
+    const generated = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+    const refBuffer = new Uint8Array(fs.readFileSync(refExrPath));
+    const reference = readExr(refBuffer);
+
+    const result = compareFloatImages(generated, reference, TOLERANCE);
+    expect(result.match, `Generated vs rainbow.exr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
+  });
+
+  it('generated synthetic image matches reference rainbow.hdr', () => {
+    if (!fs.existsSync(refHdrPath)) return;
+
+    const generated = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+    const refBuffer = new Uint8Array(fs.readFileSync(refHdrPath));
+    const reference = readHdr(refBuffer);
+
+    const result = compareFloatImages(generated, reference, TOLERANCE);
+    expect(result.match, `Generated vs rainbow.hdr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(true);
   });
 });

@@ -32,11 +32,27 @@ const INT32_SIZE = 4;
 const INT16_SIZE = 2;
 const INT8_SIZE = 1;
 
-// Compression types
+// Compression types (OpenEXR standard)
 const NO_COMPRESSION = 0;
+const RLE_COMPRESSION = 1;
 const ZIPS_COMPRESSION = 2;
 const ZIP_COMPRESSION = 3;
 const PIZ_COMPRESSION = 4;
+const PXR24_COMPRESSION = 5;
+const B44_COMPRESSION = 6;
+const B44A_COMPRESSION = 7;
+
+const SUPPORTED_COMPRESSION = [NO_COMPRESSION, RLE_COMPRESSION, ZIPS_COMPRESSION, ZIP_COMPRESSION, PIZ_COMPRESSION];
+const COMPRESSION_NAMES: Record<number, string> = {
+  [NO_COMPRESSION]: 'none',
+  [RLE_COMPRESSION]: 'RLE',
+  [ZIPS_COMPRESSION]: 'ZIPS',
+  [ZIP_COMPRESSION]: 'ZIP',
+  [PIZ_COMPRESSION]: 'PIZ',
+  [PXR24_COMPRESSION]: 'PXR24',
+  [B44_COMPRESSION]: 'B44',
+  [B44A_COMPRESSION]: 'B44A',
+};
 
 // Pixel types
 const UINT = 0;
@@ -145,12 +161,18 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
           break;
         }
 
-        const pixelType = dataView.getUint8(offset);
-        offset += INT8_SIZE;
+        // OpenEXR chlist: pixelType is int (4 bytes), pLinear u8 (1), reserved (2 or 3 bytes)
+        const pixelTypeRaw = dataView.getInt32(offset, true);
+        const pixelType = pixelTypeRaw >= 0 && pixelTypeRaw <= 2 ? pixelTypeRaw : dataView.getUint8(offset);
+        offset += INT32_SIZE; // pixelType as int
         const pLinear = dataView.getUint8(offset);
         offset += INT8_SIZE;
         const reserved = dataView.getUint16(offset, true);
         offset += INT16_SIZE;
+        // Skip extra reserved byte if present (spec says 3 bytes reserved)
+        if (offset < chlistEnd && exrBuffer[offset] === 0 && offset + 1 < chlistEnd) {
+          offset += 1;
+        }
         const xSampling = dataView.getInt32(offset, true);
         offset += INT32_SIZE;
         const ySampling = dataView.getInt32(offset, true);
@@ -207,6 +229,13 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
   const dataWindow = header.dataWindow as { xMin: number; yMin: number; xMax: number; yMax: number } | undefined;
   const channels = header.channels as Channel[] | undefined;
   const compression = (header.compression as number) ?? NO_COMPRESSION;
+
+  if (!SUPPORTED_COMPRESSION.includes(compression)) {
+    const name = COMPRESSION_NAMES[compression] ?? `unknown (${compression})`;
+    throw new Error(
+      `Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ.`,
+    );
+  }
 
   // Check if required attributes exist and are valid
   if (!displayWindow || !dataWindow || !channels || channels.length === 0) {
@@ -330,9 +359,18 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     scanlinePos += INT32_SIZE;
 
     // Validate dataSize is reasonable
-    if (dataSize <= 0 || dataSize > exrBuffer.length - scanlinePos) {
+    const available = exrBuffer.length - scanlinePos;
+    if (dataSize <= 0 || dataSize > available) {
+      const looksLikeFormatMismatch =
+        dataSize > exrBuffer.length || dataSize > 100 * 1024 * 1024; // > 100MB is suspicious
+      if (looksLikeFormatMismatch) {
+        throw new Error(
+          `Unsupported or invalid EXR format: scanline block ${blockIdx} has invalid data size (${dataSize} bytes, ${available} available). ` +
+            `This file may use a compression or layout not supported by this reader. Supported: none, RLE, ZIPS, ZIP, PIZ.`,
+        );
+      }
       throw new Error(
-        `Invalid scanline block data size: ${dataSize} at offset ${scanlinePos - 4} (file size: ${exrBuffer.length}, available: ${exrBuffer.length - scanlinePos})`,
+        `Invalid scanline block data size: ${dataSize} at offset ${scanlinePos - 4} (file size: ${exrBuffer.length}, available: ${available})`,
       );
     }
 
@@ -346,6 +384,13 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     } else if (compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION) {
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = unzlibSync(compressedData);
+    } else if (compression === RLE_COMPRESSION) {
+      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
+      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(rChannel.pixelType);
+      const rleOut = decompressRLE(compressedData, expectedSize);
+      applyExrPredictor(rleOut);
+      decompressedData = new Uint8Array(expectedSize);
+      reorderExrPixels(decompressedData, rleOut);
     } else if (compression === PIZ_COMPRESSION) {
       // Validate dataSize before creating Uint8Array
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
@@ -366,6 +411,14 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
     // Calculate bytes per scanline
     const bytesPerScanline = width * numChannels * getPixelTypeSize(rChannel.pixelType);
+    const bytesPerChannel = getPixelTypeSize(rChannel.pixelType);
+
+    // OpenEXR spec uses planar (channel-contiguous per scanline). Some writers use interleaved (RGBA per pixel).
+    // PIZ decompressor converts to interleaved internally. RLE/ZIP output planar. Uncompressed varies.
+    const isPlanar =
+      compression === RLE_COMPRESSION ||
+      compression === ZIP_COMPRESSION ||
+      compression === ZIPS_COMPRESSION;
 
     // Process each scanline in the block
     for (let lineInBlock = 0; lineInBlock < linesInBlock; lineInBlock++) {
@@ -374,25 +427,23 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
         break;
       }
 
-      // For uncompressed files, each scanline is written separately
-      // For compressed blocks (PIZ), data is interleaved by channel
       const lineOffset = compression === NO_COMPRESSION ? 0 : lineInBlock * bytesPerScanline;
-      let pixelOffset = lineOffset;
 
       for (let x = 0; x < width; x++) {
         const pixelIndex = (y * width + x) * 4;
 
-        // Read channels in the order they appear in the file (channels array order)
-        // Store them in RGBA order in pixelData
         const channelValues: { [key: string]: number } = {};
 
-        for (const channel of channels) {
+        for (let c = 0; c < channels.length; c++) {
+          const channel = channels[c];
+          if (channel === undefined) continue;
+          const pixelOffset = isPlanar
+            ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
+            : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
           const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
           channelValues[channel.name.toLowerCase()] = value;
-          pixelOffset += getPixelTypeSize(channel.pixelType);
         }
 
-        // Map to RGBA order
         pixelData[pixelIndex] = channelValues.r ?? channelValues.red ?? 0;
         pixelData[pixelIndex + 1] = channelValues.g ?? channelValues.green ?? 0;
         pixelData[pixelIndex + 2] = channelValues.b ?? channelValues.blue ?? 0;
@@ -450,6 +501,83 @@ function readChannelValue(dataView: DataView, offset: number, pixelType: number)
     default:
       throw new Error(`Unknown pixel type: ${pixelType}`);
   }
+}
+
+/**
+ * Apply OpenEXR predictor (delta decoding) in-place.
+ * Matches FFmpeg exrdsp predictor_scalar. Reverses the difference encoding
+ * used by ZIP and RLE compressors.
+ */
+export function applyExrPredictor(src: Uint8Array): void {
+  const size = src.length;
+  if (size < 2) return;
+  if ((size & 1) === 0) {
+    src[1] = (src[1]! + (src[0]! ^ 0x80)) & 0xff;
+  }
+  for (let i = 1; i < size - 1; i += 2) {
+    const a = (src[i]! + src[i - 1]!) & 0xff;
+    src[i] = a;
+    src[i + 1] = (src[i + 1]! + a) & 0xff;
+    src[i] = (a ^ 0x80) & 0xff;
+  }
+}
+
+/**
+ * Reorder pixels from channel-planar to byte-interleaved.
+ * Matches FFmpeg exrdsp reorder_pixels. Converts [low bytes][high bytes]
+ * to [low0,high0, low1,high1, ...] for 16-bit half data.
+ */
+export function reorderExrPixels(dst: Uint8Array, src: Uint8Array): void {
+  const halfSize = Math.floor(src.length / 2);
+  const t1 = src.subarray(0, halfSize);
+  const t2 = src.subarray(halfSize, halfSize * 2);
+  for (let i = 0; i < halfSize; i++) {
+    dst[i * 2] = t1[i]!;
+    dst[i * 2 + 1] = t2[i]!;
+  }
+}
+
+/**
+ * Decompress RLE-compressed scanline block data.
+ * OpenEXR RLE uses signed byte control codes:
+ * - count < 0: copy next -count bytes literally
+ * - count >= 0: repeat next byte (count + 1) times
+ *
+ * Post-decompression: applies predictor and reorder (same pipeline as ZIP).
+ *
+ * Exported for testing.
+ */
+export function decompressRLE(compressedData: Uint8Array, expectedSize: number): Uint8Array {
+  const out = new Uint8Array(expectedSize);
+  let src = 0;
+  let dst = 0;
+
+  while (src < compressedData.length && dst < expectedSize) {
+    const count = (compressedData[src++]! << 24) >> 24; // signed byte
+
+    if (count < 0) {
+      const n = -count;
+      if (src + n > compressedData.length) {
+        throw new Error(`RLE decompression: truncated literal run (need ${n} bytes, ${compressedData.length - src} available)`);
+      }
+      for (let i = 0; i < n && dst < expectedSize; i++) {
+        out[dst++] = compressedData[src++]!;
+      }
+    } else {
+      if (src >= compressedData.length) {
+        throw new Error('RLE decompression: truncated repeat run (missing value byte)');
+      }
+      const value = compressedData[src++]!;
+      for (let i = 0; i <= count && dst < expectedSize; i++) {
+        out[dst++] = value;
+      }
+    }
+  }
+
+  if (dst !== expectedSize) {
+    throw new Error(`RLE decompression produced wrong size: expected ${expectedSize}, got ${dst}`);
+  }
+  return out;
 }
 
 /**

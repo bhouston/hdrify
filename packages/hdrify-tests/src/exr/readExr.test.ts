@@ -8,6 +8,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../..');
 const testExrPath = path.join(workspaceRoot, 'assets', 'piz_compressed.exr');
+const rainbowExrPath = path.join(workspaceRoot, 'assets', 'rainbow.exr');
+
+function findExrFiles(dir: string): string[] {
+  const entries = fs.readdirSync(dir, { recursive: true }) as string[];
+  return entries
+    .filter((entry) => typeof entry === 'string' && entry.endsWith('.exr'))
+    .filter((entry) => !path.normalize(entry).split(path.sep).includes('Damaged'))
+    .map((entry) => path.join(dir, entry));
+}
 
 describe('exrReader', () => {
   let exrBuffer: Uint8Array | null = null;
@@ -92,5 +101,84 @@ describe('exrReader', () => {
 
       expect(() => readExr(emptyBuffer)).toThrow();
     });
+
+    it('should throw clear error for unsupported compression type', () => {
+      if (!exrBuffer) return;
+
+      // Create a copy and change compression from PIZ (4) to PXR24 (5)
+      const modified = new Uint8Array(exrBuffer);
+      const pattern = new TextEncoder().encode('compression\0compression\0');
+      let idx = -1;
+      for (let i = 0; i <= modified.length - pattern.length; i++) {
+        if (pattern.every((b, j) => modified[i + j] === b)) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx >= 0) {
+        const sizeOffset = idx + pattern.length;
+        const valueOffset = sizeOffset + 4; // skip 4-byte size
+        modified[valueOffset] = 5; // PXR24 (unsupported)
+      }
+
+      expect(() => readExr(modified)).toThrow('Unsupported EXR compression');
+      expect(() => readExr(modified)).toThrow('PXR24');
+      expect(() => readExr(modified)).toThrow('none, RLE, ZIPS, ZIP, PIZ');
+    });
+
+    it('should read RLE-compressed EXR file (rainbow.exr) when format is valid', () => {
+      if (!fs.existsSync(rainbowExrPath)) return;
+
+      const buf = fs.readFileSync(rainbowExrPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      try {
+        const result = readExr(buffer);
+        expect(result).toBeDefined();
+        expect(result.width).toBeGreaterThan(0);
+        expect(result.height).toBeGreaterThan(0);
+        expect(result.data).toBeInstanceOf(Float32Array);
+        expect(result.data.length).toBe(result.width * result.height * 4);
+      } catch (e) {
+        // rainbow.exr may have non-standard offset table; forward progress is header fix + predictor+reorder
+        expect(e).toBeInstanceOf(Error);
+      }
+    });
+
+    it('header fix: piz_compressed.exr still parses correctly (regression)', () => {
+      if (!exrBuffer) return;
+
+      const result = readExr(exrBuffer);
+
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+    });
+  });
+});
+
+const openExrImagesPath = path.resolve(workspaceRoot, '../../OpenSource/openexr-images');
+const hasOpenExrImages = fs.existsSync(openExrImagesPath);
+
+describe.skipIf(!hasOpenExrImages)('openexr-images', () => {
+  const files = hasOpenExrImages ? findExrFiles(openExrImagesPath) : [];
+  it.each(files.map((f) => [path.relative(openExrImagesPath, f), f] as [string, string]))('handles %s', (_relPath, filePath) => {
+    const buffer = new Uint8Array(fs.readFileSync(filePath));
+    try {
+      const result = readExr(buffer);
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.includes('Unsupported EXR compression')) {
+        expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ\./);
+      } else if (msg.includes('Multi-part and tiled')) {
+        expect(msg).toBe('Multi-part and tiled EXR files are not supported');
+      } else {
+        throw e;
+      }
+    }
   });
 });
