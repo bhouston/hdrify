@@ -16,6 +16,7 @@ The only full implementation of HDR (Radiance RGBE), EXR (OpenEXR), and JPEG wit
 - Universal `Uint8Array`-based API (no Node.js Buffer dependency)
 - Full TypeScript support
 - No DOM or Node.js dependencies (runtime-agnostic)
+- Written in a functional style to support tree-shaking
 - hdrify CLI
 
 ## Installation
