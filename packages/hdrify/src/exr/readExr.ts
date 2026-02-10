@@ -85,14 +85,17 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     throw new Error('Invalid EXR file: incorrect magic number');
   }
 
-  // Read version/flags
+  // Read version/flags (OpenEXR ImfVersion.h: TILED=0x200, NON_IMAGE=0x800, MULTI_PART=0x1000)
   const version = dataView.getUint32(offset, true);
   offset += INT32_SIZE;
-  const isMultiPart = (version & 0x2000) !== 0;
-  const isTiled = (version & 0x400) !== 0;
+  const isMultiPart = (version & 0x1000) !== 0;
+  const isTiled = (version & 0x200) !== 0;
+  const isDeepData = (version & 0x800) !== 0;
 
-  if (isMultiPart || isTiled) {
-    throw new Error('Multi-part and tiled EXR files are not supported');
+  if (isMultiPart || isTiled || isDeepData) {
+    throw new Error(
+      'Multi-part, tiled, and deep data EXR files are not supported. This reader supports single-part scanline images only.',
+    );
   }
 
   // Read header attributes

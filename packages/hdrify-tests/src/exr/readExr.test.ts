@@ -174,8 +174,8 @@ describe.skipIf(!hasOpenExrImages)('openexr-images', () => {
       const msg = (e as Error).message;
       if (msg.includes('Unsupported EXR compression')) {
         expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ\./);
-      } else if (msg.includes('Multi-part and tiled')) {
-        expect(msg).toBe('Multi-part and tiled EXR files are not supported');
+      } else if (msg.includes('Multi-part') || msg.includes('tiled') || msg.includes('deep data')) {
+        expect(msg).toContain('not supported');
       } else {
         throw e;
       }
