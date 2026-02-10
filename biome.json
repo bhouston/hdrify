@@ -79,6 +79,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["packages/cli/src/index.ts"],
+      "linter": {
+        "rules": {
+          "security": {
+            "noSecrets": "off"
+          }
+        }
+      }
     }
   ],
   "vcs": {
