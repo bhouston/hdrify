@@ -5,6 +5,7 @@ export default defineConfig({
     include: [
       'packages/hdrify/src/**/*.test.ts',
       'packages/hdrify-tests/src/**/*.test.ts',
+      'packages/cli-tests/src/**/*.test.ts',
     ],
     environment: 'node',
     watch: false,

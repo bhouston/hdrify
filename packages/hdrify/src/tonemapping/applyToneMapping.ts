@@ -18,8 +18,7 @@ export function applyToneMapping(
 ): Uint8Array {
   const toneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
-  const gamma =
-    options.gamma ?? (toneMappingType === 'aces' ? 1 : 2.2);
+  const gamma = options.gamma ?? (toneMappingType === 'aces' ? 1 : 2.2);
 
   const mapper = getToneMapping(toneMappingType);
   const totalPixels = width * height;

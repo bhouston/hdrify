@@ -6,8 +6,6 @@ export { writeExr } from './exr/writeExr.js';
 export type { FloatImageData } from './floatImage.js';
 // Gainmap
 export { encodeGainMap } from './gainmap/gainMapEncoder.js';
-export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
-export { writeJpegGainMap, writeGainMapAsSeparateFiles } from './gainmap/writeJpegGainMap.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';
 export type {
   CompressedImage,
@@ -16,10 +14,12 @@ export type {
   GainMapMetadata,
   GainMapMetadataExtended,
 } from './gainmap/types.js';
-export { applyToneMapping } from './tonemapping/applyToneMapping.js';
-export { getToneMapping } from './tonemapping/mappers.js';
-export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './tonemapping/types.js';
+export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
+export { writeGainMapAsSeparateFiles, writeJpegGainMap } from './gainmap/writeJpegGainMap.js';
 // HDR
 export type { HDRToLDROptions, ParseHDROptions } from './hdr/readHdr.js';
 export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
 export { writeHdr } from './hdr/writeHdr.js';
+export { applyToneMapping } from './tonemapping/applyToneMapping.js';
+export { getToneMapping } from './tonemapping/mappers.js';
+export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './tonemapping/types.js';

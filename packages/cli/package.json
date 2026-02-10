@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "hdrify": "workspace:*",
-    "yargs": "^17.7.2"
+    "sharp": "^0.34.5",
+    "yargs": "^17.7.2",
+    "yargs-file-commands": "^1.2.2"
   },
   "devDependencies": {
     "@types/node": "^24",

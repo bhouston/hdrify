@@ -1,6 +1,6 @@
 import type { FloatImageData } from '../floatImage.js';
-import type { ToneMappingType } from '../tonemapping/types.js';
 import { applyToneMapping } from '../tonemapping/applyToneMapping.js';
+import type { ToneMappingType } from '../tonemapping/types.js';
 
 export interface HDRToLDROptions {
   /** Tone mapping: 'aces' or 'reinhard' (default: 'reinhard') */
@@ -555,8 +555,7 @@ export function convertHDRToLDR(
 ): { width: number; height: number; ldrData: Uint8Array } {
   const hdrImage = readHdr(hdrBuffer);
   const toneMapping = options.toneMapping ?? 'reinhard';
-  const gamma =
-    options.gamma ?? (toneMapping === 'aces' ? 1 : (hdrImage.gamma ?? 2.2));
+  const gamma = options.gamma ?? (toneMapping === 'aces' ? 1 : (hdrImage.gamma ?? 2.2));
   const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
     toneMapping,
     exposure: options.exposure ?? hdrImage.exposure ?? 1.0,

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { encodeGainMap, readExr, readHdr, writeJpegGainMap, writeGainMapAsSeparateFiles } from 'hdrify';
+import { encodeGainMap, readExr, readHdr, writeGainMapAsSeparateFiles, writeJpegGainMap } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);

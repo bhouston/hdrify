@@ -1,69 +1,145 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type FloatImageData, readExr, readHdr, writeExr, writeHdr } from 'hdrify';
-import type { Argv } from 'yargs';
+import {
+  applyToneMapping,
+  encodeGainMap,
+  type FloatImageData,
+  readExr,
+  readHdr,
+  writeExr,
+  writeHdr,
+  writeJpegGainMap,
+} from 'hdrify';
+import sharp from 'sharp';
+import { defineCommand } from 'yargs-file-commands';
 
-export const command = 'convert <input> <output>';
-export const describe = 'Convert between EXR and HDR formats';
-export const builder = (yargs: Argv) =>
-  yargs
-    .positional('input', {
-      describe: 'Input file path (.exr or .hdr)',
-      type: 'string',
-      demandOption: true,
-    })
-    .positional('output', {
-      describe: 'Output file path (.exr or .hdr)',
-      type: 'string',
-      demandOption: true,
-    });
+const SDR_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'] as const;
+const HDR_EXTENSIONS = ['.exr', '.hdr'] as const;
 
-export const handler = async (argv: { input: string; output: string }) => {
-  const { input, output } = argv;
+function isSdrExtension(ext: string): ext is (typeof SDR_EXTENSIONS)[number] {
+  return SDR_EXTENSIONS.includes(ext as (typeof SDR_EXTENSIONS)[number]);
+}
 
-  if (!fs.existsSync(input)) {
-    console.error(`Error: Input file not found: ${input}`);
-    process.exit(1);
-  }
+function isHdrExtension(ext: string): ext is '.exr' | '.hdr' {
+  return ext === '.exr' || ext === '.hdr';
+}
 
-  const inputExt = path.extname(input).toLowerCase();
-  const outputExt = path.extname(output).toLowerCase();
+export const command = defineCommand({
+  command: 'convert <input> <output>',
+  describe: 'Convert between EXR, HDR, and SDR formats (PNG, WebP, JPEG)',
+  builder: (yargs) =>
+    yargs
+      .positional('input', {
+        describe: 'Input file path (.exr or .hdr)',
+        type: 'string',
+        demandOption: true,
+      })
+      .positional('output', {
+        describe: 'Output file path (.exr, .hdr, .png, .webp, .jpg, .jpeg)',
+        type: 'string',
+        demandOption: true,
+      })
+      .option('tonemapping', {
+        describe: 'Tone mapping for SDR output (aces or reinhard)',
+        type: 'string',
+        choices: ['aces', 'reinhard'],
+        default: 'reinhard' as const,
+      })
+      .option('gamma', {
+        describe: 'Gamma for SDR output (display gamma for PNG/WebP; gain map gamma for JPEG)',
+        type: 'number',
+      })
+      .option('exposure', {
+        describe: 'Exposure multiplier for SDR conversion',
+        type: 'number',
+        default: 1,
+      })
+      .option('quality', {
+        describe: 'JPEG quality 0-100 (JPEG/JPEG-R output only)',
+        type: 'number',
+        default: 90,
+      }),
+  handler: async (argv) => {
+    const { input, output, tonemapping, gamma, exposure, quality } = argv;
 
-  if (inputExt !== '.exr' && inputExt !== '.hdr') {
-    console.error(`Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr`);
-    process.exit(1);
-  }
-
-  if (outputExt !== '.exr' && outputExt !== '.hdr') {
-    console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: .exr, .hdr`);
-    process.exit(1);
-  }
-
-  try {
-    const inputBuf = fs.readFileSync(input);
-    const inputBuffer = new Uint8Array(inputBuf.buffer, inputBuf.byteOffset, inputBuf.byteLength);
-    console.log(`Reading ${inputExt} file: ${input}`);
-
-    let imageData: FloatImageData;
-    if (inputExt === '.exr') {
-      imageData = readExr(inputBuffer);
-    } else {
-      imageData = readHdr(inputBuffer);
+    if (!fs.existsSync(input)) {
+      console.error(`Error: Input file not found: ${input}`);
+      process.exit(1);
     }
 
-    console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
+    const inputExt = path.extname(input).toLowerCase();
+    const outputExt = path.extname(output).toLowerCase();
 
-    let outputBuffer: Uint8Array;
-    if (outputExt === '.exr') {
-      outputBuffer = writeExr(imageData);
-    } else {
-      outputBuffer = writeHdr(imageData);
+    if (inputExt !== '.exr' && inputExt !== '.hdr') {
+      console.error(`Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr`);
+      process.exit(1);
     }
 
-    fs.writeFileSync(output, outputBuffer);
-    console.log(`Successfully converted to ${outputExt} file: ${output}`);
-  } catch (error) {
-    console.error(`Error during conversion:`, error instanceof Error ? error.message : error);
-    process.exit(1);
-  }
-};
+    const supportedOutput = [...HDR_EXTENSIONS, ...SDR_EXTENSIONS].join(', ');
+    if (!isHdrExtension(outputExt) && !isSdrExtension(outputExt)) {
+      console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: ${supportedOutput}`);
+      process.exit(1);
+    }
+
+    try {
+      const inputBuf = fs.readFileSync(input);
+      const inputBuffer = new Uint8Array(inputBuf.buffer, inputBuf.byteOffset, inputBuf.byteLength);
+      console.log(`Reading ${inputExt} file: ${input}`);
+
+      let imageData: FloatImageData;
+      if (inputExt === '.exr') {
+        imageData = readExr(inputBuffer);
+      } else {
+        imageData = readHdr(inputBuffer);
+      }
+
+      console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
+
+      if (isHdrExtension(outputExt)) {
+        // HDR output: direct write
+        let outputBuffer: Uint8Array;
+        if (outputExt === '.exr') {
+          outputBuffer = writeExr(imageData);
+        } else {
+          outputBuffer = writeHdr(imageData);
+        }
+        fs.writeFileSync(output, outputBuffer);
+      } else {
+        // SDR output: tone mapping + format-specific encoding
+        const gammaVal = gamma ?? (tonemapping === 'aces' ? 1 : 2.2);
+
+        if (outputExt === '.jpg' || outputExt === '.jpeg') {
+          // JPEG: encodeGainMap + writeJpegGainMap (JPEG-R / Ultra HDR)
+          const gammaTriple = [gammaVal, gammaVal, gammaVal] as [number, number, number];
+          const encodingResult = encodeGainMap(imageData, {
+            toneMapping: tonemapping as 'aces' | 'reinhard',
+            exposure,
+            gamma: gammaTriple,
+          });
+          const jpegBuffer = writeJpegGainMap(encodingResult, { quality });
+          fs.writeFileSync(output, jpegBuffer);
+        } else {
+          // PNG / WebP: applyToneMapping + sharp
+          const ldrRgb = applyToneMapping(imageData.data, imageData.width, imageData.height, {
+            toneMapping: tonemapping as 'aces' | 'reinhard',
+            exposure,
+            gamma: gammaVal,
+          });
+          const pipeline = sharp(ldrRgb, {
+            raw: { width: imageData.width, height: imageData.height, channels: 3 },
+          });
+          if (outputExt === '.png') {
+            await pipeline.png().toFile(output);
+          } else {
+            await pipeline.webp().toFile(output);
+          }
+        }
+      }
+
+      console.log(`Successfully converted to ${outputExt} file: ${output}`);
+    } catch (error) {
+      console.error(`Error during conversion:`, error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  },
+});
