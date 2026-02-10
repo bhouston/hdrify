@@ -5,7 +5,7 @@
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
 
-CLI for converting and inspecting EXR/HDR files, powered by [hdrify](https://www.npmjs.com/package/hdrify).
+CLI for converting and inspecting EXR/HDR files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
 
 ## Installation
 
@@ -17,7 +17,7 @@ pnpm add -g hdrify-cli
 
 | Command | Description |
 | ------- | ----------- |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, JPEG |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, and JPEG (JPEG-R with gain map when output is .jpg) |
 | `hdrify info <file>` | Display metadata (format, dimensions, compression) |
 | `hdrify reference <output>` | Create synthetic reference test images |
 
@@ -25,6 +25,7 @@ pnpm add -g hdrify-cli
 # Convert between formats
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
 
 # View file metadata
 hdrify info input.exr

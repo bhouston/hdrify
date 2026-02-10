@@ -5,7 +5,9 @@
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
 
-The only full implementation of HDR (Radiance RGBE) and EXR (OpenEXR) reading and writing with JPEG Gain Map support in pure JavaScript. No native bindings—works in Node.js and browsers.
+The only full implementation of HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
+
+Convert EXR or HDR files to the highly compressible JPEG-R format (JPEG with embedded gain maps), a new industry-standard HDR format widely supported in modern browsers and mobile devices.
 
 The core library has no dependencies on the DOM or Node.js APIs. It uses only standard JavaScript (`Uint8Array`, `DataView`, `ArrayBuffer`) and pure-JS dependencies (fflate, jpeg-js). Use it in Node.js, browsers, Deno, Workers, or any JavaScript runtime.
 
@@ -23,13 +25,14 @@ pnpm add hdrify
 | `writeHdr(imageData: FloatImageData)` | Encode `FloatImageData` → HDR bytes |
 | `readExr(exrBuffer: Uint8Array)` | Parse OpenEXR file (PIZ, ZIP, RLE) → `FloatImageData` |
 | `writeExr(imageData, options?)` | Encode `FloatImageData` → EXR bytes |
+| `writeJpegGainMap(encodingResult, options?)` | Encode HDR as JPEG-R (JPEG with gain map) for highly compressible storage |
 
 ## Features
 
 - Read and write EXR files (PIZ, ZIP, RLE compression)
 - Read and write HDR (Radiance RGBE) files
+- **Write JPEGs with gain maps (JPEG-R / Ultra HDR)**—a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
 - Convert HDR to LDR with tone mapping
-- Encode gain maps (JPEG-R / Ultra HDR)
 - Universal `Uint8Array`-based API (no Node.js Buffer dependency)
 - Full TypeScript support
 - No DOM or Node.js dependencies (runtime-agnostic)
@@ -64,7 +67,7 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 ### Converting between formats
 
 ```ts
-import { readExr, writeExr, readHdr, writeHdr } from 'hdrify';
+import { encodeGainMap, readExr, writeExr, readHdr, writeHdr, writeJpegGainMap } from 'hdrify';
 import * as fs from 'node:fs';
 
 // Convert EXR to HDR
@@ -75,7 +78,12 @@ fs.writeFileSync('output.hdr', writeHdr(imageData));
 // Convert HDR to EXR
 const hdrBuffer2 = fs.readFileSync('input.hdr');
 const imageData2 = readHdr(new Uint8Array(hdrBuffer2));
-fs.writeFileSync('output.exr', writeExr(imageData2);
+fs.writeFileSync('output.exr', writeExr(imageData2));
+
+// Convert EXR or HDR to JPEG-R (JPEG with gain map—highly compressible HDR)
+const imageData3 = readExr(new Uint8Array(fs.readFileSync('input.exr')));
+const encoding = encodeGainMap(imageData3, { toneMapping: 'reinhard' });
+fs.writeFileSync('output.jpg', writeJpegGainMap(encoding, { quality: 90 }));
 ```
 
 ### Browser usage
@@ -105,13 +113,14 @@ pnpm add -g hdrify-cli
 
 | Command | Description |
 | ------- | ----------- |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, JPEG |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, and JPEG (JPEG-R gain map when output is .jpg) |
 | `hdrify info <file>` | Display metadata (format, dimensions, compression) |
 | `hdrify reference <output>` | Create synthetic reference test images |
 
 ```bash
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
 hdrify info input.exr
 hdrify reference output.exr --compression zip
 ```
