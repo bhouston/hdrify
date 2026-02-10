@@ -4,6 +4,12 @@
 export { readExr } from './exr/readExr.js';
 export { writeExr } from './exr/writeExr.js';
 export type { FloatImageData } from './floatImage.js';
+export { addRangeMetadata } from './rangeMetadata.js';
+// Synthetic test images
+export { compareFloatImages } from './synthetic/compareFloatImages.js';
+export type { CompareFloatImagesOptions, CompareFloatImagesResult } from './synthetic/compareFloatImages.js';
+export { createHsvRainbowImage } from './synthetic/createHsvRainbowImage.js';
+export type { CreateHsvRainbowImageOptions } from './synthetic/createHsvRainbowImage.js';
 // Gainmap
 export { encodeGainMap } from './gainmap/gainMapEncoder.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type FloatImageData, readExr, readHdr } from 'hdrify';
+import { addRangeMetadata, type FloatImageData, readExr, readHdr } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
 const COMPRESSION_NAMES: Record<number, string> = {
@@ -97,9 +97,8 @@ function buildInfoOutput(imageData: FloatImageData, ext: string): InfoOutput {
     }
   }
 
-  if (imageData.metadata && Object.keys(imageData.metadata).length > 0) {
-    output.metadata = imageData.metadata;
-  }
+  const rangeMeta = addRangeMetadata(imageData);
+  output.metadata = { ...(imageData.metadata ?? {}), ...rangeMeta };
 
   return output;
 }

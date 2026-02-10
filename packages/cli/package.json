@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "tsgo",
+    "tsgo": "tsgo",
     "dev": "tsgo --watch",
     "start": "node dist/index.js"
   },
