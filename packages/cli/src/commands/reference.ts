@@ -3,11 +3,12 @@ import * as path from 'node:path';
 import { createHsvRainbowImage, writeExr, writeHdr } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
-const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz'] as const;
+const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz', 'pxr24'] as const;
 const COMPRESSION_MAP: Record<(typeof REFERENCE_COMPRESSION_CHOICES)[number], number> = {
   rle: 1,
   zip: 3,
   piz: 4,
+  pxr24: 5,
 };
 
 export const command = defineCommand({

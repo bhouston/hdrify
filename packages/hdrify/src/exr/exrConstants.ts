@@ -45,6 +45,7 @@ export const SUPPORTED_COMPRESSION = [
   ZIPS_COMPRESSION,
   ZIP_COMPRESSION,
   PIZ_COMPRESSION,
+  PXR24_COMPRESSION,
 ];
 
 export const COMPRESSION_NAMES: Record<number, string> = {

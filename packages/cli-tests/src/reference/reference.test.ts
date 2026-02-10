@@ -105,6 +105,18 @@ describe('CLI reference command', () => {
     expect(meta.compression).toBe('ZIP');
   });
 
+  it('creates EXR with --compression pxr24', async () => {
+    const output = path.join(tempDir, 'test.exr');
+    const result = runCli(['reference', output, '--width', '16', '--height', '8', '--compression', 'pxr24']);
+
+    expect(result.exitCode).toBe(0);
+    expect(fs.existsSync(output)).toBe(true);
+    const meta = await validateExrOutput(output);
+    expect(meta.width).toBe(16);
+    expect(meta.height).toBe(8);
+    expect(meta.compression).toBe('PXR24');
+  });
+
   it('rejects --compression when output is HDR', () => {
     const output = path.join(tempDir, 'test.hdr');
     const result = runCli(['reference', output, '--compression', 'rle']);

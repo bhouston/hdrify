@@ -91,7 +91,7 @@ describe('writeExrScanBlock', () => {
         floatImageData: img,
         firstLineY: 0,
         lineCount: 1,
-        compression: 5, // PXR24 - not implemented
+        compression: 6, // B44 - not implemented
         channels: DEFAULT_CHANNELS,
       }),
     ).toThrow('not implemented');

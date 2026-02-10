@@ -7,7 +7,14 @@
  */
 
 import type { FloatImageData } from '../floatImage.js';
-import { HALF, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
+import {
+  HALF,
+  PIZ_COMPRESSION,
+  PXR24_COMPRESSION,
+  RLE_COMPRESSION,
+  ZIP_COMPRESSION,
+  ZIPS_COMPRESSION,
+} from './exrConstants.js';
 import { buildExrHeader, buildMagicAndVersion, DEFAULT_CHANNELS } from './exrHeaderBuilder.js';
 import type { ExrChannel } from './exrTypes.js';
 import { concatUint8Arrays } from './exrUtils.js';
@@ -20,7 +27,7 @@ import {
 import { writeExrScanBlock } from './writeExrScanBlock.js';
 
 export interface WriteExrOptions {
-  /** Compression: 0=none, 1=RLE, 2=ZIPS, 3=ZIP, 4=PIZ */
+  /** Compression: 0=none, 1=RLE, 2=ZIPS, 3=ZIP, 4=PIZ, 5=PXR24 */
   compression?: number;
 }
 
@@ -30,7 +37,8 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
     compression === RLE_COMPRESSION ||
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION
+    compression === PIZ_COMPRESSION ||
+    compression === PXR24_COMPRESSION
   ) {
     return base.map((ch) => ({ ...ch, pixelType: HALF }));
   }
@@ -74,7 +82,8 @@ export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptio
     compression === RLE_COMPRESSION ||
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION;
+    compression === PIZ_COMPRESSION ||
+    compression === PXR24_COMPRESSION;
   const offsetTable = useCompression
     ? buildExrOffsetTableFromBlocks({ offsetTableStart, blocks })
     : buildExrOffsetTable({

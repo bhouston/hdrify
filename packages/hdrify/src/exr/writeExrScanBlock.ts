@@ -5,6 +5,7 @@
 
 import type { FloatImageData } from '../floatImage.js';
 import { compressPizBlock } from './compressPiz.js';
+import { compressPxr24Block } from './compressPxr24.js';
 import { compressRleBlock } from './compressRle.js';
 import { compressZipBlock } from './compressZip.js';
 import {
@@ -15,6 +16,7 @@ import {
   INT32_SIZE,
   NO_COMPRESSION,
   PIZ_COMPRESSION,
+  PXR24_COMPRESSION,
   RLE_COMPRESSION,
   UINT,
   ZIP_COMPRESSION,
@@ -68,7 +70,8 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     compression === RLE_COMPRESSION ||
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION;
+    compression === PIZ_COMPRESSION ||
+    compression === PXR24_COMPRESSION;
 
   if (useCompression) {
     const pixelsPerBlock = width * lineCount;
@@ -93,7 +96,7 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
         }
       }
     } else {
-      // RLE/ZIP: per scanline, channel-major
+      // RLE/ZIP/PXR24: per scanline, channel-major
       let outOffset = 0;
       for (let ly = 0; ly < lineCount; ly++) {
         const y = firstLineY + ly;
@@ -115,9 +118,11 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     const pixelData =
       compression === PIZ_COMPRESSION
         ? compressPizBlock(interleaved, width, lineCount, channels)
-        : compression === RLE_COMPRESSION || compression === ZIPS_COMPRESSION
-          ? compressRleBlock(interleaved)
-          : compressZipBlock(interleaved);
+        : compression === PXR24_COMPRESSION
+          ? compressPxr24Block(interleaved, width, lineCount, channels)
+          : compression === RLE_COMPRESSION || compression === ZIPS_COMPRESSION
+            ? compressRleBlock(interleaved)
+            : compressZipBlock(interleaved);
 
     const blockSize = INT32_SIZE + INT32_SIZE + pixelData.length;
     const result = new Uint8Array(blockSize);
@@ -129,7 +134,7 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   }
 
   if (compression !== NO_COMPRESSION) {
-    throw new Error(`Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ.`);
+    throw new Error(`Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ, PXR24.`);
   }
 
   const bytesPerChannel = getPixelTypeSize(channels[0]?.pixelType ?? FLOAT);

@@ -166,9 +166,10 @@ describe('EXR header parsing - compression', () => {
     expect(header.compression).toBe(4);
   });
 
-  it('throws on unsupported compression (5)', () => {
+  it('accepts PXR24 compression (5)', () => {
     const buffer = buildExrHeaderForParsing({ compression: 5 });
-    expect(() => parseExrHeader(buffer)).toThrow('Unsupported EXR compression');
+    const { header } = parseExrHeader(buffer);
+    expect(header.compression).toBe(5);
   });
 
   it('throws on unsupported compression (6)', () => {

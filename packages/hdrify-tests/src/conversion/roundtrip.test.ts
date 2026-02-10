@@ -45,6 +45,16 @@ describe('conversion round-trip', () => {
     ).toBe(true);
   });
 
+  it('EXR PXR24 round-trip: writeExr(pxr24) -> readExr matches original', () => {
+    const buffer = writeExr(original, { compression: 5 }); // PXR24
+    const parsed = readExr(buffer);
+    const result = compareFloatImages(original, parsed, TOLERANCE);
+    expect(
+      result.match,
+      `EXR PXR24 round-trip failed: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
+  });
+
   it('HDR round-trip: writeHdr -> readHdr matches original', () => {
     const buffer = writeHdr(original);
     const parsed = readHdr(buffer);

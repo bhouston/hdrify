@@ -200,7 +200,7 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
 
   if (!SUPPORTED_COMPRESSION.includes(compression)) {
     const name = COMPRESSION_NAMES[compression] ?? `unknown (${compression})`;
-    throw new Error(`Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ.`);
+    throw new Error(`Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ, PXR24.`);
   }
 
   // Check if required attributes exist and are valid

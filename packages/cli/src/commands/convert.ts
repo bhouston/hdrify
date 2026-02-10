@@ -16,13 +16,14 @@ import { defineCommand } from 'yargs-file-commands';
 const SDR_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'] as const;
 const HDR_EXTENSIONS = ['.exr', '.hdr'] as const;
 
-const EXR_COMPRESSION_CHOICES = ['none', 'rle', 'zip', 'zips', 'piz'] as const;
+const EXR_COMPRESSION_CHOICES = ['none', 'rle', 'zip', 'zips', 'piz', 'pxr24'] as const;
 const COMPRESSION_MAP: Record<(typeof EXR_COMPRESSION_CHOICES)[number], number> = {
   none: 0,
   rle: 1,
   zip: 3,
   zips: 2,
   piz: 4,
+  pxr24: 5,
 };
 
 function isSdrExtension(ext: string): ext is (typeof SDR_EXTENSIONS)[number] {

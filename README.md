@@ -9,7 +9,7 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 
 ## Features
 
-- Read and write EXR files (PIZ, ZIP, RLE compression for RGB)
+- Read and write RGB EXR files (PIZ, ZIP, RLE, PXR24 compression)
 - Read and write HDR (Radiance RGBE) files
 - **Write JPEGs with gain maps (JPEG-R / Ultra HDR)** — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
 - Convert HDR to LDR with tone mapping
@@ -134,6 +134,7 @@ hdrify convert input.hdr output.exr
 hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
 hdrify info input.exr
 hdrify reference output.exr --compression zip
+hdrify convert input.exr output.exr --compression pxr24
 ```
 
 ## Demos
