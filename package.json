@@ -1,0 +1,32 @@
+{
+  "name": "exr-image-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.17.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "rimraf dist packages/**/dist demos/**/dist .nx node_modules packages/**/node_modules demos/**/node_modules",
+    "check": "biome check --write",
+    "tsgo": "pnpm -r tsgo",
+    "test": "pnpm vitest",
+    "lint": "pnpm biome check",
+    "cloc": "npx cloc * --exclude-dir=node_modules,dist,.nx,.next,build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.4",
+    "@types/node": "^24",
+    "@vitest/coverage-v8": "^2.1.9",
+    "chalk": "^5.6.2",
+    "glob": "^13.0.0",
+    "jsonfile": "^6.2.0",
+    "prompt-confirm": "^2.0.4",
+    "rimraf": "^6.0.1",
+    "semver": "^7.7.3",
+    "@typescript/native-preview": "7.0.0-dev.20251202.1",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
