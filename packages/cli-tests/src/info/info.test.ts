@@ -1,35 +1,37 @@
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { assetsDir, runCli } from '../test-utils/cliTestEnv.js';
-
-const hdrFiles = fs.existsSync(assetsDir)
-  ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'))
-  : [];
-const exrFiles = fs.existsSync(assetsDir)
-  ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.exr'))
-  : [];
+import { exrFilePaths, hdrFilePaths, runCli } from '../test-utils/cliTestEnv.js';
 
 describe('CLI info command', () => {
-  it('displays info for HDR file', () => {
-    if (hdrFiles.length === 0) return;
-    const file = path.join(assetsDir, hdrFiles[0]!);
+  it('displays info for HDR file (default YAML format)', () => {
+    const file = hdrFilePaths[0];
     const result = runCli(['info', file]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Format:');
-    expect(result.stdout).toContain('Width:');
-    expect(result.stdout).toContain('Height:');
+    expect(result.stdout).toContain('format:');
+    expect(result.stdout).toContain('width:');
+    expect(result.stdout).toContain('height:');
+    expect(result.stdout).toContain('metadata:');
   });
 
-  it('displays info for EXR file including compression', () => {
-    if (exrFiles.length === 0) return;
-    const file = path.join(assetsDir, exrFiles[0]!);
+  it('displays info for EXR file including compression and metadata', () => {
+    const file = exrFilePaths[0];
     const result = runCli(['info', file]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain('Format:');
-    expect(result.stdout).toContain('Width:');
-    expect(result.stdout).toContain('Height:');
-    expect(result.stdout).toContain('Compression:');
+    expect(result.stdout).toContain('format:');
+    expect(result.stdout).toContain('width:');
+    expect(result.stdout).toContain('height:');
+    expect(result.stdout).toContain('compression:');
+    expect(result.stdout).toContain('metadata:');
+  });
+
+  it('outputs JSON when --format json', () => {
+    const file = hdrFilePaths[0];
+    const result = runCli(['info', file, '--format', 'json']);
+    expect(result.exitCode).toBe(0);
+    const parsed = JSON.parse(result.stdout);
+    expect(parsed.format).toBe('HDR');
+    expect(parsed.width).toBeDefined();
+    expect(parsed.height).toBeDefined();
+    expect(parsed.metadata).toBeDefined();
   });
 
   it('fails when file does not exist', () => {

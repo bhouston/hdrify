@@ -9,7 +9,8 @@ import { fileCommands } from 'yargs-file-commands';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const commandsDir = path.join(__dirname, 'commands');
 
-const main = async () =>  yargs(hideBin(process.argv))
+const main = async () =>
+  yargs(hideBin(process.argv))
     .scriptName('hdrify')
     .usage('$0 <command> [options]')
     .command(await fileCommands({ commandDirs: [commandsDir] }))

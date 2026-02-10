@@ -11,6 +11,22 @@ const workspaceRoot = path.resolve(__dirname, '../../../..');
 const cliPath = path.join(workspaceRoot, 'packages', 'cli', 'dist', 'index.js');
 const assetsDir = path.join(workspaceRoot, 'assets');
 
+/** Explicit list of HDR asset file names (non-empty, const). */
+export const hdrFiles = ['blouberg_sunrise_2_1k.hdr', 'moonless_golf_1k.hdr', 'pedestrian_overpass_1k.hdr'] as const;
+
+/** Explicit list of EXR asset file names (non-empty, const). */
+export const exrFiles = ['piz_compressed.exr'] as const;
+
+/** Full paths to HDR assets (non-empty). */
+export const hdrFilePaths: readonly [string, ...string[]] = hdrFiles.map((f) =>
+  path.join(assetsDir, f),
+) as unknown as readonly [string, ...string[]];
+
+/** Full paths to EXR assets (non-empty). */
+export const exrFilePaths: readonly [string, ...string[]] = exrFiles.map((f) =>
+  path.join(assetsDir, f),
+) as unknown as readonly [string, ...string[]];
+
 export interface RunCliResult {
   stdout: string;
   stderr: string;
@@ -20,10 +36,7 @@ export interface RunCliResult {
 /**
  * Run the hdrify CLI as a subprocess.
  */
-export function runCli(
-  args: string[],
-  opts?: { cwd?: string; env?: NodeJS.ProcessEnv },
-): RunCliResult {
+export function runCli(args: string[], opts?: { cwd?: string; env?: NodeJS.ProcessEnv }): RunCliResult {
   const result = spawnSync('node', [cliPath, ...args], {
     encoding: 'utf8',
     cwd: opts?.cwd ?? workspaceRoot,

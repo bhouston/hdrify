@@ -405,6 +405,7 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     width,
     height,
     data: pixelData,
+    metadata: header,
   };
 }
 

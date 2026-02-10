@@ -14,29 +14,114 @@ const COMPRESSION_NAMES: Record<number, string> = {
   7: 'B44A',
 };
 
-function readNullTerminatedString(buffer: Uint8Array, offset: number): string {
-  const bytes: number[] = [];
-  let pos = offset;
-  while (pos < buffer.length) {
-    const byte = buffer[pos];
-    if (byte === undefined || byte === 0) break;
-    bytes.push(byte);
-    pos++;
+interface InfoOutput {
+  format: string;
+  width: number;
+  height: number;
+  compression?: string;
+  metadata?: Record<string, unknown>;
+}
+
+function stringifyYamlValue(value: unknown, indent: number): string {
+  if (value === null || value === undefined) {
+    return 'null';
   }
-  return new TextDecoder().decode(new Uint8Array(bytes));
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false';
+  }
+  if (typeof value === 'string') {
+    if (/[\n\r'"\x00-\x1f]/.test(value) || value.includes('#')) {
+      return JSON.stringify(value);
+    }
+    return value.includes(':') || value.includes(' ') ? `"${value}"` : value;
+  }
+  if (Array.isArray(value)) {
+    const itemPad = '  '.repeat(indent);
+    const parts: string[] = [];
+    for (const item of value) {
+      if (typeof item === 'object' && item !== null && !Array.isArray(item)) {
+        const objStr = stringifyYaml(item as Record<string, unknown>, indent + 1);
+        const objLines = objStr.split('\n').map((line) => '  ' + line);
+        parts.push(`${itemPad}-`);
+        parts.push(objLines.join('\n'));
+      } else {
+        parts.push(`${itemPad}- ${stringifyYamlValue(item, 0)}`);
+      }
+    }
+    return parts.join('\n');
+  }
+  if (typeof value === 'object') {
+    return stringifyYaml(value as Record<string, unknown>, indent);
+  }
+  return String(value);
+}
+
+function stringifyYaml(obj: Record<string, unknown>, indent: number): string {
+  const pad = '  '.repeat(indent);
+  const lines: string[] = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === null || v === undefined) continue;
+    if (typeof v === 'object' && !Array.isArray(v)) {
+      const sub = stringifyYaml(v as Record<string, unknown>, indent + 1);
+      if (sub) {
+        lines.push(`${pad}${k}:`);
+        lines.push(sub);
+      } else {
+        lines.push(`${pad}${k}: {}`);
+      }
+    } else if (Array.isArray(v)) {
+      lines.push(`${pad}${k}:`);
+      lines.push(stringifyYamlValue(v, indent + 1));
+    } else {
+      lines.push(`${pad}${k}: ${stringifyYamlValue(v, 0)}`);
+    }
+  }
+  return lines.join('\n');
+}
+
+function buildInfoOutput(imageData: FloatImageData, ext: string): InfoOutput {
+  const format = ext.toUpperCase().slice(1);
+  const output: InfoOutput = {
+    format,
+    width: imageData.width,
+    height: imageData.height,
+  };
+
+  if (ext === '.exr' && imageData.metadata) {
+    const compression = imageData.metadata.compression as number | undefined;
+    if (compression !== undefined) {
+      output.compression = COMPRESSION_NAMES[compression] ?? `UNKNOWN (${compression})`;
+    }
+  }
+
+  if (imageData.metadata && Object.keys(imageData.metadata).length > 0) {
+    output.metadata = imageData.metadata;
+  }
+
+  return output;
 }
 
 export const command = defineCommand({
   command: 'info <file>',
   describe: 'Display metadata about an EXR or HDR file',
   builder: (yargs) =>
-    yargs.positional('file', {
-      describe: 'Input file path (.exr or .hdr)',
-      type: 'string',
-      demandOption: true,
-    }),
+    yargs
+      .positional('file', {
+        describe: 'Input file path (.exr or .hdr)',
+        type: 'string',
+        demandOption: true,
+      })
+      .option('format', {
+        describe: 'Output format: yaml (default) or json',
+        type: 'string',
+        choices: ['yaml', 'json'],
+        default: 'yaml',
+      }),
   handler: async (argv) => {
-    const { file } = argv;
+    const { file, format } = argv;
 
     if (!fs.existsSync(file)) {
       console.error(`Error: File not found: ${file}`);
@@ -53,58 +138,21 @@ export const command = defineCommand({
     try {
       const fileBuf = fs.readFileSync(file);
       const fileBuffer = new Uint8Array(fileBuf.buffer, fileBuf.byteOffset, fileBuf.byteLength);
-      let imageData: FloatImageData;
-      let compression: number | undefined;
 
+      let imageData: FloatImageData;
       if (ext === '.exr') {
         imageData = readExr(fileBuffer);
-
-        const dataView = new DataView(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.byteLength);
-        let offset = 8;
-
-        while (offset < fileBuffer.length) {
-          const attributeName = readNullTerminatedString(fileBuffer, offset);
-          offset += attributeName.length + 1;
-
-          if (attributeName === '') break;
-
-          const attributeType = readNullTerminatedString(fileBuffer, offset);
-          offset += attributeType.length + 1;
-
-          const attributeSize = dataView.getUint32(offset, true);
-          offset += 4;
-
-          if (attributeName === 'compression' && attributeType === 'compression') {
-            compression = dataView.getUint8(offset);
-            break;
-          }
-
-          offset += attributeSize;
-        }
       } else {
         imageData = readHdr(fileBuffer);
       }
 
-      console.log('\nFile Information:');
-      console.log('==================');
-      console.log(`Format: ${ext.toUpperCase().slice(1)}`);
-      console.log(`Width: ${imageData.width} pixels`);
-      console.log(`Height: ${imageData.height} pixels`);
+      const output = buildInfoOutput(imageData, ext);
 
-      if (imageData.exposure !== undefined) {
-        console.log(`Exposure: ${imageData.exposure}`);
+      if (format === 'json') {
+        console.log(JSON.stringify(output, null, 2));
+      } else {
+        console.log(stringifyYaml(output as unknown as Record<string, unknown>, 0));
       }
-
-      if (imageData.gamma !== undefined) {
-        console.log(`Gamma: ${imageData.gamma}`);
-      }
-
-      if (ext === '.exr' && compression !== undefined) {
-        const compressionName = COMPRESSION_NAMES[compression] || `UNKNOWN (${compression})`;
-        console.log(`Compression: ${compressionName}`);
-      }
-
-      console.log('');
     } catch (error) {
       console.error(`Error reading file:`, error instanceof Error ? error.message : error);
       process.exit(1);

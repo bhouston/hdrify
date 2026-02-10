@@ -1,7 +1,1 @@
-{
-  "extends": "../../tsconfig.json",
-  "include": ["src"],
-  "compilerOptions": {
-    "types": ["node"]
-  }
-}
+{"extends":"../../tsconfig.json","include":["src"],"compilerOptions":{"types":["node"],"tsBuildInfoFile":"dist/tsconfig.tsbuildinfo"}}

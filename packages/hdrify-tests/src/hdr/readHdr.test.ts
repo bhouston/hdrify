@@ -42,17 +42,17 @@ describe('hdrReader', () => {
       expect(result.data.length).toBe(result.width * result.height * 4);
     });
 
-    it('should return exposure and gamma if present in file', () => {
+    it('should return exposure and gamma in metadata if present in file', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const result = readHdr(hdrBuffer);
 
-      if (result.exposure !== undefined) {
-        expect(typeof result.exposure).toBe('number');
-        expect(result.exposure).toBeGreaterThan(0);
+      if (result.metadata?.EXPOSURE !== undefined) {
+        expect(typeof result.metadata.EXPOSURE).toBe('number');
+        expect(result.metadata.EXPOSURE).toBeGreaterThan(0);
       }
-      if (result.gamma !== undefined) {
-        expect(typeof result.gamma).toBe('number');
-        expect(result.gamma).toBeGreaterThan(0);
+      if (result.metadata?.GAMMA !== undefined) {
+        expect(typeof result.metadata.GAMMA).toBe('number');
+        expect(result.metadata.GAMMA).toBeGreaterThan(0);
       }
     });
 
@@ -196,8 +196,9 @@ describe('hdrReader', () => {
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
       const raw = readHdr(buffer, { output: 'raw' });
       const physical = readHdr(buffer, { output: 'physicalRadiance' });
-      if ((raw.exposure ?? 1) !== 1) {
-        const scale = 1 / (raw.exposure ?? 1);
+      const exposure = raw.metadata?.EXPOSURE as number | undefined;
+      if ((exposure ?? 1) !== 1) {
+        const scale = 1 / (exposure ?? 1);
         expect(physical.data[0]).toBeCloseTo((raw.data[0] ?? 0) * scale);
       }
     });

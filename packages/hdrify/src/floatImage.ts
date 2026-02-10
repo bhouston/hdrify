@@ -12,10 +12,6 @@ export interface FloatImageData {
   height: number;
   /** RGBA pixel data as Float32Array: [R, G, B, A, R, G, B, A, ...] */
   data: Float32Array;
-  /** Optional exposure value from source file */
-  exposure?: number;
-  /** Optional gamma value from source file */
-  gamma?: number;
-  /** Header metadata from source file (e.g. FORMAT, EXPOSURE, GAMMA, VIEW) */
-  metadata?: Record<string, number | string>;
+  /** Header metadata from source file (e.g. FORMAT, EXPOSURE, GAMMA for HDR; displayWindow, dataWindow, channels, compression for EXR) */
+  metadata?: Record<string, unknown>;
 }

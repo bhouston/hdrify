@@ -68,8 +68,6 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): F
     width: w,
     height: h,
     data: floatArray,
-    exposure: header.exposure,
-    gamma: header.gamma,
     metadata: header.metadata,
   };
 }
@@ -118,7 +116,7 @@ function RGBE_ReadHeader(
   exposure: number;
   width: number;
   height: number;
-  metadata: Record<string, number | string>;
+  metadata: Record<string, unknown>;
 } {
   const RGBE_VALID_PROGRAMTYPE = 1;
   const RGBE_VALID_FORMAT = 2;
@@ -126,7 +124,7 @@ function RGBE_ReadHeader(
 
   const NEWLINE = '\n';
 
-  const metadata: Record<string, number | string> = {};
+  const metadata: Record<string, unknown> = {};
   const header = {
     valid: 0,
     string: '',
@@ -555,10 +553,12 @@ export function convertHDRToLDR(
 ): { width: number; height: number; ldrData: Uint8Array } {
   const hdrImage = readHdr(hdrBuffer);
   const toneMapping = options.toneMapping ?? 'reinhard';
-  const gamma = options.gamma ?? (toneMapping === 'aces' ? 1 : (hdrImage.gamma ?? 2.2));
+  const fileGamma = hdrImage.metadata?.GAMMA as number | undefined;
+  const fileExposure = hdrImage.metadata?.EXPOSURE as number | undefined;
+  const gamma = options.gamma ?? (toneMapping === 'aces' ? 1 : (fileGamma ?? 2.2));
   const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
     toneMapping,
-    exposure: options.exposure ?? hdrImage.exposure ?? 1.0,
+    exposure: options.exposure ?? fileExposure ?? 1.0,
     gamma,
   });
 

@@ -41,6 +41,7 @@
     "sourceMap": true,
 
     // cache build outputs
-    "incremental": true
+    "incremental": true,
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
   }
 }

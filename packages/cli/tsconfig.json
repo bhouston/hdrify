@@ -1,7 +1,1 @@
-{
-  "extends": "../../tsconfig.node.json",
-  "include": ["src"],
-  "compilerOptions": {
-    "outDir": "dist"
-  }
-}
+{"extends":"../../tsconfig.node.json","include":["src"],"compilerOptions":{"outDir":"dist","tsBuildInfoFile":"dist/tsconfig.tsbuildinfo"}}

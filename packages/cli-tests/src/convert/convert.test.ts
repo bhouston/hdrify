@@ -1,18 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { assetsDir, createTempDir, runCli } from '../test-utils/cliTestEnv.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createTempDir, exrFilePaths, hdrFilePaths, runCli } from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
-
-const hdrFiles = fs.existsSync(assetsDir)
-  ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'))
-  : [];
-const exrFiles = fs.existsSync(assetsDir)
-  ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.exr'))
-  : [];
 
 describe('CLI convert command', () => {
   let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = createTempDir();
+  });
 
   afterEach(() => {
     if (tempDir && fs.existsSync(tempDir)) {
@@ -22,9 +19,7 @@ describe('CLI convert command', () => {
 
   describe('EXR/HDR conversions', () => {
     it('converts EXR to HDR', async () => {
-      if (exrFiles.length === 0) return;
-      const input = path.join(assetsDir, exrFiles[0]!);
-      tempDir = createTempDir();
+      const input = exrFilePaths[0];
       const output = path.join(tempDir, 'output.hdr');
 
       const result = runCli(['convert', input, output]);
@@ -37,9 +32,7 @@ describe('CLI convert command', () => {
     });
 
     it('converts HDR to EXR', async () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.exr');
 
       const result = runCli(['convert', input, output]);
@@ -61,9 +54,7 @@ describe('CLI convert command', () => {
     });
 
     it('round-trips EXR -> HDR -> EXR', async () => {
-      if (exrFiles.length === 0) return;
-      const input = path.join(assetsDir, exrFiles[0]!);
-      tempDir = createTempDir();
+      const input = exrFilePaths[0];
       const hdrPath = path.join(tempDir, 'intermediate.hdr');
       const exrPath = path.join(tempDir, 'output.exr');
 
@@ -82,9 +73,7 @@ describe('CLI convert command', () => {
 
   describe('SDR conversions', () => {
     it('converts HDR to PNG', async () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.png');
 
       const result = runCli(['convert', input, output]);
@@ -97,9 +86,7 @@ describe('CLI convert command', () => {
     });
 
     it('converts HDR to WebP', async () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.webp');
 
       const result = runCli(['convert', input, output]);
@@ -112,9 +99,7 @@ describe('CLI convert command', () => {
     });
 
     it('converts HDR to JPEG (gain map)', async () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.jpg');
 
       const result = runCli(['convert', input, output]);
@@ -127,9 +112,7 @@ describe('CLI convert command', () => {
     });
 
     it('converts EXR to PNG', async () => {
-      if (exrFiles.length === 0) return;
-      const input = path.join(assetsDir, exrFiles[0]!);
-      tempDir = createTempDir();
+      const input = exrFilePaths[0];
       const output = path.join(tempDir, 'output.png');
 
       const result = runCli(['convert', input, output]);
@@ -142,9 +125,7 @@ describe('CLI convert command', () => {
     });
 
     it('accepts --tonemapping and --gamma options', async () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.png');
 
       const result = runCli(['convert', input, output, '--tonemapping', 'aces', '--gamma', '2.2']);
@@ -159,7 +140,6 @@ describe('CLI convert command', () => {
 
   describe('error cases', () => {
     it('fails when input file does not exist', () => {
-      tempDir = createTempDir();
       const output = path.join(tempDir, 'output.hdr');
       const result = runCli(['convert', '/nonexistent/file.exr', output]);
       expect(result.exitCode).toBe(1);
@@ -167,9 +147,7 @@ describe('CLI convert command', () => {
     });
 
     it('fails when output format is unsupported', () => {
-      if (hdrFiles.length === 0) return;
-      const input = path.join(assetsDir, hdrFiles[0]!);
-      tempDir = createTempDir();
+      const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.xyz');
       const result = runCli(['convert', input, output]);
       expect(result.exitCode).toBe(1);
