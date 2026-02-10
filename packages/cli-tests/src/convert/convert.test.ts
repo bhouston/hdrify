@@ -69,6 +69,45 @@ describe('CLI convert command', () => {
       // EXR output may not round-trip for large images; verify file exists
       expect(fs.existsSync(exrPath)).toBe(true);
     });
+
+    it('converts HDR to EXR with --compression none (default)', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output, '--compression', 'none']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
+
+    it('converts HDR to EXR with --compression rle', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output, '--compression', 'rle']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
+
+    it('converts HDR to EXR with --compression zip', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output, '--compression', 'zip']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
   });
 
   describe('SDR conversions', () => {
@@ -152,6 +191,22 @@ describe('CLI convert command', () => {
       const result = runCli(['convert', input, output]);
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('Unsupported output format');
+    });
+
+    it('fails when --compression is used with HDR output', () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.hdr');
+      const result = runCli(['convert', input, output, '--compression', 'rle']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('--compression is only valid for EXR output');
+    });
+
+    it('fails when --compression is used with PNG output', () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.png');
+      const result = runCli(['convert', input, output, '--compression', 'zip']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('--compression is only valid for EXR output');
     });
   });
 });

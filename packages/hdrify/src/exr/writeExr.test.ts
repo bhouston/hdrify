@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
+import { RLE_COMPRESSION, ZIP_COMPRESSION } from './exrConstants.js';
 import { readExr } from './readExr.js';
 import { writeExr } from './writeExr.js';
 
@@ -107,9 +108,63 @@ describe('exrWriter', () => {
       expect(parsedData.data.length).toBe(originalData.data.length);
 
       // Verify pixel data matches (within tolerance for float precision)
-      // Note: There appears to be a channel mapping issue in the round-trip
-      // that needs investigation. Using a very lenient tolerance for now.
       const tolerance = 1.0;
+      for (let i = 0; i < originalData.data.length; i++) {
+        const original = originalData.data[i];
+        const parsed = parsedData.data[i];
+        if (original !== undefined && parsed !== undefined) {
+          expect(Math.abs(original - parsed)).toBeLessThan(tolerance);
+        }
+      }
+    });
+
+    it('should round-trip EXR with RLE compression', () => {
+      const originalData: FloatImageData = {
+        width: 4,
+        height: 4,
+        data: new Float32Array(4 * 4 * 4),
+      };
+      for (let i = 0; i < originalData.data.length; i += 4) {
+        originalData.data[i] = 0.25;
+        originalData.data[i + 1] = 0.5;
+        originalData.data[i + 2] = 0.75;
+        originalData.data[i + 3] = 1.0;
+      }
+
+      const exrBuffer = writeExr(originalData, { compression: RLE_COMPRESSION });
+      const parsedData = readExr(exrBuffer);
+
+      expect(parsedData.width).toBe(originalData.width);
+      expect(parsedData.height).toBe(originalData.height);
+      const tolerance = 0.01; // half-float precision
+      for (let i = 0; i < originalData.data.length; i++) {
+        const original = originalData.data[i];
+        const parsed = parsedData.data[i];
+        if (original !== undefined && parsed !== undefined) {
+          expect(Math.abs(original - parsed)).toBeLessThan(tolerance);
+        }
+      }
+    });
+
+    it('should round-trip EXR with ZIP compression', () => {
+      const originalData: FloatImageData = {
+        width: 16,
+        height: 16,
+        data: new Float32Array(16 * 16 * 4),
+      };
+      for (let i = 0; i < originalData.data.length; i += 4) {
+        originalData.data[i] = 0.25;
+        originalData.data[i + 1] = 0.5;
+        originalData.data[i + 2] = 0.75;
+        originalData.data[i + 3] = 1.0;
+      }
+
+      const exrBuffer = writeExr(originalData, { compression: ZIP_COMPRESSION });
+      const parsedData = readExr(exrBuffer);
+
+      expect(parsedData.width).toBe(originalData.width);
+      expect(parsedData.height).toBe(originalData.height);
+      const tolerance = 0.01; // half-float precision
       for (let i = 0; i < originalData.data.length; i++) {
         const original = originalData.data[i];
         const parsed = parsedData.data[i];

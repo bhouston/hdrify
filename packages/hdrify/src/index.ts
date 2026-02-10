@@ -3,6 +3,7 @@
 // EXR
 export { readExr } from './exr/readExr.js';
 export { writeExr } from './exr/writeExr.js';
+export type { WriteExrOptions } from './exr/writeExr.js';
 export type { FloatImageData } from './floatImage.js';
 export { addRangeMetadata } from './rangeMetadata.js';
 // Synthetic test images

@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildExrOffsetTable,
+  buildExrOffsetTableFromBlocks,
   getBlockCount,
   getBlockHeight,
 } from './writeExrOffsetTable.js';
@@ -106,5 +107,22 @@ describe('buildExrOffsetTable', () => {
     const offset1 = Number(view.getBigUint64(8, true));
     const blockSize = 4 + 4 + width * 16; // y + dataSize + pixels
     expect(offset1 - offset0).toBe(blockSize);
+  });
+});
+
+describe('buildExrOffsetTableFromBlocks', () => {
+  it('produces offsets from variable-size blocks', () => {
+    const offsetTableStart = 500;
+    const blocks = [
+      new Uint8Array(100),
+      new Uint8Array(80),
+      new Uint8Array(120),
+    ];
+    const table = buildExrOffsetTableFromBlocks({ offsetTableStart, blocks });
+    expect(table.length).toBe(3 * ULONG_SIZE);
+    const view = new DataView(table.buffer, table.byteOffset, table.byteLength);
+    expect(Number(view.getBigUint64(0, true))).toBe(500 + 3 * 8);
+    expect(Number(view.getBigUint64(8, true))).toBe(500 + 3 * 8 + 100);
+    expect(Number(view.getBigUint64(16, true))).toBe(500 + 3 * 8 + 100 + 80);
   });
 });

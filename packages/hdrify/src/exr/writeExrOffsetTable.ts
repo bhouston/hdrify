@@ -92,3 +92,31 @@ export function buildExrOffsetTable(options: BuildExrOffsetTableOptions): Uint8A
 
   return result;
 }
+
+export interface BuildExrOffsetTableFromBlocksOptions {
+  /** Byte offset in the file where the offset table starts */
+  offsetTableStart: number;
+  /** Pre-built blocks (each has y + dataSize + data) */
+  blocks: Uint8Array[];
+}
+
+/**
+ * Build offset table from actual block data (for variable-size compressed blocks)
+ */
+export function buildExrOffsetTableFromBlocks(
+  options: BuildExrOffsetTableFromBlocksOptions,
+): Uint8Array {
+  const { offsetTableStart, blocks } = options;
+  const blockCount = blocks.length;
+  const result = new Uint8Array(blockCount * ULONG_SIZE);
+  const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
+
+  let currentOffset = offsetTableStart + blockCount * ULONG_SIZE;
+
+  for (let b = 0; b < blockCount; b++) {
+    view.setBigUint64(b * ULONG_SIZE, BigInt(currentOffset), true);
+    currentOffset += blocks[b]!.length;
+  }
+
+  return result;
+}

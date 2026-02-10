@@ -91,9 +91,9 @@ describe('writeExrScanBlock', () => {
         floatImageData: img,
         firstLineY: 0,
         lineCount: 1,
-        compression: 3, // ZIP
+        compression: 4, // PIZ - not implemented
         channels: DEFAULT_CHANNELS,
       }),
-    ).toThrow('Only NO_COMPRESSION');
+    ).toThrow('not implemented');
   });
 });

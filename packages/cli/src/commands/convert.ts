@@ -16,6 +16,14 @@ import { defineCommand } from 'yargs-file-commands';
 const SDR_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'] as const;
 const HDR_EXTENSIONS = ['.exr', '.hdr'] as const;
 
+const EXR_COMPRESSION_CHOICES = ['none', 'rle', 'zip', 'zips'] as const;
+const COMPRESSION_MAP: Record<(typeof EXR_COMPRESSION_CHOICES)[number], number> = {
+  none: 0,
+  rle: 1,
+  zip: 3,
+  zips: 2,
+};
+
 function isSdrExtension(ext: string): ext is (typeof SDR_EXTENSIONS)[number] {
   return SDR_EXTENSIONS.includes(ext as (typeof SDR_EXTENSIONS)[number]);
 }
@@ -58,9 +66,14 @@ export const command = defineCommand({
         describe: 'JPEG quality 0-100 (JPEG/JPEG-R output only)',
         type: 'number',
         default: 90,
+      })
+      .option('compression', {
+        describe: 'EXR compression method (EXR output only)',
+        type: 'string',
+        choices: EXR_COMPRESSION_CHOICES,
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality } = argv;
+    const { input, output, tonemapping, gamma, exposure, quality, compression } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -78,6 +91,11 @@ export const command = defineCommand({
     const supportedOutput = [...HDR_EXTENSIONS, ...SDR_EXTENSIONS].join(', ');
     if (!isHdrExtension(outputExt) && !isSdrExtension(outputExt)) {
       console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: ${supportedOutput}`);
+      process.exit(1);
+    }
+
+    if (compression !== undefined && outputExt !== '.exr') {
+      console.error(`Error: --compression is only valid for EXR output. Output format is ${outputExt}.`);
       process.exit(1);
     }
 
@@ -99,7 +117,9 @@ export const command = defineCommand({
         // HDR output: direct write
         let outputBuffer: Uint8Array;
         if (outputExt === '.exr') {
-          outputBuffer = writeExr(imageData);
+          const compressionOption =
+            compression !== undefined ? { compression: COMPRESSION_MAP[compression] } : undefined;
+          outputBuffer = writeExr(imageData, compressionOption);
         } else {
           outputBuffer = writeHdr(imageData);
         }
