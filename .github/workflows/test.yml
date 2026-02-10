@@ -1,0 +1,72 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [24.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.17.0
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run type check
+        run: pnpm tsgo
+
+      - name: Run linter
+        run: pnpm check
+
+      - name: Run tests
+        run: pnpm vitest
+
+      - name: Run tests with coverage
+        run: pnpm vitest run --coverage
+
+      - name: Find coverage files
+        id: coverage
+        run: |
+          echo "Searching for coverage files..."
+          find . -name "lcov.info" -type f | head -20
+          COVERAGE_FILES=$(find . -name "lcov.info" -type f | tr '\n' ',' | sed 's/,$//')
+          if [ -z "$COVERAGE_FILES" ]; then
+            echo "No coverage files found"
+            echo "has_coverage=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found coverage files: $COVERAGE_FILES"
+            echo "has_coverage=true" >> $GITHUB_OUTPUT
+            echo "files=$COVERAGE_FILES" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload coverage reports to Codecov
+        if: steps.coverage.outputs.has_coverage == 'true'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ${{ steps.coverage.outputs.files }}
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          directory: ./
+          verbose: true

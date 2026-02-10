@@ -69,7 +69,7 @@ export const command = defineCommand({
         default: 90,
       })
       .option('compression', {
-        describe: 'EXR compression method (EXR output only)',
+        describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
         choices: EXR_COMPRESSION_CHOICES,
       }),

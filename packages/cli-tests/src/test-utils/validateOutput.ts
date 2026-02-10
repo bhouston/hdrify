@@ -7,15 +7,32 @@ function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
+const EXR_COMPRESSION_NAMES: Record<number, string> = {
+  0: 'NO_COMPRESSION',
+  1: 'RLE',
+  2: 'ZIPS',
+  3: 'ZIP',
+  4: 'PIZ',
+  5: 'PXR24',
+  6: 'B44',
+  7: 'B44A',
+};
+
 export interface Metadata {
   width: number;
   height: number;
+  compression?: string;
 }
 
 export async function validateExrOutput(filePath: string): Promise<Metadata> {
   const buf = fs.readFileSync(filePath);
   const data = readExr(toUint8Array(buf));
-  return { width: data.width, height: data.height };
+  const result: Metadata = { width: data.width, height: data.height };
+  const compression = data.metadata?.compression as number | undefined;
+  if (compression !== undefined) {
+    result.compression = EXR_COMPRESSION_NAMES[compression] ?? `UNKNOWN (${compression})`;
+  }
+  return result;
 }
 
 export async function validateHdrOutput(filePath: string): Promise<Metadata> {

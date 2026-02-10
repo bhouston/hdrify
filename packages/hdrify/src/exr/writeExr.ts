@@ -41,7 +41,7 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
  * Write an EXR file buffer from FloatImageData
  *
  * @param floatImageData - FloatImageData containing image dimensions and pixel data
- * @param options - Optional compression (default: none)
+ * @param options - Optional compression (default: zip; use piz for broader compatibility)
  * @returns Uint8Array containing EXR file data
  */
 export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptions): Uint8Array {

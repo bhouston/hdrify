@@ -107,13 +107,13 @@ describe('exrWriter', () => {
       expect(parsedData.height).toBe(originalData.height);
       expect(parsedData.data.length).toBe(originalData.data.length);
 
-      // Verify pixel data matches (within tolerance for float precision)
-      const tolerance = 1.0;
+      // Verify pixel data matches (within tolerance for half-float precision, default is ZIP)
+      const tolerance = 0.01; // half-float precision
       for (let i = 0; i < originalData.data.length; i++) {
         const original = originalData.data[i];
         const parsed = parsedData.data[i];
         if (original !== undefined && parsed !== undefined) {
-          expect(Math.abs(original - parsed)).toBeLessThan(tolerance);
+          expect(Math.abs(original - parsed)).toBeLessThanOrEqual(tolerance);
         }
       }
     });

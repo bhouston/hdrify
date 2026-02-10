@@ -71,8 +71,9 @@ function main() {
   }
   cpSync(licensePath, join(publishPath, 'LICENSE'));
 
-  console.log(`Copying README from root`);
-  const readmePath = join(rootPath, 'README.md');
+  const packageReadmePath = join(resolvedPackagePath, 'README.md');
+  const readmePath = existsSync(packageReadmePath) ? packageReadmePath : join(rootPath, 'README.md');
+  console.log(`Copying README from ${existsSync(packageReadmePath) ? 'package' : 'root'}`);
   if (!existsSync(readmePath)) {
     throw new Error(`Error: README.md not found at ${readmePath}`);
   }

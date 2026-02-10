@@ -53,6 +53,20 @@ describe('CLI convert command', () => {
       }
     });
 
+    it('converts HDR to EXR with default zip compression when --compression not specified', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output]);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+      expect(meta.compression).toBe('ZIP');
+    });
+
     it('round-trips EXR -> HDR -> EXR', async () => {
       const input = exrFilePaths[0];
       const hdrPath = path.join(tempDir, 'intermediate.hdr');
@@ -70,7 +84,7 @@ describe('CLI convert command', () => {
       expect(fs.existsSync(exrPath)).toBe(true);
     });
 
-    it('converts HDR to EXR with --compression none (default)', async () => {
+    it('converts HDR to EXR with --compression none', async () => {
       const input = hdrFilePaths[0];
       const output = path.join(tempDir, 'output.exr');
 
