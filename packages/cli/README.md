@@ -1,4 +1,4 @@
-# hdrify-cli
+# HDFify-cli
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
