@@ -26,6 +26,7 @@ pnpm add -g hdrify-cli
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr
 hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
+hdrify convert input.exr output.webp   # Tonemaps the HDR during converesion to SDR webp format
 
 # View file metadata
 hdrify info input.exr

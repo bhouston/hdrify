@@ -1,15 +1,15 @@
-# Hdrify
+# HDFfy
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
 
-The only full implementation of HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
+HDRIfy implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
 ## Features
 
-- Read and write EXR files (PIZ, ZIP, RLE compression)
+- Read and write EXR files (PIZ, ZIP, RLE compression for RGB)
 - Read and write HDR (Radiance RGBE) files
 - **Write JPEGs with gain maps (JPEG-R / Ultra HDR)** — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
 - Convert HDR to LDR with tone mapping

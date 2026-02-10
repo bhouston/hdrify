@@ -1,5 +1,7 @@
 src/
 *.test.ts
 *.spec.ts
+*.test.js.map
+*.test.d.ts
 tsconfig.json
 node_modules/

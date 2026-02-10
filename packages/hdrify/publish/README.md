@@ -1,44 +1,61 @@
-# Hdrify - EXR and HDR Image Libraries
+# Hdrify
 
-A monorepo containing universal (browser + Node.js) libraries for reading and writing EXR (OpenEXR), HDR (Radiance RGBE), and gain map (JPEG-R / Ultra HDR) image formats.
+[![NPM Package][npm]][npm-url]
+[![NPM Downloads][npm-downloads]][npmtrends-url]
+[![Tests][tests-badge]][tests-url]
+[![Coverage][coverage-badge]][coverage-url]
 
-## Packages
+The only full implementation of HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
-### [`hdrify`](./packages/hdrify)
+## Features
 
-Universal EXR, HDR, and gain map image library. Works in both Node.js and browsers with no Node-specific dependencies.
-
-**Features:**
-- Read and write EXR files (PIZ, ZIP, uncompressed)
+- Read and write EXR files (PIZ, ZIP, RLE compression)
 - Read and write HDR (Radiance RGBE) files
+- **Write JPEGs with gain maps (JPEG-R / Ultra HDR)** — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
 - Convert HDR to LDR with tone mapping
-- Encode gain maps (JPEG-R / Ultra HDR)
-- Universal Uint8Array-based API (no Node.js Buffer dependency)
+- Universal `Uint8Array`-based API (no Node.js Buffer dependency)
 - Full TypeScript support
-
-### [`hdrify-cli`](./packages/cli)
-
-Command-line tool for converting between EXR and HDR formats and viewing file metadata.
+- No DOM or Node.js dependencies (runtime-agnostic)
+- Written in a functional style to support tree-shaking
+- hdrify CLI
 
 ## Installation
 
-```bash
-# Install the main library
+```sh
 pnpm add hdrify
-
-# Install the CLI
-pnpm add -g hdrify-cli
 ```
 
-## Quick Start
+## Main Entry Points
+
+| Function | Description |
+| -------- | ----------- |
+| `readHdr(hdrBuffer: Uint8Array)` | Parse Radiance RGBE HDR file → `FloatImageData` |
+| `writeHdr(imageData: FloatImageData)` | Encode `FloatImageData` → HDR bytes |
+| `readExr(exrBuffer: Uint8Array)` | Parse OpenEXR file (PIZ, ZIP, RLE) → `FloatImageData` |
+| `writeExr(imageData, options?)` | Encode `FloatImageData` → EXR bytes |
+| `writeJpegGainMap(encodingResult, options?)` | Encode HDR as JPEG-R (JPEG with gain map) for highly compressible storage |
+
+All read functions return `FloatImageData`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
+
+### FloatImageData
+
+```ts
+interface FloatImageData {
+  width: number;           // Image width in pixels
+  height: number;          // Image height in pixels
+  data: Float32Array;     // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]
+  metadata?: Record<string, unknown>;  // Format-specific header metadata (e.g. compression, exposure)
+}
+```
+
+## Usage
 
 ### Reading an EXR file
 
-```typescript
+```ts
 import { readExr } from 'hdrify';
 import * as fs from 'node:fs';
 
-// In Node.js
 const buffer = fs.readFileSync('image.exr');
 const imageData = readExr(new Uint8Array(buffer));
 
@@ -48,43 +65,43 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 
 ### Reading an HDR file
 
-```typescript
+```ts
 import { readHdr } from 'hdrify';
 import * as fs from 'node:fs';
 
-// In Node.js
 const buffer = fs.readFileSync('image.hdr');
 const imageData = readHdr(new Uint8Array(buffer));
 
 console.log(`Image: ${imageData.width}x${imageData.height}`);
-// imageData.data is a Float32Array with RGBA values
 ```
 
 ### Converting between formats
 
-```typescript
-import { readExr, writeExr, readHdr, writeHdr } from 'hdrify';
+```ts
+import { encodeGainMap, readExr, writeExr, readHdr, writeHdr, writeJpegGainMap } from 'hdrify';
 import * as fs from 'node:fs';
 
 // Convert EXR to HDR
 const exrBuffer = fs.readFileSync('input.exr');
 const imageData = readExr(new Uint8Array(exrBuffer));
-const hdrBuffer = writeHdr(imageData);
-fs.writeFileSync('output.hdr', hdrBuffer);
+fs.writeFileSync('output.hdr', writeHdr(imageData));
 
 // Convert HDR to EXR
 const hdrBuffer2 = fs.readFileSync('input.hdr');
 const imageData2 = readHdr(new Uint8Array(hdrBuffer2));
-const exrBuffer2 = writeExr(imageData2);
-fs.writeFileSync('output.exr', exrBuffer2);
+fs.writeFileSync('output.exr', writeExr(imageData2));
+
+// Convert EXR or HDR to JPEG-R (JPEG with gain map—highly compressible HDR)
+const imageData3 = readExr(new Uint8Array(fs.readFileSync('input.exr')));
+const encoding = encodeGainMap(imageData3, { toneMapping: 'reinhard' });
+fs.writeFileSync('output.jpg', writeJpegGainMap(encoding, { quality: 90 }));
 ```
 
 ### Browser usage
 
-```typescript
+```ts
 import { readExr } from 'hdrify';
 
-// In browser
 const fileInput = document.querySelector('input[type="file"]');
 fileInput.addEventListener('change', async (e) => {
   const file = (e.target as HTMLInputElement).files?.[0];
@@ -97,23 +114,31 @@ fileInput.addEventListener('change', async (e) => {
 });
 ```
 
-## CLI
+## CLI Tool
+
+The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR/HDR files:
+
+```sh
+pnpm add -g hdrify-cli
+```
+
+| Command | Description |
+| ------- | ----------- |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, and JPEG (JPEG-R gain map when output is .jpg) |
+| `hdrify info <file>` | Display metadata (format, dimensions, compression) |
+| `hdrify reference <output>` | Create synthetic reference test images |
 
 ```bash
-# Convert between formats
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr
-
-# View file metadata
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
 hdrify info input.exr
-hdrify info input.hdr
+hdrify reference output.exr --compression zip
 ```
 
 ## Demos
 
-### Web Demo
-
-A TanStack Start web application with drag-and-drop support for viewing EXR and HDR files with an exposure slider.
+See the `demos/web` app for a browser-based viewer with drag-and-drop support and an exposure slider:
 
 ```bash
 cd demos/web
@@ -121,30 +146,34 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000 in your browser and drag-and-drop EXR or HDR files to view them.
+Open http://localhost:3000 and drag-and-drop EXR or HDR files.
 
-## Development
+## Developer (for Contributors)
 
-This is a pnpm workspace monorepo.
+Check out [this git project](https://github.com/bhouston/hdrify) and run:
 
-```bash
-# Install dependencies
+```sh
+# install dependencies
 pnpm install
 
-# Build packages (hdrify, hdrify-cli)
+# build packages (hdrify, hdrify-cli)
 pnpm build
 
-# Run tests
+# run tests
 pnpm test
 
-# Type-check
+# type-check
 pnpm tsgo
 
-# Lint code
-pnpm lint
+# lint
+pnpm check
 
-# Clean build artifacts
+# clean build artifacts
 pnpm clean
+
+# publish the npm packages
+pnpm make-release:hdrify
+pnpm make-release:hdrify-cli
 ```
 
 ## License
@@ -154,3 +183,12 @@ MIT
 ## Author
 
 Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)
+
+[npm]: https://img.shields.io/npm/v/hdrify
+[npm-url]: https://www.npmjs.com/package/hdrify
+[npm-downloads]: https://img.shields.io/npm/dw/hdrify
+[npmtrends-url]: https://www.npmtrends.com/hdrify
+[tests-badge]: https://github.com/bhouston/hdrify/workflows/Tests/badge.svg
+[tests-url]: https://github.com/bhouston/hdrify/actions/workflows/test.yml
+[coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
+[coverage-url]: https://codecov.io/gh/bhouston/hdrify

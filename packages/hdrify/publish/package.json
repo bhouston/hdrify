@@ -1,7 +1,7 @@
 {
   "name": "hdrify",
   "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -25,10 +25,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bhouston/exr-image.git"
+    "url": "git+https://github.com/bhouston/hdrify.git"
   },
   "bugs": {
-    "url": "https://github.com/bhouston/exr-image/issues"
+    "url": "https://github.com/bhouston/hdrify/issues"
   },
   "dependencies": {
     "fflate": "^0.8.2",

@@ -5,6 +5,8 @@ test/
 *.spec.ts
 *.test.js
 *.spec.js
+*.test.js.map
+*.test.d.ts
 tsconfig.json
 vitest.config.ts
 coverage/
