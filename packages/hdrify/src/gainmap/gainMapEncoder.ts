@@ -1,5 +1,5 @@
 import type { FloatImageData } from '../floatImage.js';
-import { getToneMapping } from './toneMapping.js';
+import { getToneMapping } from '../tonemapping/mappers.js';
 import type { EncodingResult, GainMapEncodingOptions, GainMapMetadata } from './types.js';
 
 const defaultOffset = [1 / 64, 1 / 64, 1 / 64] as [number, number, number];

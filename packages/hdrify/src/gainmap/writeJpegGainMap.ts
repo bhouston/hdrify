@@ -1,5 +1,5 @@
 import { encodeToJpeg } from './jpegEncoder.js';
-import { encodeJPEGMetadata } from './libultrahdr/index.js';
+import { encodeJPEGMetadata } from './libultrahdr/encode-jpeg-metadata.js';
 import type { EncodingResult, GainMapMetadata } from './types.js';
 
 export interface GainMapWriterOptions {

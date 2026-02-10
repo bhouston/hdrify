@@ -15,8 +15,10 @@ export type {
   GainMapEncodingOptions,
   GainMapMetadata,
   GainMapMetadataExtended,
-  ToneMappingType,
 } from './gainmap/types.js';
+export { applyToneMapping } from './tonemapping/applyToneMapping.js';
+export { getToneMapping } from './tonemapping/mappers.js';
+export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './tonemapping/types.js';
 // HDR
 export type { HDRToLDROptions, ParseHDROptions } from './hdr/readHdr.js';
 export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';

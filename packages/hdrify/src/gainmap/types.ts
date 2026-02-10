@@ -18,7 +18,7 @@ export interface GainMapMetadataExtended extends GainMapMetadata {
   minContentBoost: number;
 }
 
-export type ToneMappingType = 'aces' | 'reinhard';
+import type { ToneMappingType } from '../tonemapping/types.js';
 
 export interface GainMapEncodingOptions {
   /** Maximum content boost (HDR/SDR ratio). Default: max of HDR RGB. */

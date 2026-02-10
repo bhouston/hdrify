@@ -3,6 +3,8 @@
  * Ported from gainmap-js SDRMaterial GLSL.
  */
 
+import type { ToneMappingFn, ToneMappingType } from './types.js';
+
 function saturate(x: number): number {
   return Math.max(0, Math.min(1, x));
 }
@@ -64,9 +66,7 @@ function reinhard(r: number, g: number, b: number): [number, number, number] {
   return saturate3(r / (1 + r), g / (1 + g), b / (1 + b));
 }
 
-export type ToneMappingFn = (r: number, g: number, b: number) => [number, number, number];
-
-export function getToneMapping(type: 'aces' | 'reinhard'): ToneMappingFn {
+export function getToneMapping(type: ToneMappingType): ToneMappingFn {
   switch (type) {
     case 'aces':
       return acesFilmic;

@@ -1,9 +1,13 @@
 import type { FloatImageData } from '../floatImage.js';
+import type { ToneMappingType } from '../tonemapping/types.js';
+import { applyToneMapping } from '../tonemapping/applyToneMapping.js';
 
 export interface HDRToLDROptions {
+  /** Tone mapping: 'aces' or 'reinhard' (default: 'reinhard') */
+  toneMapping?: ToneMappingType;
   /** Exposure value for tone mapping (default: 1.0) */
   exposure?: number;
-  /** Gamma value for gamma correction (default: 2.2) */
+  /** Gamma value for gamma correction (default: 2.2 for reinhard, 1 for aces) */
   gamma?: number;
 }
 
@@ -514,13 +518,13 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
 /**
  * Convert HDR float data to LDR (Low Dynamic Range) uint8 data using tone mapping
  *
- * Uses Reinhard tone mapping algorithm with gamma correction to convert
+ * Uses unified tone mapping (Reinhard or ACES) with gamma correction to convert
  * high dynamic range floating point values to standard 8-bit RGB values.
  *
  * @param hdrData - Float32Array of RGBA pixel data [R, G, B, A, R, G, B, A, ...] where A is always 1.0
  * @param width - Image width in pixels
  * @param height - Image height in pixels
- * @param options - Tone mapping options (exposure and gamma)
+ * @param options - Tone mapping options (toneMapping, exposure, gamma)
  * @returns Uint8Array containing uint8 RGB data ready for image encoding
  */
 export function hdrToLdr(
@@ -529,55 +533,11 @@ export function hdrToLdr(
   height: number,
   options: HDRToLDROptions = {},
 ): Uint8Array {
-  const exposure = options.exposure ?? 1.0;
-  const gamma = options.gamma ?? 2.2;
-  const totalPixels = width * height;
-  const ldrData = new Uint8Array(totalPixels * 3);
-
-  // Data is in RGBA format: [R, G, B, A, R, G, B, A, ...] where A is always 1.0
-  // We need to skip the alpha channel and only extract RGB
-  for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
-    const dataIndex = pixelIndex * 4; // RGBA = 4 channels per pixel
-
-    // Bounds check to ensure we have enough data
-    if (dataIndex + 2 >= hdrData.length) {
-      break;
-    }
-
-    // Get RGB values for this pixel (skip alpha channel at dataIndex + 3)
-    const rValue = hdrData[dataIndex];
-    const gValue = hdrData[dataIndex + 1];
-    const bValue = hdrData[dataIndex + 2];
-
-    // Skip if any values are undefined (shouldn't happen after bounds check, but TypeScript needs this)
-    if (rValue === undefined || gValue === undefined || bValue === undefined) {
-      continue;
-    }
-
-    // Apply exposure
-    let r = rValue * exposure;
-    let g = gValue * exposure;
-    let b = bValue * exposure;
-
-    // Apply Reinhard tone mapping: x / (1 + x)
-    // This compresses high values while preserving detail in shadows
-    r = r / (1 + r);
-    g = g / (1 + g);
-    b = b / (1 + b);
-
-    // Apply gamma correction for display
-    r = r ** (1.0 / gamma);
-    g = g ** (1.0 / gamma);
-    b = b ** (1.0 / gamma);
-
-    // Clamp to [0, 1] and convert to uint8, write to output buffer
-    const outputIndex = pixelIndex * 3;
-    ldrData[outputIndex] = Math.max(0, Math.min(255, Math.round(r * 255)));
-    ldrData[outputIndex + 1] = Math.max(0, Math.min(255, Math.round(g * 255)));
-    ldrData[outputIndex + 2] = Math.max(0, Math.min(255, Math.round(b * 255)));
-  }
-
-  return ldrData;
+  return applyToneMapping(hdrData, width, height, {
+    toneMapping: options.toneMapping ?? 'reinhard',
+    exposure: options.exposure ?? 1.0,
+    gamma: options.gamma ?? 2.2,
+  });
 }
 
 /**
@@ -594,9 +554,13 @@ export function convertHDRToLDR(
   options: HDRToLDROptions = {},
 ): { width: number; height: number; ldrData: Uint8Array } {
   const hdrImage = readHdr(hdrBuffer);
+  const toneMapping = options.toneMapping ?? 'reinhard';
+  const gamma =
+    options.gamma ?? (toneMapping === 'aces' ? 1 : (hdrImage.gamma ?? 2.2));
   const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
+    toneMapping,
     exposure: options.exposure ?? hdrImage.exposure ?? 1.0,
-    gamma: options.gamma ?? hdrImage.gamma ?? 2.2,
+    gamma,
   });
 
   return {

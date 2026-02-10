@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef, useCallback } from 'react';
-import { readExr, readHdr } from 'hdrify';
+import { readExr, readHdr, applyToneMapping } from 'hdrify';
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -27,28 +27,18 @@ function Index() {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      const ldrRgb = applyToneMapping(data, width, height, {
+        toneMapping: 'reinhard',
+        exposure: exp,
+      });
+
       const imageData = ctx.createImageData(width, height);
       const pixels = imageData.data;
-
-      // Convert HDR/EXR data to LDR for display
       for (let i = 0; i < width * height; i++) {
-        const dataIndex = i * 4; // RGBA format
-        const pixelIndex = i * 4; // RGBA output
-
-        const r = (data[dataIndex] ?? 0) * exp;
-        const g = (data[dataIndex + 1] ?? 0) * exp;
-        const b = (data[dataIndex + 2] ?? 0) * exp;
-
-        // Apply tone mapping (simple Reinhard)
-        const toneMappedR = r / (1 + r);
-        const toneMappedG = g / (1 + g);
-        const toneMappedB = b / (1 + b);
-
-        // Convert to 0-255 range
-        pixels[pixelIndex] = Math.max(0, Math.min(255, Math.round(toneMappedR * 255)));
-        pixels[pixelIndex + 1] = Math.max(0, Math.min(255, Math.round(toneMappedG * 255)));
-        pixels[pixelIndex + 2] = Math.max(0, Math.min(255, Math.round(toneMappedB * 255)));
-        pixels[pixelIndex + 3] = 255; // Alpha
+        pixels[i * 4] = ldrRgb[i * 3] ?? 0;
+        pixels[i * 4 + 1] = ldrRgb[i * 3 + 1] ?? 0;
+        pixels[i * 4 + 2] = ldrRgb[i * 3 + 2] ?? 0;
+        pixels[i * 4 + 3] = 255;
       }
 
       ctx.putImageData(imageData, 0, 0);
