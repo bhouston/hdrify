@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyExrPredictor, decompressRLE, reorderExrPixels } from './readExr.js';
+import { decompressRLE } from './decompressRle.js';
+import { applyExrPredictor, reorderExrPixels } from './exrDsp.js';
 
 describe('decompressRLE', () => {
   it('should decompress literal run: -1 followed by byte yields single byte', () => {
@@ -47,7 +48,8 @@ describe('decompressRLE', () => {
 
 describe('RLE pipeline: decompressRLE + predictor + reorder', () => {
   it('pipeline produces expected size output', () => {
-    const compressed = new Uint8Array([0xff, 0x00, 0x00, 0x00, 0x00]); // -1 + 4 bytes literal
+    // -4: copy 4 bytes literally => 1 + 4 = 5 bytes for 4-byte output
+    const compressed = new Uint8Array([0xfc, 0x00, 0x00, 0x00, 0x00]);
     const raw = decompressRLE(compressed, 4);
     expect(raw.length).toBe(4);
     applyExrPredictor(raw);

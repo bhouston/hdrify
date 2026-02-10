@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyExrPredictor, reorderExrPixels } from './readExr.js';
+import { applyExrPredictor, reorderExrPixels } from './exrDsp.js';
 
 describe('applyExrPredictor', () => {
   it('is a no-op for empty or single-byte input', () => {
@@ -15,17 +15,20 @@ describe('applyExrPredictor', () => {
   it('modifies buffer in place for even length', () => {
     const buf = new Uint8Array([0x00, 0x00, 0x00, 0x00]);
     applyExrPredictor(buf);
-    // First block: src[1] += src[0]^0x80 => 0x80. Then loop: src[1]^=0x80 => 0.
-    // src[2] += a from loop => 0x80
-    expect(buf[2]).toBe(0x80);
+    // FFmpeg: init buf[1]+=buf[0]^0x80 => buf[1]=0x80. Loop (1,2): a=buf[1]+buf[2]=0x80,
+    // buf[2]=0x80, buf[3]+=0x80, buf[2]^=0x80 => buf[2]=0. So buf[3]=0x80.
+    expect(buf[1]).toBe(0x80);
+    expect(buf[3]).toBe(0x80);
   });
 
   it('handles odd length buffers', () => {
     const buf = new Uint8Array([0x80, 0x00, 0x00]);
     applyExrPredictor(buf);
-    // No initial block (odd size). Loop: i=1, a = buf[1]+buf[0] = 0+128 = 128
-    // buf[1]=128, buf[2]+=128, buf[1]^=0x80 => buf[1]=0
+    // No initial block (odd size). Loop i=2: a = buf[1]+buf[2] = 0+0 = 0
+    // buf[2]=0, buf[3] doesn't exist (odd size 3). buf[0] unchanged.
     expect(buf[0]).toBe(0x80);
+    expect(buf[1]).toBe(0x00);
+    expect(buf[2]).toBe(0x00);
   });
 });
 

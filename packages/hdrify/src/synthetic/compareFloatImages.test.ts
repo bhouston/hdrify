@@ -61,4 +61,20 @@ describe('compareFloatImages', () => {
     expect(result.maxDiff).toBe(0.5);
     expect(result.mismatchedPixels).toBeGreaterThan(0);
   });
+
+  it('returns mismatchSamples when includeMismatchSamples is set', () => {
+    const a = makeImage(4, 4, () => 1.0);
+    const b = makeImage(4, 4, (i) => (i === 0 ? 1.5 : 1.0));
+    const result = compareFloatImages(a, b, { tolerancePercent: 0.01, includeMismatchSamples: 5 });
+    expect(result.match).toBe(false);
+    expect(result.mismatchSamples).toBeDefined();
+    expect(result.mismatchSamples).toHaveLength(1);
+    expect(result.mismatchSamples![0]).toEqual({
+      pixelIndex: 0,
+      x: 0,
+      y: 0,
+      expected: [1, 1, 1, 1],
+      actual: [1.5, 1, 1, 1],
+    });
+  });
 });

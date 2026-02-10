@@ -176,6 +176,8 @@ describe.skipIf(!hasOpenExrImages)('openexr-images', () => {
         expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ\./);
       } else if (msg.includes('Multi-part') || msg.includes('tiled') || msg.includes('deep data')) {
         expect(msg).toContain('not supported');
+      } else if (msg.includes('Non-RGB')) {
+        expect(msg).toContain('not supported');
       } else {
         throw e;
       }
