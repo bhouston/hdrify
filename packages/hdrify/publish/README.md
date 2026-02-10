@@ -35,12 +35,12 @@ pnpm add -g hdrify-cli
 ### Reading an EXR file
 
 ```typescript
-import { parseEXRFile } from 'hdrify';
+import { readExr } from 'hdrify';
 import * as fs from 'node:fs';
 
 // In Node.js
 const buffer = fs.readFileSync('image.exr');
-const imageData = parseEXRFile(new Uint8Array(buffer));
+const imageData = readExr(new Uint8Array(buffer));
 
 console.log(`Image: ${imageData.width}x${imageData.height}`);
 // imageData.data is a Float32Array with RGBA values
@@ -49,12 +49,12 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 ### Reading an HDR file
 
 ```typescript
-import { parseHDRFile } from 'hdrify';
+import { readHdr } from 'hdrify';
 import * as fs from 'node:fs';
 
 // In Node.js
 const buffer = fs.readFileSync('image.hdr');
-const imageData = parseHDRFile(new Uint8Array(buffer));
+const imageData = readHdr(new Uint8Array(buffer));
 
 console.log(`Image: ${imageData.width}x${imageData.height}`);
 // imageData.data is a Float32Array with RGBA values
@@ -63,26 +63,26 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 ### Converting between formats
 
 ```typescript
-import { parseEXRFile, writeEXRFile, parseHDRFile, writeHDRFile } from 'hdrify';
+import { readExr, writeExr, readHdr, writeHdr } from 'hdrify';
 import * as fs from 'node:fs';
 
 // Convert EXR to HDR
 const exrBuffer = fs.readFileSync('input.exr');
-const imageData = parseEXRFile(new Uint8Array(exrBuffer));
-const hdrBuffer = writeHDRFile(imageData);
+const imageData = readExr(new Uint8Array(exrBuffer));
+const hdrBuffer = writeHdr(imageData);
 fs.writeFileSync('output.hdr', hdrBuffer);
 
 // Convert HDR to EXR
 const hdrBuffer2 = fs.readFileSync('input.hdr');
-const imageData2 = parseHDRFile(new Uint8Array(hdrBuffer2));
-const exrBuffer2 = writeEXRFile(imageData2);
+const imageData2 = readHdr(new Uint8Array(hdrBuffer2));
+const exrBuffer2 = writeExr(imageData2);
 fs.writeFileSync('output.exr', exrBuffer2);
 ```
 
 ### Browser usage
 
 ```typescript
-import { parseEXRFile } from 'hdrify';
+import { readExr } from 'hdrify';
 
 // In browser
 const fileInput = document.querySelector('input[type="file"]');
@@ -92,7 +92,7 @@ fileInput.addEventListener('change', async (e) => {
   const arrayBuffer = await file.arrayBuffer();
   const buffer = new Uint8Array(arrayBuffer);
 
-  const imageData = parseEXRFile(buffer);
+  const imageData = readExr(buffer);
   // Use imageData.data to render to canvas, etc.
 });
 ```

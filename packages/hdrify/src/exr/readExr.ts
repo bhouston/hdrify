@@ -53,12 +53,12 @@ interface Channel {
 }
 
 /**
- * Parse an EXR file buffer and return FloatImageData
+ * Read an EXR file buffer and return FloatImageData
  *
  * @param exrBuffer - Uint8Array containing EXR file data
  * @returns Parsed EXR image data with dimensions and pixel data as FloatImageData
  */
-export function parseEXRFile(exrBuffer: Uint8Array): FloatImageData {
+export function readExr(exrBuffer: Uint8Array): FloatImageData {
   const dataView = new DataView(exrBuffer.buffer, exrBuffer.byteOffset, exrBuffer.byteLength);
   let offset = 0;
 

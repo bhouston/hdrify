@@ -13,7 +13,7 @@ import type { FloatImageData } from '../floatImage.js';
  * @param floatImageData - FloatImageData containing image dimensions and pixel data
  * @returns Uint8Array containing HDR file data
  */
-export function writeHDRFile(floatImageData: FloatImageData): Uint8Array {
+export function writeHdr(floatImageData: FloatImageData): Uint8Array {
   const { width, height, data } = floatImageData;
 
   // Calculate file size: header + pixel data

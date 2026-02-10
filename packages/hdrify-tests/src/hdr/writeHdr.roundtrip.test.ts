@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseHDRFile, writeHDRFile } from 'hdrify';
+import { readHdr, writeHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,9 +24,9 @@ describe('hdrWriter round-trip', () => {
     const filepath = path.join(assetsDir, file);
     const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
 
-    const originalData = parseHDRFile(hdrBuffer);
-    const writtenBuffer = writeHDRFile(originalData);
-    const parsedData = parseHDRFile(writtenBuffer);
+    const originalData = readHdr(hdrBuffer);
+    const writtenBuffer = writeHdr(originalData);
+    const parsedData = readHdr(writtenBuffer);
 
     expect(parsedData.width).toBe(originalData.width);
     expect(parsedData.height).toBe(originalData.height);

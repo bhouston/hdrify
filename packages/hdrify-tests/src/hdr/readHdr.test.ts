@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { convertHDRToLDR, hdrToLdr, parseHDRFile } from 'hdrify';
+import { convertHDRToLDR, hdrToLdr, readHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,10 +30,10 @@ const hdrFiles = fs.existsSync(assetsDir)
   : [];
 
 describe('hdrReader', () => {
-  describe.each(hdrFiles)('parseHDRFile (%s)', (filename, filepath) => {
+  describe.each(hdrFiles)('readHdr (%s)', (filename, filepath) => {
     it('should parse a valid HDR file', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const result = parseHDRFile(hdrBuffer);
+      const result = readHdr(hdrBuffer);
 
       expect(result).toBeDefined();
       expect(result.width).toBeGreaterThan(0);
@@ -44,7 +44,7 @@ describe('hdrReader', () => {
 
     it('should return exposure and gamma if present in file', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const result = parseHDRFile(hdrBuffer);
+      const result = readHdr(hdrBuffer);
 
       if (result.exposure !== undefined) {
         expect(typeof result.exposure).toBe('number');
@@ -58,7 +58,7 @@ describe('hdrReader', () => {
 
     it('should handle HDR data with valid dimensions', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const result = parseHDRFile(hdrBuffer);
+      const result = readHdr(hdrBuffer);
 
       const expectedDataLength = result.width * result.height * 4;
       expect(result.data.length).toBe(expectedDataLength);
@@ -66,7 +66,7 @@ describe('hdrReader', () => {
 
     it('should include metadata from header', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const result = parseHDRFile(hdrBuffer);
+      const result = readHdr(hdrBuffer);
 
       expect(result.metadata).toBeDefined();
       expect(result.metadata).toBeInstanceOf(Object);
@@ -77,7 +77,7 @@ describe('hdrReader', () => {
   describe.each(hdrFiles)('hdrToLdr (%s)', (filename, filepath) => {
     it('should convert HDR data to LDR uint8 buffer', { timeout: 30000 }, () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height);
 
       expect(ldrData).toBeInstanceOf(Uint8Array);
@@ -92,7 +92,7 @@ describe('hdrReader', () => {
 
     it('should apply custom exposure', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const ldrDataDefault = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
         exposure: 1.0,
       });
@@ -105,7 +105,7 @@ describe('hdrReader', () => {
 
     it('should apply custom gamma correction', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const ldrDataGamma1 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
         gamma: 1.0,
       });
@@ -119,7 +119,7 @@ describe('hdrReader', () => {
 
     it('should use default exposure and gamma when not provided', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const ldrData1 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height);
       const ldrData2 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
         exposure: 1.0,
@@ -130,14 +130,14 @@ describe('hdrReader', () => {
     });
   });
 
-  describe('parseHDRFile options', () => {
+  describe('readHdr options', () => {
     it('should throw when headerStrict and magic is not RADIANCE', () => {
       const badBuffer = new TextEncoder().encode(
         '#?OTHER\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n' +
           String.fromCharCode(2, 2, 0, 1) +
           String.fromCharCode(0, 0, 0, 128).repeat(4),
       );
-      expect(() => parseHDRFile(badBuffer, { headerStrict: true })).toThrow(/expected #\?RADIANCE/);
+      expect(() => readHdr(badBuffer, { headerStrict: true })).toThrow(/expected #\?RADIANCE/);
     });
 
     it('should accept non-RADIANCE when headerStrict is false', () => {
@@ -165,7 +165,7 @@ describe('hdrReader', () => {
       if (idx >= 0) {
         const modified = new Uint8Array(buffer);
         modified.set(other, idx);
-        const result = parseHDRFile(modified, { headerStrict: false });
+        const result = readHdr(modified, { headerStrict: false });
         expect(result.width).toBeGreaterThan(0);
       }
     });
@@ -176,7 +176,7 @@ describe('hdrReader', () => {
           String.fromCharCode(2, 2, 0, 1) +
           String.fromCharCode(0, 0, 0, 128).repeat(4),
       );
-      expect(() => parseHDRFile(badBuffer)).toThrow(/XYZ format is not supported/);
+      expect(() => readHdr(badBuffer)).toThrow(/XYZ format is not supported/);
     });
 
     it('should throw when resolution is unsupported', () => {
@@ -185,7 +185,7 @@ describe('hdrReader', () => {
           String.fromCharCode(2, 2, 0, 1) +
           String.fromCharCode(0, 0, 0, 128).repeat(4),
       );
-      expect(() => parseHDRFile(badBuffer)).toThrow(/Unsupported resolution format/);
+      expect(() => readHdr(badBuffer)).toThrow(/Unsupported resolution format/);
     });
 
     it('should apply physicalRadiance when output option is set', () => {
@@ -194,8 +194,8 @@ describe('hdrReader', () => {
       const file = files[0];
       if (!file) return;
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
-      const raw = parseHDRFile(buffer, { output: 'raw' });
-      const physical = parseHDRFile(buffer, { output: 'physicalRadiance' });
+      const raw = readHdr(buffer, { output: 'raw' });
+      const physical = readHdr(buffer, { output: 'physicalRadiance' });
       if ((raw.exposure ?? 1) !== 1) {
         const scale = 1 / (raw.exposure ?? 1);
         expect(physical.data[0]).toBeCloseTo((raw.data[0] ?? 0) * scale);

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useState, useRef, useCallback } from 'react';
-import { parseEXRFile, parseHDRFile } from 'hdrify';
+import { readExr, readHdr } from 'hdrify';
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -66,9 +66,9 @@ function Index() {
         let parsed;
 
         if (ext === 'exr') {
-          parsed = parseEXRFile(buffer);
+          parsed = readExr(buffer);
         } else if (ext === 'hdr') {
-          parsed = parseHDRFile(buffer);
+          parsed = readHdr(buffer);
         } else {
           alert('Unsupported file format. Please use .exr or .hdr files.');
           return;

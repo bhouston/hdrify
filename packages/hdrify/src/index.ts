@@ -1,13 +1,13 @@
 // FloatImageData - shared type
 
 // EXR
-export { parseEXRFile } from './exr/exrReader.js';
-export { writeEXRFile } from './exr/exrWriter.js';
+export { readExr } from './exr/readExr.js';
+export { writeExr } from './exr/writeExr.js';
 export type { FloatImageData } from './floatImage.js';
 // Gainmap
 export { encodeGainMap } from './gainmap/gainMapEncoder.js';
-export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/gainMapWriter.js';
-export { writeGainMapAsJPEGR, writeGainMapAsSeparateFiles } from './gainmap/gainMapWriter.js';
+export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
+export { writeJpegGainMap, writeGainMapAsSeparateFiles } from './gainmap/writeJpegGainMap.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';
 export type {
   CompressedImage,
@@ -18,6 +18,6 @@ export type {
   ToneMappingType,
 } from './gainmap/types.js';
 // HDR
-export type { HDRImageData, HDRToLDROptions, ParseHDROptions } from './hdr/hdrReader.js';
-export { convertHDRToLDR, hdrToLdr, parseHDRFile } from './hdr/hdrReader.js';
-export { writeHDRFile } from './hdr/hdrWriter.js';
+export type { HDRToLDROptions, ParseHDROptions } from './hdr/readHdr.js';
+export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
+export { writeHdr } from './hdr/writeHdr.js';

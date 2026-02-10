@@ -15,12 +15,7 @@ export interface ParseHDROptions {
 }
 
 /**
- * @deprecated Use FloatImageData instead. This type is kept for backward compatibility.
- */
-export interface HDRImageData extends FloatImageData {}
-
-/**
- * Parse an HDR (Radiance) file buffer and return image data
+ * Read an HDR (Radiance) file buffer and return image data
  *
  * Implementation based on Three.js HDRLoader, adapted from:
  * http://www.graphics.cornell.edu/~bjw/rgbe.html
@@ -29,7 +24,7 @@ export interface HDRImageData extends FloatImageData {}
  * @param options - Parse options (headerStrict, output)
  * @returns Parsed HDR image data with dimensions and pixel data as FloatImageData
  */
-export function parseHDRFile(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): FloatImageData {
+export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): FloatImageData {
   const { headerStrict = true, output = 'raw' } = options;
 
   // Use Uint8Array for processing
@@ -598,7 +593,7 @@ export function convertHDRToLDR(
   hdrBuffer: Uint8Array,
   options: HDRToLDROptions = {},
 ): { width: number; height: number; ldrData: Uint8Array } {
-  const hdrImage = parseHDRFile(hdrBuffer);
+  const hdrImage = readHdr(hdrBuffer);
   const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
     exposure: options.exposure ?? hdrImage.exposure ?? 1.0,
     gamma: options.gamma ?? hdrImage.gamma ?? 2.2,

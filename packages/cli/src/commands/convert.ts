@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type FloatImageData, parseEXRFile, parseHDRFile, writeEXRFile, writeHDRFile } from 'hdrify';
+import { type FloatImageData, readExr, readHdr, writeExr, writeHdr } from 'hdrify';
 import type { Argv } from 'yargs';
 
 export const command = 'convert <input> <output>';
@@ -46,18 +46,18 @@ export const handler = async (argv: { input: string; output: string }) => {
 
     let imageData: FloatImageData;
     if (inputExt === '.exr') {
-      imageData = parseEXRFile(inputBuffer);
+      imageData = readExr(inputBuffer);
     } else {
-      imageData = parseHDRFile(inputBuffer);
+      imageData = readHdr(inputBuffer);
     }
 
     console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
 
     let outputBuffer: Uint8Array;
     if (outputExt === '.exr') {
-      outputBuffer = writeEXRFile(imageData);
+      outputBuffer = writeExr(imageData);
     } else {
-      outputBuffer = writeHDRFile(imageData);
+      outputBuffer = writeHdr(imageData);
     }
 
     fs.writeFileSync(output, outputBuffer);

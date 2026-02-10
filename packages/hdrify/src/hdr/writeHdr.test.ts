@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { parseHDRFile } from './hdrReader.js';
-import { writeHDRFile } from './hdrWriter.js';
+import { readHdr } from './readHdr.js';
+import { writeHdr } from './writeHdr.js';
 
 describe('hdrWriter', () => {
-  describe('writeHDRFile', () => {
+  describe('writeHdr', () => {
     it('should write HDR file from FloatImageData', () => {
       const floatImageData: FloatImageData = {
         width: 2,
@@ -30,7 +30,7 @@ describe('hdrWriter', () => {
         ]),
       };
 
-      const writtenHdrBuffer = writeHDRFile(floatImageData);
+      const writtenHdrBuffer = writeHdr(floatImageData);
 
       expect(writtenHdrBuffer).toBeInstanceOf(Uint8Array);
       expect(writtenHdrBuffer.length).toBeGreaterThan(0);
@@ -43,7 +43,7 @@ describe('hdrWriter', () => {
         data: new Float32Array(10 * 20 * 4).fill(0.5),
       };
 
-      const writtenHdrBuffer = writeHDRFile(floatImageData);
+      const writtenHdrBuffer = writeHdr(floatImageData);
       const header = new TextDecoder().decode(writtenHdrBuffer.subarray(0, 200));
 
       expect(header).toContain('#?RADIANCE');
@@ -76,7 +76,7 @@ describe('hdrWriter', () => {
           data,
         };
 
-        const writtenHdrBuffer = writeHDRFile(floatImageData);
+        const writtenHdrBuffer = writeHdr(floatImageData);
         expect(writtenHdrBuffer.length).toBeGreaterThan(0);
       }
     });
@@ -98,10 +98,10 @@ describe('hdrWriter', () => {
       }
 
       // Write HDR
-      const writtenHdrBuffer = writeHDRFile(originalData);
+      const writtenHdrBuffer = writeHdr(originalData);
 
       // Read HDR back
-      const parsedData = parseHDRFile(writtenHdrBuffer);
+      const parsedData = readHdr(writtenHdrBuffer);
 
       // Verify dimensions match
       expect(parsedData.width).toBe(originalData.width);

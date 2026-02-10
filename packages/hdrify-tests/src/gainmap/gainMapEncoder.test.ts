@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { encodeGainMap, parseEXRFile, parseHDRFile, writeGainMapAsJPEGR, writeGainMapAsSeparateFiles } from 'hdrify';
+import { encodeGainMap, readExr, readHdr, writeJpegGainMap, writeGainMapAsSeparateFiles } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +31,7 @@ describe('encodeGainMap', () => {
   describe.each(hdrFiles)('from HDR (%s)', (_filename, filepath) => {
     it('should encode HDR to SDR and gain map', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const result = encodeGainMap(hdrImage);
 
       expect(result).toBeDefined();
@@ -65,7 +65,7 @@ describe('encodeGainMap', () => {
 
     it('should accept custom maxContentBoost', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const result = encodeGainMap(hdrImage, { maxContentBoost: 8 });
 
       expect(result.metadata.gainMapMax[0]).toBeCloseTo(Math.log2(8));
@@ -73,7 +73,7 @@ describe('encodeGainMap', () => {
 
     it('should accept toneMapping option', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = parseHDRFile(hdrBuffer);
+      const hdrImage = readHdr(hdrBuffer);
       const resultAces = encodeGainMap(hdrImage, { toneMapping: 'aces' });
       const resultReinhard = encodeGainMap(hdrImage, { toneMapping: 'reinhard' });
 
@@ -85,7 +85,7 @@ describe('encodeGainMap', () => {
   describe.each(exrFiles)('from EXR (%s)', (_filename, filepath) => {
     it('should encode EXR to SDR and gain map', () => {
       const exrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const exrImage = parseEXRFile(exrBuffer);
+      const exrImage = readExr(exrBuffer);
       const result = encodeGainMap(exrImage);
 
       expect(result).toBeDefined();
@@ -110,7 +110,7 @@ describe('encodeGainMap', () => {
   });
 });
 
-describe('writeGainMapAsJPEGR', () => {
+describe('writeJpegGainMap', () => {
   it('should produce valid JPEG-R file', () => {
     if (hdrFiles.length === 0) return;
 
@@ -118,9 +118,9 @@ describe('writeGainMapAsJPEGR', () => {
     const filepath = entry?.[1];
     if (!filepath) return;
     const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-    const hdrImage = parseHDRFile(hdrBuffer);
+    const hdrImage = readHdr(hdrBuffer);
     const encodingResult = encodeGainMap(hdrImage);
-    const jpegR = writeGainMapAsJPEGR(encodingResult);
+    const jpegR = writeJpegGainMap(encodingResult);
 
     expect(jpegR).toBeInstanceOf(Uint8Array);
     expect(jpegR.length).toBeGreaterThan(1000);
@@ -135,11 +135,11 @@ describe('writeGainMapAsJPEGR', () => {
     const filepath = entry?.[1];
     if (!filepath) return;
     const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-    const hdrImage = parseHDRFile(hdrBuffer);
+    const hdrImage = readHdr(hdrBuffer);
     const encodingResult = encodeGainMap(hdrImage);
 
-    const jpegRHigh = writeGainMapAsJPEGR(encodingResult, { quality: 95 });
-    const jpegRLow = writeGainMapAsJPEGR(encodingResult, { quality: 50 });
+    const jpegRHigh = writeJpegGainMap(encodingResult, { quality: 95 });
+    const jpegRLow = writeJpegGainMap(encodingResult, { quality: 50 });
 
     expect(jpegRHigh.length).toBeGreaterThanOrEqual(jpegRLow.length);
   });
@@ -153,7 +153,7 @@ describe('writeGainMapAsSeparateFiles', () => {
     const filepath = entry?.[1];
     if (!filepath) return;
     const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-    const hdrImage = parseHDRFile(hdrBuffer);
+    const hdrImage = readHdr(hdrBuffer);
     const encodingResult = encodeGainMap(hdrImage);
     const result = writeGainMapAsSeparateFiles(encodingResult);
 

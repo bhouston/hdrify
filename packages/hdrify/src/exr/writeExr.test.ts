@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { parseEXRFile } from './exrReader.js';
-import { writeEXRFile } from './exrWriter.js';
+import { readExr } from './readExr.js';
+import { writeExr } from './writeExr.js';
 
 describe('exrWriter', () => {
-  describe('writeEXRFile', () => {
+  describe('writeExr', () => {
     it('should write EXR file from FloatImageData', () => {
       const floatImageData: FloatImageData = {
         width: 2,
@@ -30,7 +30,7 @@ describe('exrWriter', () => {
         ]),
       };
 
-      const exrBuffer = writeEXRFile(floatImageData);
+      const exrBuffer = writeExr(floatImageData);
 
       expect(exrBuffer).toBeInstanceOf(Uint8Array);
       expect(exrBuffer.length).toBeGreaterThan(0);
@@ -43,7 +43,7 @@ describe('exrWriter', () => {
         data: new Float32Array([1.0, 1.0, 1.0, 1.0]),
       };
 
-      const exrBuffer = writeEXRFile(floatImageData);
+      const exrBuffer = writeExr(floatImageData);
 
       // EXR magic number is 20000630 (little-endian)
       const magic = new DataView(exrBuffer.buffer, exrBuffer.byteOffset, exrBuffer.byteLength).getUint32(0, true);
@@ -74,7 +74,7 @@ describe('exrWriter', () => {
           data,
         };
 
-        const exrBuffer = writeEXRFile(floatImageData);
+        const exrBuffer = writeExr(floatImageData);
         expect(exrBuffer.length).toBeGreaterThan(0);
       }
     });
@@ -96,10 +96,10 @@ describe('exrWriter', () => {
       }
 
       // Write EXR
-      const exrBuffer = writeEXRFile(originalData);
+      const exrBuffer = writeExr(originalData);
 
       // Read EXR back
-      const parsedData = parseEXRFile(exrBuffer);
+      const parsedData = readExr(exrBuffer);
 
       // Verify dimensions match
       expect(parsedData.width).toBe(originalData.width);

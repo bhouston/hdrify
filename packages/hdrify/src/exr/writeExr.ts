@@ -31,7 +31,7 @@ function concatUint8Arrays(arrays: Uint8Array[]): Uint8Array {
  * @param floatImageData - FloatImageData containing image dimensions and pixel data
  * @returns Uint8Array containing EXR file data
  */
-export function writeEXRFile(floatImageData: FloatImageData): Uint8Array {
+export function writeExr(floatImageData: FloatImageData): Uint8Array {
   const { width, height, data } = floatImageData;
 
   // For now, create a simplified EXR writer that writes uncompressed EXR

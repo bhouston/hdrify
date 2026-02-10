@@ -10,7 +10,7 @@ export interface GainMapWriterOptions {
 /**
  * Write encoding result as a single JPEG-R file (JPEG with embedded gain map).
  */
-export function writeGainMapAsJPEGR(encodingResult: EncodingResult, options: GainMapWriterOptions = {}): Uint8Array {
+export function writeJpegGainMap(encodingResult: EncodingResult, options: GainMapWriterOptions = {}): Uint8Array {
   const quality = options.quality ?? 90;
 
   const sdrCompressed = encodeToJpeg(encodingResult.sdr, encodingResult.width, encodingResult.height, quality);

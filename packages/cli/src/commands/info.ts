@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { type FloatImageData, parseEXRFile, parseHDRFile } from 'hdrify';
+import { type FloatImageData, readExr, readHdr } from 'hdrify';
 import type { Argv } from 'yargs';
 
 const COMPRESSION_NAMES: Record<number, string> = {
@@ -57,7 +57,7 @@ export const handler = async (argv: { file: string }) => {
     let compression: number | undefined;
 
     if (ext === '.exr') {
-      imageData = parseEXRFile(fileBuffer);
+      imageData = readExr(fileBuffer);
 
       const dataView = new DataView(fileBuffer.buffer, fileBuffer.byteOffset, fileBuffer.byteLength);
       let offset = 8;
@@ -82,7 +82,7 @@ export const handler = async (argv: { file: string }) => {
         offset += attributeSize;
       }
     } else {
-      imageData = parseHDRFile(fileBuffer);
+      imageData = readHdr(fileBuffer);
     }
 
     console.log('\nFile Information:');
