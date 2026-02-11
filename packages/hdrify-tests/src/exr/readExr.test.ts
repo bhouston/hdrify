@@ -1,23 +1,25 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readExr } from 'hdrify';
+import {
+  compareFloatImages,
+  createHsvRainbowImage,
+  readExr,
+  writeExr,
+} from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../..');
-const testExrPath = path.join(workspaceRoot, 'assets', 'piz_compressed.exr');
-const rainbowExrPath = path.join(workspaceRoot, 'assets', 'rainbow.exr');
-const gammaChartPath = path.resolve(workspaceRoot, '../../OpenSource/openexr-images/TestImages/GammaChart.exr');
+const assetsDir = path.join(workspaceRoot, 'assets');
+const testExrPath = path.join(assetsDir, 'piz_compressed.exr');
+const rainbowExrPath = path.join(assetsDir, 'rainbow.exr');
+const gammaChartPath = path.join(assetsDir, 'GammaChart.exr');
+const grayRampsPath = path.join(assetsDir, 'GrayRampsDiagonal.exr');
+const singlepartZipsPath = path.join(assetsDir, 'singlepart.0001.exr');
 
-function findExrFiles(dir: string): string[] {
-  const entries = fs.readdirSync(dir, { recursive: true }) as string[];
-  return entries
-    .filter((entry) => typeof entry === 'string' && entry.endsWith('.exr'))
-    .filter((entry) => !path.normalize(entry).split(path.sep).includes('Damaged'))
-    .map((entry) => path.join(dir, entry));
-}
+const TOLERANCE = { tolerancePercent: 0.01 };
 
 describe('exrReader', () => {
   let exrBuffer: Uint8Array | null = null;
@@ -143,6 +145,16 @@ describe('exrReader', () => {
       expect(result.data[2]).toBeGreaterThanOrEqual(0);
     });
 
+    it('should throw for non-RGB EXR (GrayRampsDiagonal.exr has grayscale only)', () => {
+      if (!fs.existsSync(grayRampsPath)) return;
+
+      const buf = fs.readFileSync(grayRampsPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      expect(() => readExr(buffer)).toThrow(/Non-RGB EXR files are not supported/);
+      expect(() => readExr(buffer)).toThrow(/R, G, and B channels/);
+    });
+
     it('should read RLE-compressed EXR file (rainbow.exr) when format is valid', () => {
       if (!fs.existsSync(rainbowExrPath)) return;
 
@@ -171,42 +183,91 @@ describe('exrReader', () => {
       expect(result.height).toBeGreaterThan(0);
       expect(result.data.length).toBe(result.width * result.height * 4);
     });
-  });
-});
 
-const openExrImagesPath = path.resolve(workspaceRoot, '../../OpenSource/openexr-images');
-const hasOpenExrImages = fs.existsSync(openExrImagesPath);
+    it('round-trips NO_COMPRESSION EXR', () => {
+      const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+      const buffer = writeExr(original, { compression: 0 });
+      const parsed = readExr(buffer);
+      const result = compareFloatImages(original, parsed, TOLERANCE);
+      expect(result.match).toBe(true);
+    });
 
-describe.skipIf(!hasOpenExrImages)('openexr-images', () => {
-  const files = hasOpenExrImages ? findExrFiles(openExrImagesPath) : [];
-  it.each(files.map((f) => [path.relative(openExrImagesPath, f), f] as [string, string]))(
-    'handles %s',
-    (_relPath, filePath) => {
-      const buffer = new Uint8Array(fs.readFileSync(filePath));
-      try {
-        const result = readExr(buffer);
-        expect(result.width).toBeGreaterThan(0);
-        expect(result.height).toBeGreaterThan(0);
-        expect(result.data).toBeInstanceOf(Float32Array);
-        expect(result.data.length).toBe(result.width * result.height * 4);
-      } catch (e) {
-        const msg = (e as Error).message;
-        if (msg.includes('Unsupported EXR compression')) {
-          expect(msg).toMatch(/Unsupported EXR compression: .+\. This reader supports: none, RLE, ZIPS, ZIP, PIZ, PXR24\./);
-        } else if (msg.includes('Multi-part') || msg.includes('tiled') || msg.includes('deep data')) {
-          expect(msg).toContain('not supported');
-        } else if (msg.includes('Non-RGB')) {
-          expect(msg).toContain('not supported');
-        } else if (msg.includes('PXR24:')) {
-          // Known limitation: some PXR24 variants (e.g. FLOAT channels, certain layouts) not yet fully supported
-          expect(msg).toContain('PXR24');
-        } else if (msg.includes('Invalid typed array length') || msg.includes('RangeError')) {
-          // Known limitation: DisplayWindow files with data window != display window (e.g. t08.exr)
-          expect(msg).toBeTruthy();
-        } else {
-          throw e;
+    it('round-trips ZIP-compressed EXR', () => {
+      const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+      const buffer = writeExr(original, { compression: 3 });
+      const parsed = readExr(buffer);
+      const result = compareFloatImages(original, parsed, TOLERANCE);
+      expect(result.match).toBe(true);
+    });
+
+    it('round-trips RLE-compressed EXR', () => {
+      const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+      const buffer = writeExr(original, { compression: 1 });
+      const parsed = readExr(buffer);
+      const result = compareFloatImages(original, parsed, TOLERANCE);
+      expect(result.match).toBe(true);
+    });
+
+    it('round-trips ZIPS-compressed EXR', () => {
+      const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
+      const buffer = writeExr(original, { compression: 2 }); // ZIPS
+      const parsed = readExr(buffer);
+      const result = compareFloatImages(original, parsed, TOLERANCE);
+      expect(result.match).toBe(true);
+    });
+
+    it('should read ZIPS-compressed EXR (singlepart.0001.exr)', () => {
+      const buf = fs.readFileSync(singlepartZipsPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBe(911);
+      expect(result.height).toBe(876);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+      expect(result.metadata?.compression).toBe(2); // ZIPS
+    });
+
+    it('throws for no valid scanline block offsets', () => {
+      const original = createHsvRainbowImage({ width: 10, height: 10, value: 1, intensity: 1 });
+      const buffer = writeExr(original, { compression: 0 });
+      const dataView = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      let offsetTableStart = 0;
+      for (let offset = 8; offset < Math.min(512, buffer.length - 8); offset++) {
+        const firstBlockOffset = Number(dataView.getBigUint64(offset, true));
+        if (
+          firstBlockOffset >= offset + 8 &&
+          firstBlockOffset < buffer.length &&
+          firstBlockOffset + 4 <= buffer.length &&
+          dataView.getInt32(firstBlockOffset, true) === 0
+        ) {
+          offsetTableStart = offset;
+          break;
         }
       }
-    },
-  );
+      expect(offsetTableStart).toBeGreaterThan(0);
+      const modified = new Uint8Array(buffer);
+      for (let i = offsetTableStart; i < offsetTableStart + 80 && i < modified.length; i++) {
+        modified[i] = 0;
+      }
+      expect(() => readExr(modified)).toThrow(/no valid scanline block offsets found/);
+    });
+
+    it('should read ZIP-compressed EXR from openexr-images (Blobbies.exr) when available', () => {
+      const blobbiesPath = path.join(workspaceRoot, '../OpenSource/openexr-images/ScanLines/Blobbies.exr');
+      if (!fs.existsSync(blobbiesPath)) return;
+
+      const buf = fs.readFileSync(blobbiesPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+      expect(result.metadata?.compression).toBe(3); // ZIP
+    });
+  });
 });

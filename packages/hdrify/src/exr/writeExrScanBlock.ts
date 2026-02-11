@@ -115,14 +115,20 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
       }
     }
 
-    const pixelData =
-      compression === PIZ_COMPRESSION
-        ? compressPizBlock(interleaved, width, lineCount, channels)
-        : compression === PXR24_COMPRESSION
-          ? compressPxr24Block(interleaved, width, lineCount, channels)
-          : compression === RLE_COMPRESSION || compression === ZIPS_COMPRESSION
-            ? compressRleBlock(interleaved)
-            : compressZipBlock(interleaved);
+    let pixelData: Uint8Array;
+    switch (compression) {
+      case PIZ_COMPRESSION:
+        pixelData = compressPizBlock(interleaved, width, lineCount, channels);
+        break;
+      case PXR24_COMPRESSION:
+        pixelData = compressPxr24Block(interleaved, width, lineCount, channels);
+        break;
+      case RLE_COMPRESSION:
+        pixelData = compressRleBlock(interleaved);
+        break;
+      default:
+        pixelData = compressZipBlock(interleaved); // ZIP and ZIPS both use zlib
+    }
 
     const blockSize = INT32_SIZE + INT32_SIZE + pixelData.length;
     const result = new Uint8Array(blockSize);

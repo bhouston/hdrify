@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { convertHDRToLDR, hdrToLdr, readHdr } from 'hdrify';
+import { applyToneMapping, convertHDRToLDR, hdrToLdr, readHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -128,6 +128,20 @@ describe('hdrReader', () => {
 
       expect(uint8ArrayCompare(ldrData1, ldrData2)).toBe(0);
     });
+
+    it('should apply aces tone mapping when specified', () => {
+      const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
+      const hdrImage = readHdr(hdrBuffer);
+      const ldrReinhard = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
+        toneMapping: 'reinhard',
+      });
+      const ldrAces = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
+        toneMapping: 'aces',
+      });
+
+      expect(ldrAces.length).toBe(ldrReinhard.length);
+      expect(uint8ArrayCompare(ldrAces, ldrReinhard)).not.toBe(0);
+    });
   });
 
   describe('readHdr options', () => {
@@ -202,6 +216,116 @@ describe('hdrReader', () => {
         const scale = 1 / (exposure ?? 1);
         expect(physical.data[0]).toBeCloseTo((raw.data[0] ?? 0) * scale);
       }
+    });
+
+    it('should throw when format specifier is missing', () => {
+      const badBuffer = new TextEncoder().encode('#?RADIANCE\n\n-Y 1 +X 1\n');
+      expect(() => readHdr(badBuffer)).toThrow(/missing format specifier/);
+    });
+
+    it('should throw when image dimensions are invalid (zero)', () => {
+      const badBuffer = new TextEncoder().encode('#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 0 +X 1\n');
+      expect(() => readHdr(badBuffer)).toThrow(/invalid image dimensions/);
+    });
+
+    it('should read flat/uncompressed HDR (1x1)', () => {
+      const header = '#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 1\n\n';
+      const pixels = new Uint8Array([0, 0, 0, 128]); // R=0 G=0 B=0 E=128
+      const buffer = new Uint8Array([...new TextEncoder().encode(header), ...pixels]);
+      const result = readHdr(buffer);
+
+      expect(result.width).toBe(1);
+      expect(result.height).toBe(1);
+      expect(result.data.length).toBe(4);
+      expect(result.data[0]).toBeCloseTo(0);
+      expect(result.data[1]).toBeCloseTo(0);
+      expect(result.data[2]).toBeCloseTo(0);
+      expect(result.data[3]).toBe(1);
+    });
+
+    it('should read flat/uncompressed HDR (4x4) with narrow scanline', () => {
+      const header = '#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 4 +X 4\n\n';
+      const pixels = new Uint8Array(4 * 4 * 4);
+      for (let i = 0; i < pixels.length; i += 4) {
+        pixels[i] = 64;
+        pixels[i + 1] = 64;
+        pixels[i + 2] = 64;
+        pixels[i + 3] = 128;
+      }
+      const buffer = new Uint8Array([...new TextEncoder().encode(header), ...pixels]);
+      const result = readHdr(buffer);
+
+      expect(result.width).toBe(4);
+      expect(result.height).toBe(4);
+      expect(result.data.length).toBe(64);
+    });
+
+    it('should read old RLE format (2x2)', () => {
+      const header = '#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 2 +X 2\n\n';
+      // Old RLE: first pixel [64,64,64,128], then repeat 15x -> 16 pixels total
+      const pixels = new Uint8Array([64, 64, 64, 128, 255, 255, 255, 15]);
+      const buffer = new Uint8Array([...new TextEncoder().encode(header), ...pixels]);
+      const result = readHdr(buffer);
+
+      expect(result.width).toBe(2);
+      expect(result.height).toBe(2);
+      expect(result.data.length).toBe(16);
+      const scale = 2 ** (128 - 128) / 255;
+      expect(result.data[0]).toBeCloseTo(64 * scale);
+    });
+
+    it('should read standard RLE format (8x8)', () => {
+      const header = '#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 8 +X 8\n\n';
+      const headerBytes = new TextEncoder().encode(header);
+      const rlePixelData: number[] = [];
+      for (let y = 0; y < 8; y++) {
+        rlePixelData.push(2, 2, 0, 8);
+        for (let c = 0; c < 4; c++) {
+          const val = c === 3 ? 128 : 64;
+          rlePixelData.push(8, val, val, val, val, val, val, val, val);
+        }
+      }
+      const buffer = new Uint8Array([...headerBytes, ...rlePixelData]);
+      const result = readHdr(buffer);
+
+      expect(result.width).toBe(8);
+      expect(result.height).toBe(8);
+      expect(result.data.length).toBe(256);
+    });
+
+    it('should throw when flat pixel data has wrong length', () => {
+      const header = '#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 2 +X 2\n\n';
+      const pixels = new Uint8Array([0, 0, 0, 128]);
+      const buffer = new Uint8Array([...new TextEncoder().encode(header), ...pixels]);
+      expect(() => readHdr(buffer)).toThrow(/expected \d+ bytes/);
+    });
+
+    it('should throw when buffer is empty', () => {
+      expect(() => readHdr(new Uint8Array(0))).toThrow(/no header found/);
+    });
+
+    it('should throw when missing image size specifier', () => {
+      const badBuffer = new TextEncoder().encode('#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n');
+      expect(() => readHdr(badBuffer)).toThrow(/missing image size specifier/);
+    });
+  });
+
+  describe('applyToneMapping', () => {
+    it('should apply aces tone mapping when specified', () => {
+      if (hdrFiles.length === 0) return;
+      const [_filename, filepath] = hdrFiles[0] ?? [];
+      if (!filepath) return;
+      const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
+      const hdrImage = readHdr(hdrBuffer);
+      const ldrAces = applyToneMapping(hdrImage.data, hdrImage.width, hdrImage.height, {
+        toneMapping: 'aces',
+      });
+      const ldrReinhard = applyToneMapping(hdrImage.data, hdrImage.width, hdrImage.height, {
+        toneMapping: 'reinhard',
+      });
+
+      expect(ldrAces.length).toBe(hdrImage.width * hdrImage.height * 3);
+      expect(uint8ArrayCompare(ldrAces, ldrReinhard)).not.toBe(0);
     });
   });
 

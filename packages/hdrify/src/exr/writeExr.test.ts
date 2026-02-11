@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { PIZ_COMPRESSION, PXR24_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION } from './exrConstants.js';
+import { PIZ_COMPRESSION, PXR24_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
 import { readExr } from './readExr.js';
 import { writeExr } from './writeExr.js';
 
@@ -193,6 +193,33 @@ describe('exrWriter', () => {
       expect(parsedData.width).toBe(originalData.width);
       expect(parsedData.height).toBe(originalData.height);
       const tolerance = 0.01; // half-float precision
+      for (let i = 0; i < originalData.data.length; i++) {
+        const original = originalData.data[i];
+        const parsed = parsedData.data[i];
+        if (original !== undefined && parsed !== undefined) {
+          expect(Math.abs(original - parsed)).toBeLessThan(tolerance);
+        }
+      }
+    });
+
+    it('should round-trip EXR with ZIPS compression', () => {
+      const originalData: FloatImageData = {
+        width: 16,
+        height: 16,
+        data: new Float32Array(16 * 16 * 4),
+      };
+      for (let i = 0; i < originalData.data.length; i += 4) {
+        originalData.data[i] = 0.25;
+        originalData.data[i + 1] = 0.5;
+        originalData.data[i + 2] = 0.75;
+        originalData.data[i + 3] = 1.0;
+      }
+      const exrBuffer = writeExr(originalData, { compression: ZIPS_COMPRESSION });
+      const parsedData = readExr(exrBuffer);
+
+      expect(parsedData.width).toBe(originalData.width);
+      expect(parsedData.height).toBe(originalData.height);
+      const tolerance = 0.01;
       for (let i = 0; i < originalData.data.length; i++) {
         const original = originalData.data[i];
         const parsed = parsedData.data[i];

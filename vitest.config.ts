@@ -12,6 +12,7 @@ export default defineConfig({
     isolate: false,
     coverage: {
       provider: 'v8',
+      include: ['packages/hdrify/src/**/*.ts'],
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         '**/node_modules',

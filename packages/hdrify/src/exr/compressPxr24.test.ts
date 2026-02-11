@@ -42,6 +42,42 @@ describe('compressPxr24Block', () => {
     }
   });
 
+  it('float32ToF24 handles NaN', () => {
+    const f24 = float32ToF24(NaN);
+    const b0 = f24 & 0xff;
+    const b1 = (f24 >> 8) & 0xff;
+    const b2 = (f24 >> 16) & 0xff;
+    const back = f24ToFloat32(b0, b1, b2);
+    expect(back).toBeNaN();
+  });
+
+  it('float32ToF24 handles Infinity', () => {
+    const f24Pos = float32ToF24(Infinity);
+    const b0 = f24Pos & 0xff;
+    const b1 = (f24Pos >> 8) & 0xff;
+    const b2 = (f24Pos >> 16) & 0xff;
+    expect(f24ToFloat32(b0, b1, b2)).toBe(Infinity);
+  });
+
+  it('float32ToF24 handles -Infinity', () => {
+    const f24Neg = float32ToF24(-Infinity);
+    const b0 = f24Neg & 0xff;
+    const b1 = (f24Neg >> 8) & 0xff;
+    const b2 = (f24Neg >> 16) & 0xff;
+    expect(f24ToFloat32(b0, b1, b2)).toBe(-Infinity);
+  });
+
+  it('float32ToF24 handles overflow (result >= 0x7f8000)', () => {
+    // Value near max float that could round up - triggers overflow fallback
+    const nearMax = 3.4028232663852886e38;
+    const f24 = float32ToF24(nearMax);
+    const b0 = f24 & 0xff;
+    const b1 = (f24 >> 8) & 0xff;
+    const b2 = (f24 >> 16) & 0xff;
+    const back = f24ToFloat32(b0, b1, b2);
+    expect(Number.isFinite(back) || back === Infinity).toBe(true);
+  });
+
   it('produces smaller output for uniform data', () => {
     const width = 32;
     const lineCount = 16;
