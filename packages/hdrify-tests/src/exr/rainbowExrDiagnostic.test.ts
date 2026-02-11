@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../..');
-const rainbowPath = path.join(workspaceRoot, 'assets', 'rainbow.exr');
+const rainbowPath = path.join(workspaceRoot, 'assets', 'example_zip.exr');
 
 const CREATE_TEST_DEFAULTS = { width: 16, height: 16, value: 1, intensity: 1 };
 const TOLERANCE = { tolerancePercent: 0.01, includeMismatchSamples: 10 };
@@ -54,8 +54,8 @@ function formatDiagnostics(
   return lines.join('\n');
 }
 
-describe('rainbow.exr diagnostic', () => {
-  it('reads rainbow.exr and compares to synthetic 16x16', () => {
+describe('example_zip.exr diagnostic', () => {
+  it('reads example_zip.exr and compares to synthetic 16x16', () => {
     if (!fs.existsSync(rainbowPath)) return;
 
     const reference = createHsvRainbowImage(CREATE_TEST_DEFAULTS);

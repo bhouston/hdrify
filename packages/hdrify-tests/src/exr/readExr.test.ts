@@ -13,11 +13,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../..');
 const assetsDir = path.join(workspaceRoot, 'assets');
-const testExrPath = path.join(assetsDir, 'piz_compressed.exr');
-const rainbowExrPath = path.join(assetsDir, 'rainbow.exr');
-const gammaChartPath = path.join(assetsDir, 'GammaChart.exr');
-const grayRampsPath = path.join(assetsDir, 'GrayRampsDiagonal.exr');
-const singlepartZipsPath = path.join(assetsDir, 'singlepart.0001.exr');
+const testExrPath = path.join(assetsDir, 'example_piz.exr');
+const exampleZipPath = path.join(assetsDir, 'example_zip.exr');
+const exampleRlePath = path.join(assetsDir, 'example_rle.exr');
+const gammaChartPath = path.join(assetsDir, 'example_pxr24.exr');
+const exampleNonRgbPath = path.join(assetsDir, 'example_nonRGB.exr');
+const exampleHalfsPath = path.join(assetsDir, 'example_halfs.exr');
+const exampleB44Path = path.join(assetsDir, 'example_b44.exr');
+const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
+const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
 
 const TOLERANCE = { tolerancePercent: 0.01 };
 
@@ -128,7 +132,7 @@ describe('exrReader', () => {
       expect(() => readExr(modified)).toThrow('none, RLE, ZIPS, ZIP, PIZ, PXR24');
     });
 
-    it('should read PXR24-compressed EXR file (GammaChart.exr)', () => {
+    it('should read PXR24-compressed EXR file (example_pxr24.exr)', () => {
       if (!fs.existsSync(gammaChartPath)) return;
 
       const buf = fs.readFileSync(gammaChartPath);
@@ -145,20 +149,69 @@ describe('exrReader', () => {
       expect(result.data[2]).toBeGreaterThanOrEqual(0);
     });
 
-    it('should throw for non-RGB EXR (GrayRampsDiagonal.exr has grayscale only)', () => {
-      if (!fs.existsSync(grayRampsPath)) return;
+    it('should read half-float EXR file (example_halfs.exr)', () => {
+      if (!fs.existsSync(exampleHalfsPath)) return;
 
-      const buf = fs.readFileSync(grayRampsPath);
+      const buf = fs.readFileSync(exampleHalfsPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+    });
+
+    it('should throw for tiled EXR (example_tiles.exr - tiled format not supported)', () => {
+      if (!fs.existsSync(exampleTilesPath)) return;
+
+      const buf = fs.readFileSync(exampleTilesPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      expect(() => readExr(buffer)).toThrow(/Multi-part, tiled, and deep data/);
+      expect(() => readExr(buffer)).toThrow(/single-part scanline/);
+    });
+
+    it('should throw for B44-compressed EXR (example_b44.exr - compression not supported)', () => {
+      if (!fs.existsSync(exampleB44Path)) return;
+
+      const buf = fs.readFileSync(exampleB44Path);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      expect(() => readExr(buffer)).toThrow('Unsupported EXR compression');
+      expect(() => readExr(buffer)).toThrow(/none, RLE, ZIPS, ZIP, PIZ, PXR24/);
+    });
+
+    it('should throw for non-RGB EXR (example_nonRGB.exr has grayscale only)', () => {
+      if (!fs.existsSync(exampleNonRgbPath)) return;
+
+      const buf = fs.readFileSync(exampleNonRgbPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
       expect(() => readExr(buffer)).toThrow(/Non-RGB EXR files are not supported/);
       expect(() => readExr(buffer)).toThrow(/R, G, and B channels/);
     });
 
-    it('should read RLE-compressed EXR file (rainbow.exr) when format is valid', () => {
-      if (!fs.existsSync(rainbowExrPath)) return;
+    it('should read ZIP-compressed EXR file (example_zip.exr)', () => {
+      if (!fs.existsSync(exampleZipPath)) return;
 
-      const buf = fs.readFileSync(rainbowExrPath);
+      const buf = fs.readFileSync(exampleZipPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+      expect(result.metadata?.compression).toBe(3); // ZIP
+    });
+
+    it('should read RLE-compressed EXR file (example_rle.exr)', () => {
+      if (!fs.existsSync(exampleRlePath)) return;
+
+      const buf = fs.readFileSync(exampleRlePath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
       try {
@@ -169,12 +222,12 @@ describe('exrReader', () => {
         expect(result.data).toBeInstanceOf(Float32Array);
         expect(result.data.length).toBe(result.width * result.height * 4);
       } catch (e) {
-        // rainbow.exr may have non-standard offset table; forward progress is header fix + predictor+reorder
+        // example_rle.exr may have non-standard offset table; forward progress is header fix + predictor+reorder
         expect(e).toBeInstanceOf(Error);
       }
     });
 
-    it('header fix: piz_compressed.exr still parses correctly (regression)', () => {
+    it('header fix: example_piz.exr still parses correctly (regression)', () => {
       if (!exrBuffer) return;
 
       const result = readExr(exrBuffer);
@@ -216,7 +269,7 @@ describe('exrReader', () => {
       expect(result.match).toBe(true);
     });
 
-    it('should read ZIPS-compressed EXR (singlepart.0001.exr)', () => {
+    it('should read ZIPS-compressed EXR (example_zips.exr)', () => {
       const buf = fs.readFileSync(singlepartZipsPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 

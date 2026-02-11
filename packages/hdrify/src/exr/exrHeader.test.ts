@@ -15,8 +15,8 @@ import { writeExr } from './writeExr.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, '../../../../..');
-const pizExrPath = path.join(workspaceRoot, 'assets', 'piz_compressed.exr');
-const rainbowExrPath = path.join(workspaceRoot, 'assets', 'rainbow.exr');
+const pizExrPath = path.join(workspaceRoot, 'assets', 'example_piz.exr');
+const rainbowExrPath = path.join(workspaceRoot, 'assets', 'example_zip.exr');
 
 describe('EXR header parsing - magic number', () => {
   it('accepts valid magic number (0x76, 0x2f, 0x31, 0x01)', () => {
@@ -236,7 +236,7 @@ describe('EXR header parsing - unknown attribute skip', () => {
 });
 
 describe('EXR header parsing - offset position', () => {
-  it('returns correct offset after header for piz_compressed.exr', () => {
+  it('returns correct offset after header for example_piz.exr', () => {
     if (!fs.existsSync(pizExrPath)) return;
     const buf = fs.readFileSync(pizExrPath);
     const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
@@ -252,7 +252,7 @@ describe('EXR header parsing - offset position', () => {
     expect(firstOffset).toBeLessThan(buffer.length);
   });
 
-  it('parses rainbow.exr and returns valid offset', () => {
+  it('parses example_zip.exr and returns valid offset', () => {
     if (!fs.existsSync(rainbowExrPath)) return;
     const buf = fs.readFileSync(rainbowExrPath);
     const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);

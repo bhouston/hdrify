@@ -15,7 +15,7 @@ const assetsDir = path.join(workspaceRoot, 'assets');
 export const hdrFiles = ['blouberg_sunrise_2_1k.hdr', 'moonless_golf_1k.hdr', 'pedestrian_overpass_1k.hdr'] as const;
 
 /** Explicit list of EXR asset file names (non-empty, const). */
-export const exrFiles = ['piz_compressed.exr'] as const;
+export const exrFiles = ['example_piz.exr'] as const;
 
 /** Full paths to HDR assets (non-empty). */
 export const hdrFilePaths: readonly [string, ...string[]] = hdrFiles.map((f) =>
