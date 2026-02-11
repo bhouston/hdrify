@@ -1,0 +1,85 @@
+import { describe, expect, it } from 'vitest';
+import type { FloatImageData } from '../floatImage.js';
+import { validateToneMappingColorSpace, validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';
+
+const REC709_CHROMATICITIES = {
+  redX: 0.64,
+  redY: 0.33,
+  greenX: 0.3,
+  greenY: 0.6,
+  blueX: 0.15,
+  blueY: 0.06,
+  whiteX: 0.3127,
+  whiteY: 0.329,
+};
+
+function createImage(metadata?: Record<string, unknown>): FloatImageData {
+  return {
+    width: 1,
+    height: 1,
+    data: new Float32Array([1, 1, 1, 1]),
+    metadata,
+  };
+}
+
+describe('validateToneMappingColorSpace', () => {
+  it('allows images without chromaticities', () => {
+    const image = createImage();
+    expect(() => validateToneMappingColorSpace(image)).not.toThrow();
+  });
+
+  it('allows images with Rec. 709 chromaticities', () => {
+    const image = createImage({ chromaticities: REC709_CHROMATICITIES });
+    expect(() => validateToneMappingColorSpace(image)).not.toThrow();
+  });
+
+  it('throws for wide gamut chromaticities', () => {
+    // DCI-P3 red primary (wider than Rec. 709)
+    const wideGamut = {
+      redX: 0.68,
+      redY: 0.32,
+      greenX: 0.265,
+      greenY: 0.69,
+      blueX: 0.15,
+      blueY: 0.06,
+      whiteX: 0.3127,
+      whiteY: 0.329,
+    };
+    const image = createImage({ chromaticities: wideGamut });
+    expect(() => validateToneMappingColorSpace(image)).toThrow(/Rec\. 709|chromaticities|wide color space/i);
+    expect(() => validateToneMappingColorSpace(image)).toThrow(/Rec\. 709/);
+  });
+
+  it('allows when chromaticities are absent in metadata', () => {
+    const image = createImage({ otherKey: 'value' });
+    expect(() => validateToneMappingColorSpace(image)).not.toThrow();
+  });
+});
+
+describe('validateToneMappingColorSpaceFromMetadata', () => {
+  it('allows undefined metadata', () => {
+    expect(() => validateToneMappingColorSpaceFromMetadata(undefined)).not.toThrow();
+  });
+
+  it('allows metadata without chromaticities', () => {
+    expect(() => validateToneMappingColorSpaceFromMetadata({})).not.toThrow();
+  });
+
+  it('allows Rec. 709 chromaticities', () => {
+    expect(() => validateToneMappingColorSpaceFromMetadata({ chromaticities: REC709_CHROMATICITIES })).not.toThrow();
+  });
+
+  it('throws for non-Rec. 709 chromaticities', () => {
+    const wideGamut = {
+      redX: 0.68,
+      redY: 0.32,
+      greenX: 0.265,
+      greenY: 0.69,
+      blueX: 0.15,
+      blueY: 0.06,
+      whiteX: 0.3127,
+      whiteY: 0.329,
+    };
+    expect(() => validateToneMappingColorSpaceFromMetadata({ chromaticities: wideGamut })).toThrow(/Rec\. 709/);
+  });
+});

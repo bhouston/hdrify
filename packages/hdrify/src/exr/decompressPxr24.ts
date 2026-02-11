@@ -6,7 +6,7 @@
 import { unzlibSync } from 'fflate';
 import { FLOAT, HALF, INT16_SIZE, UINT } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import { f24ToFloat32 } from './pxr24Utils.js';
+import { f24ToFloat32, undoPxr24Transposition } from './pxr24Utils.js';
 
 function getPxr24BytesPerSample(pixelType: number): number {
   switch (pixelType) {
@@ -46,9 +46,22 @@ export function decompressPxr24(
   _dataSize: number,
   blockHeight: number,
 ): Uint8Array {
-  const raw = unzlibSync(compressedData);
+  let raw = unzlibSync(compressedData);
 
   const samplesPerChannel = width * blockHeight;
+
+  // OpenEXR PXR24 uses byte transposition. Apply per-channel (matches external tools like Blender).
+  // Format: [ch0_lo][ch0_hi][ch1_lo][ch1_hi]... per channel.
+  const rawUntransposed = new Uint8Array(raw.length);
+  let off = 0;
+  for (const ch of channels) {
+    const chBytesPerSample = getPxr24BytesPerSample(ch.pixelType);
+    const chBytes = samplesPerChannel * chBytesPerSample;
+    const chRaw = raw.subarray(off, off + chBytes);
+    rawUntransposed.set(undoPxr24Transposition(chRaw, chBytesPerSample), off);
+    off += chBytes;
+  }
+  raw = rawUntransposed;
 
   let totalOutputSize = 0;
   for (const ch of channels) {
@@ -56,7 +69,6 @@ export function decompressPxr24(
   }
 
   const output = new Uint8Array(totalOutputSize);
-  const view = new DataView(output.buffer, output.byteOffset, output.byteLength);
 
   let readOffset = 0;
 
@@ -64,7 +76,7 @@ export function decompressPxr24(
   const channelData: { bytesPerSample: number; values: Uint8Array }[] = [];
 
   for (const channel of channels) {
-    const bytesPerSample = getPxr24BytesPerSample(channel.pixelType);
+    const chBytesPerSample = getPxr24BytesPerSample(channel.pixelType);
     const outBytesPerSample = getOutputBytesPerSample(channel.pixelType);
     const chOut = new Uint8Array(samplesPerChannel * outBytesPerSample);
     const chView = new DataView(chOut.buffer, chOut.byteOffset, chOut.byteLength);
@@ -72,7 +84,7 @@ export function decompressPxr24(
     let accum = 0;
 
     for (let s = 0; s < samplesPerChannel; s++) {
-      if (readOffset + bytesPerSample > raw.length) {
+      if (readOffset + chBytesPerSample > raw.length) {
         throw new Error('PXR24: not enough data in decompressed stream');
       }
 
@@ -88,15 +100,12 @@ export function decompressPxr24(
         chView.setFloat32(s * outBytesPerSample, f32, true);
       } else {
         diff =
-          raw[readOffset]! |
-          (raw[readOffset + 1]! << 8) |
-          (raw[readOffset + 2]! << 16) |
-          (raw[readOffset + 3]! << 24);
+          raw[readOffset]! | (raw[readOffset + 1]! << 8) | (raw[readOffset + 2]! << 16) | (raw[readOffset + 3]! << 24);
         accum = (accum + diff) >>> 0;
         chView.setUint32(s * outBytesPerSample, accum, true);
       }
 
-      readOffset += bytesPerSample;
+      readOffset += chBytesPerSample;
     }
 
     channelData.push({ bytesPerSample: outBytesPerSample, values: chOut });
@@ -106,11 +115,11 @@ export function decompressPxr24(
   let writeOffset = 0;
   for (let ly = 0; ly < blockHeight; ly++) {
     for (let c = 0; c < channels.length; c++) {
-      const { bytesPerSample, values } = channelData[c]!;
-      const chLineStart = ly * width * bytesPerSample;
+      const { bytesPerSample: bs, values } = channelData[c]!;
+      const chLineStart = ly * width * bs;
       for (let x = 0; x < width; x++) {
-        const srcOffset = chLineStart + x * bytesPerSample;
-        for (let b = 0; b < bytesPerSample; b++) {
+        const srcOffset = chLineStart + x * bs;
+        for (let b = 0; b < bs; b++) {
           output[writeOffset++] = values[srcOffset + b]!;
         }
       }

@@ -17,6 +17,7 @@
     "hdrify": "pnpm --filter hdrify-cli start"
   },
   "devDependencies": {
+    "fflate": "^0.8.2",
     "@biomejs/biome": "2.3.4",
     "@types/node": "^24",
     "@vitest/coverage-v8": "^2.1.9",

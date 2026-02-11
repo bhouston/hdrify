@@ -1,5 +1,6 @@
 import type { FloatImageData } from '../floatImage.js';
 import { getToneMapping } from '../tonemapping/mappers.js';
+import { validateToneMappingColorSpace } from '../tonemapping/validateColorSpace.js';
 import type { EncodingResult, GainMapEncodingOptions, GainMapMetadata } from './types.js';
 
 const defaultOffset = [1 / 64, 1 / 64, 1 / 64] as [number, number, number];
@@ -24,6 +25,8 @@ function findMaxContentBoost(data: Float32Array): number {
  * Encode HDR image to SDR + gain map (pure TypeScript, no WebGL).
  */
 export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOptions = {}): EncodingResult {
+  validateToneMappingColorSpace(image);
+
   const { width, height, data } = image;
   const totalPixels = width * height;
 

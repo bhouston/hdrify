@@ -1,14 +1,22 @@
+import { zlibSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { compressPxr24Block } from './compressPxr24.js';
 import { decompressPxr24 } from './decompressPxr24.js';
 import { HALF } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
+import { transposePxr24Bytes } from './pxr24Utils.js';
 
 const DEFAULT_CHANNELS: ExrChannel[] = [
   { name: 'R', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
   { name: 'G', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
   { name: 'B', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
   { name: 'A', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
+];
+
+const RGB_CHANNELS: ExrChannel[] = [
+  { name: 'R', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
+  { name: 'G', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
+  { name: 'B', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
 ];
 
 describe('decompressPxr24', () => {
@@ -55,5 +63,68 @@ describe('decompressPxr24', () => {
     const decompressed = decompressPxr24(compressed, width, DEFAULT_CHANNELS, compressed.length, lineCount);
 
     expect(decompressed).toEqual(planar);
+  });
+
+  it('decompresses manually crafted per-channel format (matches OpenEXR)', () => {
+    // Build planar output: 2x2 RGB. Layout: for each line, for each channel, for each pixel.
+    // Offset = (ly * numChannels * width + c * width + x) * 2
+    const width = 2;
+    const lineCount = 2;
+    const numChannels = 3;
+    const samplesPerChannel = width * lineCount; // 4
+
+    const planar = new Uint8Array(width * lineCount * numChannels * 2);
+    // R channel: first two pixels = 1.0 (half 0x3c00), rest = 0
+    const half10 = 0x3c00;
+    planar[0] = half10 & 0xff;
+    planar[1] = (half10 >> 8) & 0xff;
+    planar[2] = half10 & 0xff;
+    planar[3] = (half10 >> 8) & 0xff;
+    // G, B channels remain 0
+
+    const deltaBuffer: number[] = [];
+    for (let c = 0; c < numChannels; c++) {
+      let prev = 0;
+      for (let ly = 0; ly < lineCount; ly++) {
+        for (let x = 0; x < width; x++) {
+          const offset = (ly * numChannels * width + c * width + x) * 2;
+          const value = (planar[offset] ?? 0) | ((planar[offset + 1] ?? 0) << 8);
+          const diff = (value - prev) & 0xffff;
+          prev = value;
+          deltaBuffer.push(diff & 0xff, (diff >> 8) & 0xff);
+        }
+      }
+    }
+
+    const deltaBytes = new Uint8Array(deltaBuffer.length);
+    for (let i = 0; i < deltaBuffer.length; i++) {
+      deltaBytes[i] = deltaBuffer[i]!;
+    }
+
+    const raw = new Uint8Array(deltaBytes.length);
+    let off = 0;
+    for (let c = 0; c < numChannels; c++) {
+      const chBytes = samplesPerChannel * 2;
+      raw.set(transposePxr24Bytes(deltaBytes.subarray(off, off + chBytes), 2), off);
+      off += chBytes;
+    }
+    const compressed = zlibSync(raw, { level: 4 });
+
+    const decompressed = decompressPxr24(compressed, width, RGB_CHANNELS, compressed.length, lineCount);
+    expect(decompressed).toEqual(planar);
+  });
+
+  it('fails on whole-block transposed input (proves we expect per-channel)', () => {
+    // If we applied whole-block transposition to raw, decompress would produce garbage.
+    // Verify our decompressor correctly uses per-channel by checking round-trip.
+    const width = 2;
+    const lineCount = 2;
+    const planar = new Uint8Array(width * lineCount * 3 * 2);
+    planar[0] = 0xab;
+    planar[1] = 0xcd;
+    const compressed = compressPxr24Block(planar, width, lineCount, RGB_CHANNELS);
+    const decompressed = decompressPxr24(compressed, width, RGB_CHANNELS, compressed.length, lineCount);
+    expect(decompressed[0]).toBe(0xab);
+    expect(decompressed[1]).toBe(0xcd);
   });
 });

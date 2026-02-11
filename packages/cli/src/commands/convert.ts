@@ -146,6 +146,7 @@ export const command = defineCommand({
             toneMapping: tonemapping as 'aces' | 'reinhard',
             exposure,
             gamma: gammaVal,
+            metadata: imageData.metadata,
           });
           const pipeline = sharp(ldrRgb, {
             raw: { width: imageData.width, height: imageData.height, channels: 3 },

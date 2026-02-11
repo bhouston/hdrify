@@ -7,6 +7,7 @@
 import { zlibSync } from 'fflate';
 import { INT16_SIZE } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
+import { transposePxr24Bytes } from './pxr24Utils.js';
 
 /**
  * Compress a scanline block using PXR24.
@@ -27,9 +28,7 @@ export function compressPxr24Block(
   const rawSize = samplesPerChannel * numChannels * bytesPerSample;
 
   if (rawHalfFloatPlanar.length < rawSize) {
-    throw new Error(
-      `PXR24: input too small (${rawHalfFloatPlanar.length} < ${rawSize})`,
-    );
+    throw new Error(`PXR24: input too small (${rawHalfFloatPlanar.length} < ${rawSize})`);
   }
 
   const deltaBuffer: number[] = [];
@@ -40,8 +39,7 @@ export function compressPxr24Block(
 
     for (let ly = 0; ly < lineCount; ly++) {
       for (let x = 0; x < width; x++) {
-        const offset =
-          (ly * numChannels * width + c * width + x) * bytesPerSample;
+        const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
         const lo = rawHalfFloatPlanar[offset] ?? 0;
         const hi = rawHalfFloatPlanar[offset + 1] ?? 0;
         const value = lo | (hi << 8);
@@ -54,10 +52,19 @@ export function compressPxr24Block(
     }
   }
 
-  const raw = new Uint8Array(deltaBuffer.length);
+  const deltaBytes = new Uint8Array(deltaBuffer.length);
   for (let i = 0; i < deltaBuffer.length; i++) {
-    raw[i] = deltaBuffer[i]!;
+    deltaBytes[i] = deltaBuffer[i]!;
   }
 
+  // Per-channel transposition (matches OpenEXR / external tools)
+  const raw = new Uint8Array(deltaBytes.length);
+  let off = 0;
+  for (let c = 0; c < numChannels; c++) {
+    const chBytes = samplesPerChannel * bytesPerSample;
+    const chDelta = deltaBytes.subarray(off, off + chBytes);
+    raw.set(transposePxr24Bytes(chDelta, bytesPerSample), off);
+    off += chBytes;
+  }
   return zlibSync(raw, { level: 4 });
 }

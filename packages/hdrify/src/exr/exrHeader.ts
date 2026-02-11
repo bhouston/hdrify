@@ -184,6 +184,19 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
       const compression = dataView.getUint8(offset);
       offset += attributeSize; // Use attributeSize instead of INT8_SIZE to handle any size
       attributeValue = compression;
+    } else if (attributeType === 'chromaticities') {
+      // 8 floats: redX, redY, greenX, greenY, blueX, blueY, whiteX, whiteY (CIE xy chromaticities)
+      attributeValue = {
+        redX: dataView.getFloat32(offset, true),
+        redY: dataView.getFloat32(offset + FLOAT32_SIZE, true),
+        greenX: dataView.getFloat32(offset + FLOAT32_SIZE * 2, true),
+        greenY: dataView.getFloat32(offset + FLOAT32_SIZE * 3, true),
+        blueX: dataView.getFloat32(offset + FLOAT32_SIZE * 4, true),
+        blueY: dataView.getFloat32(offset + FLOAT32_SIZE * 5, true),
+        whiteX: dataView.getFloat32(offset + FLOAT32_SIZE * 6, true),
+        whiteY: dataView.getFloat32(offset + FLOAT32_SIZE * 7, true),
+      };
+      offset += attributeSize;
     } else {
       // Skip unknown attribute types
       offset += attributeSize;

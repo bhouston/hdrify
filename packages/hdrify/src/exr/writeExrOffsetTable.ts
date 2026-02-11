@@ -110,7 +110,7 @@ export function buildExrOffsetTableFromBlocks(options: BuildExrOffsetTableFromBl
 
   for (let b = 0; b < blockCount; b++) {
     view.setBigUint64(b * ULONG_SIZE, BigInt(currentOffset), true);
-    currentOffset += (blocks[b]?.length ?? 0);
+    currentOffset += blocks[b]?.length ?? 0;
   }
 
   return result;

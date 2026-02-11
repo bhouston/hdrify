@@ -1,9 +1,10 @@
+import { unzlibSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { compressPxr24Block } from './compressPxr24.js';
 import { decompressPxr24 } from './decompressPxr24.js';
 import { HALF } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import { float32ToF24, f24ToFloat32 } from './pxr24Utils.js';
+import { f24ToFloat32, float32ToF24, undoPxr24Transposition } from './pxr24Utils.js';
 
 const DEFAULT_CHANNELS: ExrChannel[] = [
   { name: 'R', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
@@ -76,6 +77,21 @@ describe('compressPxr24Block', () => {
     const b2 = (f24 >> 16) & 0xff;
     const back = f24ToFloat32(b0, b1, b2);
     expect(Number.isFinite(back) || back === Infinity).toBe(true);
+  });
+
+  it('produces transposed format after unzlib (OpenEXR layout)', () => {
+    const width = 4;
+    const lineCount = 2;
+    const planar = new Uint8Array(width * lineCount * 4 * 2);
+    planar[0] = 1;
+    planar[1] = 0;
+    planar[2] = 2;
+    planar[3] = 0;
+    const compressed = compressPxr24Block(planar, width, lineCount, DEFAULT_CHANNELS);
+    const raw = unzlibSync(compressed);
+    const totalSamples = raw.length / 2;
+    const untransposed = undoPxr24Transposition(raw, 2);
+    expect(untransposed.length).toBe(planar.length);
   });
 
   it('produces smaller output for uniform data', () => {

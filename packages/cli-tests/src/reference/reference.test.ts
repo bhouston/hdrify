@@ -49,18 +49,7 @@ describe('CLI reference command', () => {
 
   it('accepts --value and --intensity options', async () => {
     const output = path.join(tempDir, 'test.hdr');
-    const result = runCli([
-      'reference',
-      output,
-      '--width',
-      '8',
-      '--height',
-      '8',
-      '--value',
-      '0.5',
-      '--intensity',
-      '2',
-    ]);
+    const result = runCli(['reference', output, '--width', '8', '--height', '8', '--value', '0.5', '--intensity', '2']);
 
     expect(result.exitCode).toBe(0);
     expect(fs.existsSync(output)).toBe(true);

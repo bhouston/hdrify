@@ -25,12 +25,7 @@ const unsupportedFormatExrFiles = ['example_b44.exr', 'example_tiles.exr'];
 const exrFiles = fs.existsSync(assetsDir)
   ? fs
       .readdirSync(assetsDir)
-      .filter(
-        (f) =>
-          f.endsWith('.exr') &&
-          !nonRgbExrFiles.includes(f) &&
-          !unsupportedFormatExrFiles.includes(f),
-      )
+      .filter((f) => f.endsWith('.exr') && !nonRgbExrFiles.includes(f) && !unsupportedFormatExrFiles.includes(f))
       .map((f) => [f, path.join(assetsDir, f)] as [string, string])
   : [];
 

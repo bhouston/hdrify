@@ -84,7 +84,11 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
   // Determine block height based on compression type (OpenEXR spec: ZIP/PXR24=16, PIZ=32, others=1)
   const blockHeight =
-    compression === PIZ_COMPRESSION ? 32 : compression === ZIP_COMPRESSION || compression === PXR24_COMPRESSION ? 16 : 1;
+    compression === PIZ_COMPRESSION
+      ? 32
+      : compression === ZIP_COMPRESSION || compression === PXR24_COMPRESSION
+        ? 16
+        : 1;
   const expectedBlockCount = Math.ceil(height / blockHeight);
 
   // Read scanline offsets - exactly one offset per block
@@ -221,13 +225,7 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
         );
       }
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      decompressedData = decompressPxr24(
-        compressedData,
-        width,
-        channels,
-        dataSize,
-        linesInBlock,
-      );
+      decompressedData = decompressPxr24(compressedData, width, channels, dataSize, linesInBlock);
     } else {
       throw new Error(`Unsupported compression type: ${compression}`);
     }

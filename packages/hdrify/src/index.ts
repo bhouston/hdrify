@@ -29,8 +29,15 @@ export type {
 } from './synthetic/compareFloatImages.js';
 // Synthetic test images
 export { compareFloatImages } from './synthetic/compareFloatImages.js';
+export type { CreateGradientImageOptions, GradientChannel, GradientMode } from './synthetic/createGradientImage.js';
+export { createGradientImage } from './synthetic/createGradientImage.js';
 export type { CreateHsvRainbowImageOptions } from './synthetic/createHsvRainbowImage.js';
 export { createHsvRainbowImage } from './synthetic/createHsvRainbowImage.js';
 export { applyToneMapping } from './tonemapping/applyToneMapping.js';
 export { getToneMapping } from './tonemapping/mappers.js';
 export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './tonemapping/types.js';
+export type { Chromaticities, ValidateToneMappingColorSpaceOptions } from './tonemapping/validateColorSpace.js';
+export {
+  validateToneMappingColorSpace,
+  validateToneMappingColorSpaceFromMetadata,
+} from './tonemapping/validateColorSpace.js';

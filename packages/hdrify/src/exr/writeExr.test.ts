@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { FloatImageData } from '../floatImage.js';
-import { PIZ_COMPRESSION, PXR24_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
+import {
+  PIZ_COMPRESSION,
+  PXR24_COMPRESSION,
+  RLE_COMPRESSION,
+  ZIP_COMPRESSION,
+  ZIPS_COMPRESSION,
+} from './exrConstants.js';
 import { readExr } from './readExr.js';
 import { writeExr } from './writeExr.js';
 

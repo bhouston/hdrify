@@ -36,9 +36,9 @@ describe('encodeToJpeg', () => {
   it('should respect quality parameter', () => {
     const data = new Uint8ClampedArray(4 * 10 * 10);
     for (let i = 0; i < data.length; i += 4) {
-      data[i] = (i % 256);
-      data[i + 1] = ((i * 7) % 256);
-      data[i + 2] = ((i * 13) % 256);
+      data[i] = i % 256;
+      data[i + 1] = (i * 7) % 256;
+      data[i + 2] = (i * 13) % 256;
       data[i + 3] = 255;
     }
     const highQuality = encodeToJpeg(data, 10, 10, 95);

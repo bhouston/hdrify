@@ -21,7 +21,7 @@ export function float32ToF24(float: number): number {
   if (exponent === 0x7f800000) {
     if (mantissa !== 0) {
       // NaN: preserve sign and 15 leftmost bits of significand
-      let m = mantissa >> 8;
+      const m = mantissa >> 8;
       result = (exponent >> 8) | m | (m === 0 ? 1 : 0);
     } else {
       // Inf
@@ -47,4 +47,33 @@ export function f24ToFloat32(b0: number, b1: number, b2: number): number {
   const buf = new ArrayBuffer(4);
   new DataView(buf).setUint32(0, u32 << 8, true);
   return new DataView(buf).getFloat32(0, true);
+}
+
+/**
+ * PXR24 byte transposition: [lo0,hi0, lo1,hi1, ...] -> [all_lo][all_hi].
+ * Used for OpenEXR PXR24 compression.
+ */
+export function transposePxr24Bytes(src: Uint8Array, bytesPerSample: number): Uint8Array {
+  const totalSamples = src.length / bytesPerSample;
+  const out = new Uint8Array(src.length);
+  for (let s = 0; s < totalSamples; s++) {
+    for (let b = 0; b < bytesPerSample; b++) {
+      out[b * totalSamples + s] = src[s * bytesPerSample + b]!;
+    }
+  }
+  return out;
+}
+
+/**
+ * Undo PXR24 byte transposition: [all_lo][all_hi] -> [lo0,hi0, lo1,hi1, ...].
+ */
+export function undoPxr24Transposition(src: Uint8Array, bytesPerSample: number): Uint8Array {
+  const totalSamples = src.length / bytesPerSample;
+  const out = new Uint8Array(src.length);
+  for (let s = 0; s < totalSamples; s++) {
+    for (let b = 0; b < bytesPerSample; b++) {
+      out[s * bytesPerSample + b] = src[b * totalSamples + s]!;
+    }
+  }
+  return out;
 }

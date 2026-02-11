@@ -6,4 +6,6 @@ export interface ApplyToneMappingOptions {
   toneMapping?: ToneMappingType;
   exposure?: number;
   gamma?: number;
+  /** EXR metadata (e.g. from FloatImageData.metadata) for color space validation */
+  metadata?: Record<string, unknown>;
 }

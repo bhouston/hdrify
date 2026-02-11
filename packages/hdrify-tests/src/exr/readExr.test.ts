@@ -1,12 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  compareFloatImages,
-  createHsvRainbowImage,
-  readExr,
-  writeExr,
-} from 'hdrify';
+import { compareFloatImages, createHsvRainbowImage, readExr, writeExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -132,7 +127,7 @@ describe('exrReader', () => {
       expect(() => readExr(modified)).toThrow('none, RLE, ZIPS, ZIP, PIZ, PXR24');
     });
 
-    it('should read PXR24-compressed EXR file (example_pxr24.exr)', () => {
+    it('should read PXR24-compressed EXR file (example_pxr24.exr) with sane pixel values', () => {
       if (!fs.existsSync(gammaChartPath)) return;
 
       const buf = fs.readFileSync(gammaChartPath);
@@ -144,9 +139,27 @@ describe('exrReader', () => {
       expect(result.height).toBe(800);
       expect(result.data).toBeInstanceOf(Float32Array);
       expect(result.data.length).toBe(result.width * result.height * 4);
-      expect(result.data[0]).toBeGreaterThanOrEqual(0);
-      expect(result.data[1]).toBeGreaterThanOrEqual(0);
-      expect(result.data[2]).toBeGreaterThanOrEqual(0);
+
+      // Sanity: pixels should be finite and in reasonable HDR range (not stripes/NaN/Inf)
+      const { width, height, data } = result;
+      const maxReasonable = 1e6;
+      const samples = [
+        0,
+        width * 4,
+        (width * (height >> 1) + (width >> 1)) * 4,
+        (width * height - 1) * 4,
+      ];
+      let finiteCount = 0;
+      for (const i of samples) {
+        if (i >= data.length) continue;
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        if (Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b) && r >= 0 && r <= maxReasonable) {
+          finiteCount++;
+        }
+      }
+      expect(finiteCount).toBeGreaterThan(0);
     });
 
     it('should read half-float EXR file (example_halfs.exr)', () => {

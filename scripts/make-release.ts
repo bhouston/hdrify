@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,10 +27,7 @@ function getWorkspaceVersions(rootPath: string): Map<string, string> {
 }
 
 /** Replace workspace:* (and other workspace: protocol) deps with ^version from the workspace map. */
-function resolveWorkspaceDeps(
-  packageJson: Record<string, unknown>,
-  workspaceVersions: Map<string, string>,
-): void {
+function resolveWorkspaceDeps(packageJson: Record<string, unknown>, workspaceVersions: Map<string, string>): void {
   // biome-ignore lint/security/noSecrets: package.json key names, not secrets
   const depKeys = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'] as const;
   for (const key of depKeys) {

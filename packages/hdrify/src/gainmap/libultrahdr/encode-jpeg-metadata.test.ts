@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { encodeJPEGMetadata } from './encode-jpeg-metadata.js';
 import type { CompressedImage } from '../types.js';
+import { encodeJPEGMetadata } from './encode-jpeg-metadata.js';
 
 const validMetadata = {
   gainMapMin: [0, 0, 0] as [number, number, number],

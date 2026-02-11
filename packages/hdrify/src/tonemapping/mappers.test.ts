@@ -47,3 +47,39 @@ describe('getToneMapping', () => {
     expect(r).toBeCloseTo(10 / 11);
   });
 });
+
+describe('acesFilmic neutrality (low-level)', () => {
+  /** ACES preserves neutral input: (1,1,1) and (10,10,10) must produce R≈G≈B output */
+  const NEUTRAL_TOLERANCE = 1e-4;
+
+  it('produces neutral output for (1,1,1)', () => {
+    const mapper = getToneMapping('aces');
+    const [r, g, b] = mapper(1, 1, 1);
+    expect(Math.abs(r - g)).toBeLessThan(NEUTRAL_TOLERANCE);
+    expect(Math.abs(g - b)).toBeLessThan(NEUTRAL_TOLERANCE);
+    expect(Math.abs(r - b)).toBeLessThan(NEUTRAL_TOLERANCE);
+  });
+
+  it('produces neutral output for (10,10,10)', () => {
+    const mapper = getToneMapping('aces');
+    const [r, g, b] = mapper(10, 10, 10);
+    expect(Math.abs(r - g)).toBeLessThan(NEUTRAL_TOLERANCE);
+    expect(Math.abs(g - b)).toBeLessThan(NEUTRAL_TOLERANCE);
+    expect(Math.abs(r - b)).toBeLessThan(NEUTRAL_TOLERANCE);
+  });
+
+  it('produces neutral output for (100,100,100)', () => {
+    const mapper = getToneMapping('aces');
+    const [r, g, b] = mapper(100, 100, 100);
+    expect(Math.abs(r - g)).toBeLessThan(NEUTRAL_TOLERANCE);
+    expect(Math.abs(g - b)).toBeLessThan(NEUTRAL_TOLERANCE);
+  });
+
+  it('yellow (1,1,0) does not shift toward orange: R and G remain similar', () => {
+    const mapper = getToneMapping('aces');
+    const [r, g, b] = mapper(1, 1, 0);
+    // Input has R=G, so output should have R≈G (yellow), not R>>G (orange)
+    expect(Math.abs(r - g)).toBeLessThan(0.05);
+    expect(b).toBeLessThan(0.1);
+  });
+});
