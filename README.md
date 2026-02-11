@@ -9,15 +9,14 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 
 ## Features
 
-- Read and write RGB EXR files (PIZ, ZIP, RLE, PXR24 compression)
+- Read and write RGB EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression)
 - Read and write HDR (Radiance RGBE) files
-- **Write JPEGs with gain maps (JPEG-R / Ultra HDR)** — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
-- Convert HDR to LDR with tone mapping
-- Universal `Uint8Array`-based API (no Node.js Buffer dependency)
+- Write JPEGs with gain maps (JPEG-R / Ultra HDR) — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
+- Tone mapping utilities for easing conversion of HDR to LDR images
 - Full TypeScript support
-- No DOM or Node.js dependencies (runtime-agnostic)
+- No DOM or Node.js dependencies (works in browser, web workers, and node.js)
 - Written in a functional style to support tree-shaking
-- hdrify CLI
+- [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
 
 ## Installation
 
