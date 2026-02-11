@@ -2,10 +2,36 @@
   "name": "hdrify-cli",
   "version": "0.6.1",
   "type": "module",
-  "description": "CLI tool for converting between EXR and HDR formats",
+  "description": "CLI tool for converting between EXR and HDR and Ultra JPEG-R formats",
+  "license": "MIT",
+  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
+  "keywords": [
+    "exr",
+    "openexr",
+    "hdr",
+    "radiance",
+    "rgbe",
+    "gainmap",
+    "jpeg-r",
+    "ultra-hdr",
+    "image",
+    "format",
+    "parser",
+    "writer",
+    "cli",
+    "command-line",
+    "tool"
+  ],
   "main": "dist/index.js",
   "bin": {
     "hdrify": "./dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhouston/hdrify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
   },
   "scripts": {
     "build": "tsgo",
