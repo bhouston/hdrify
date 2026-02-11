@@ -138,10 +138,10 @@ hdrify convert input.exr output.exr --compression pxr24
 
 ## Demos
 
-See the `demos/web` app for a browser-based viewer with drag-and-drop support and an exposure slider:
+See the `demos/web-converter` app for a browser-based viewer with drag-and-drop support and an exposure slider:
 
 ```bash
-cd demos/web
+cd demos/web-converter
 pnpm install
 pnpm dev
 ```
