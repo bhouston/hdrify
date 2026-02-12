@@ -201,6 +201,12 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
     const linesInBlock = Math.min(actualBlockHeightFinal, height - firstLineY);
 
+    if (blockIdx < 2) {
+      console.log(
+        `Block ${blockIdx}: y=${firstLineY}, lines=${linesInBlock}, size=${dataSize}, compression=${compression}, actualBlockHeight=${actualBlockHeightFinal}`,
+      );
+    }
+
     // Decompress block data
     let decompressedData: Uint8Array;
     if (compression === NO_COMPRESSION) {
@@ -259,14 +265,36 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
         const channelValues: { [key: string]: number } = {};
 
-        for (let c = 0; c < channels.length; c++) {
-          const channel = channels[c];
-          if (channel === undefined) continue;
-          const pixelOffset = isPlanar
-            ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
-            : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
-          const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
-          channelValues[channel.name.toLowerCase()] = value;
+        // PXR24 with 3 channels: decoder outputs in header order (e.g. B, G, R). Map to R,G,B by
+        // semantic: block 0 = first in header (e.g. B), block 1 = G, block 2 = R. So R=block2, G=block1, B=block0.
+        const usePxr24RgbBlockOrder = isPlanar && compression === PXR24_COMPRESSION && numChannels === 3;
+
+        if (usePxr24RgbBlockOrder) {
+          channelValues.r = readChannelValue(
+            blockDataView,
+            lineOffset + 2 * width * bytesPerChannel + x * bytesPerChannel,
+            rChannel.pixelType,
+          );
+          channelValues.g = readChannelValue(
+            blockDataView,
+            lineOffset + 1 * width * bytesPerChannel + x * bytesPerChannel,
+            rChannel.pixelType,
+          );
+          channelValues.b = readChannelValue(
+            blockDataView,
+            lineOffset + 0 * width * bytesPerChannel + x * bytesPerChannel,
+            rChannel.pixelType,
+          );
+        } else {
+          for (let c = 0; c < channels.length; c++) {
+            const channel = channels[c];
+            if (channel === undefined) continue;
+            const pixelOffset = isPlanar
+              ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
+              : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
+            const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
+            channelValues[channel.name.toLowerCase()] = value;
+          }
         }
 
         pixelData[pixelIndex] = channelValues.r ?? channelValues.red ?? 0;

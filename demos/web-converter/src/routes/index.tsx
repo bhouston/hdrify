@@ -232,7 +232,15 @@ function Index() {
     <div className="flex flex-1 flex-col p-4">
       <p className="mb-4 text-sm text-muted-foreground">
         This is a web demo of the {/** biome-ignore assist/source/useSortedAttributes: <explanation> */}
-               <a href="https://github.com/bhouston/hdrify" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>HDRify library</a>, which can read/write HDR, EXR, and JPEG-R and apply tone mapping transformations.
+        <a
+          href="https://github.com/bhouston/hdrify"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ textDecoration: 'underline' }}
+        >
+          HDRify library
+        </a>
+        , which can read/write HDR, EXR, and JPEG-R and apply tone mapping transformations.
       </p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">Examples</span>
@@ -411,19 +419,18 @@ function Index() {
         )}
       </div>
 
-      <section className="mt-8 border-t border-border pt-6" aria-labelledby="features-heading">
-        <h2 id="features-heading" className="mb-3 text-sm font-semibold text-foreground">
+      <section aria-labelledby="features-heading" className="mt-8 border-t border-border pt-6">
+        <h2 className="mb-3 text-sm font-semibold text-foreground" id="features-heading">
           About this tool
         </h2>
         <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-1 md:grid-cols-2">
           <li>
-            <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and
-            Ultra HDR / Ultra JPG (JPEG with gain maps).
+            <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and Ultra
+            HDR / Ultra JPG (JPEG with gain maps).
           </li>
           <li>
-            <strong className="text-foreground">True HDR display:</strong> On compatible browsers (mainly Chrome at
-            this time), the viewer can display images in true HDR when you choose “Direct HDR” in the tone mapping
-            dropdown.
+            <strong className="text-foreground">True HDR display:</strong> On compatible browsers (mainly Chrome at this
+            time), the viewer can display images in true HDR when you choose “Direct HDR” in the tone mapping dropdown.
           </li>
           <li>
             <strong className="text-foreground">Pure JavaScript:</strong> Read and write these formats in pure
@@ -434,16 +441,16 @@ function Index() {
             style to maximize tree-shaking and keep deployment sizes small.
           </li>
           <li>
-            <strong className="text-foreground">EXR compression:</strong> Read and write EXR with no compression,
-            RLE, ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit).
+            <strong className="text-foreground">EXR compression:</strong> Read and write EXR with no compression, RLE,
+            ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit).
           </li>
           <li>
             <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX
             (Blender).
           </li>
           <li className="sm:col-span-2">
-            <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion
-            and inspection:{' '}
+            <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion and
+            inspection:{' '}
             <a
               className="text-primary underline underline-offset-2 hover:no-underline"
               href="https://www.npmjs.com/package/hdrify-cli"

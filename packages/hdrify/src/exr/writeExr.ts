@@ -56,6 +56,8 @@ export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptio
   const { width, height } = floatImageData;
   const compression = options?.compression ?? ZIP_COMPRESSION;
   const channels = getChannelsForCompression(compression);
+  // OpenEXR requires channels to be sorted alphabetically
+  channels.sort((a, b) => a.name.localeCompare(b.name));
 
   const magicVersion = buildMagicAndVersion();
   const header = buildExrHeader({ width, height, compression, channels });

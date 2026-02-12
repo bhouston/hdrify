@@ -11,8 +11,9 @@ import { transposePxr24Bytes } from './pxr24Utils.js';
 
 /**
  * Compress a scanline block using PXR24.
- * Input: channel-planar half-float (same layout as ZIP/RLE from writeExrScanBlock).
- * For each channel: delta encode (diff from left neighbor), then zlib.
+ * Uses line-major order (OpenEXR reference): for each scanline, for each channel,
+ * delta-encode that line, transpose the segment, then concatenate. Input is
+ * line-major from writeExrScanBlock (line, channel, x).
  */
 export function compressPxr24Block(
   rawHalfFloatPlanar: Uint8Array,
@@ -21,50 +22,46 @@ export function compressPxr24Block(
   channels: ExrChannel[],
 ): Uint8Array {
   const numChannels = channels.length;
-  const samplesPerChannel = width * lineCount;
-
-  // PXR24 with HALF: 2 bytes per sample
   const bytesPerSample = INT16_SIZE;
-  const rawSize = samplesPerChannel * numChannels * bytesPerSample;
+  const rawSize = width * lineCount * numChannels * bytesPerSample;
 
   if (rawHalfFloatPlanar.length < rawSize) {
     throw new Error(`PXR24: input too small (${rawHalfFloatPlanar.length} < ${rawSize})`);
   }
 
-  const deltaBuffer: number[] = [];
+  const segmentSize = width * bytesPerSample;
+  const rawParts: Uint8Array[] = [];
 
-  // Input is line-major: for each line, for each channel, for each pixel
-  for (let c = 0; c < numChannels; c++) {
-    let prev = 0;
+  // OpenEXR internal_pxr24.c apply_pxr24_impl: for (y) for (c), prevPixel = 0 per segment
+  for (let ly = 0; ly < lineCount; ly++) {
+    for (let c = 0; c < numChannels; c++) {
+      const lineDelta = new Uint8Array(segmentSize);
+      let p = 0;
 
-    for (let ly = 0; ly < lineCount; ly++) {
       for (let x = 0; x < width; x++) {
         const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
         const lo = rawHalfFloatPlanar[offset] ?? 0;
         const hi = rawHalfFloatPlanar[offset + 1] ?? 0;
         const value = lo | (hi << 8);
-
-        const diff = (value - prev) & 0xffff;
-        prev = value;
-
-        deltaBuffer.push(diff & 0xff, (diff >> 8) & 0xff);
+        const diff = (value - p) | 0;
+        p = value;
+        // OpenEXR/C++ store delta high byte first (before transpose)
+        lineDelta[x * 2] = (diff >> 8) & 0xff;
+        lineDelta[x * 2 + 1] = diff & 0xff;
       }
+      rawParts.push(transposePxr24Bytes(lineDelta, bytesPerSample));
     }
   }
 
-  const deltaBytes = new Uint8Array(deltaBuffer.length);
-  for (let i = 0; i < deltaBuffer.length; i++) {
-    deltaBytes[i] = deltaBuffer[i] ?? 0;
+  let totalLen = 0;
+  for (const p of rawParts) {
+    totalLen += p.length;
   }
-
-  // Per-channel transposition (matches OpenEXR / external tools)
-  const raw = new Uint8Array(deltaBytes.length);
+  const raw = new Uint8Array(totalLen);
   let off = 0;
-  for (let c = 0; c < numChannels; c++) {
-    const chBytes = samplesPerChannel * bytesPerSample;
-    const chDelta = deltaBytes.subarray(off, off + chBytes);
-    raw.set(transposePxr24Bytes(chDelta, bytesPerSample), off);
-    off += chBytes;
+  for (const p of rawParts) {
+    raw.set(p, off);
+    off += p.length;
   }
   return zlibSync(raw, { level: 4 });
 }

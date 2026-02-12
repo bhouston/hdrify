@@ -35,7 +35,7 @@ export function float32ToF24(float: number): number {
     }
   }
 
-  return (sign >> 8) | result;
+  return ((sign >>> 8) | result) & 0xffffff;
 }
 
 /**

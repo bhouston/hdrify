@@ -65,48 +65,42 @@ describe('decompressPxr24', () => {
     expect(decompressed).toEqual(planar);
   });
 
-  it('decompresses manually crafted per-channel format (matches OpenEXR)', () => {
+  it('decompresses manually crafted line-major format (matches OpenEXR)', () => {
     // Build planar output: 2x2 RGB. Layout: for each line, for each channel, for each pixel.
     // Offset = (ly * numChannels * width + c * width + x) * 2
     const width = 2;
     const lineCount = 2;
     const numChannels = 3;
-    const samplesPerChannel = width * lineCount; // 4
+    const offsetAt = (ly: number, c: number, x: number) => (ly * numChannels * width + c * width + x) * 2;
 
     const planar = new Uint8Array(width * lineCount * numChannels * 2);
-    // R channel: first two pixels = 1.0 (half 0x3c00), rest = 0
     const half10 = 0x3c00;
-    planar[0] = half10 & 0xff;
-    planar[1] = (half10 >> 8) & 0xff;
-    planar[2] = half10 & 0xff;
-    planar[3] = (half10 >> 8) & 0xff;
+    planar[offsetAt(0, 0, 0)] = half10 & 0xff;
+    planar[offsetAt(0, 0, 0) + 1] = (half10 >> 8) & 0xff;
+    planar[offsetAt(0, 0, 1)] = half10 & 0xff;
+    planar[offsetAt(0, 0, 1) + 1] = (half10 >> 8) & 0xff;
     // G, B channels remain 0
 
-    const deltaBuffer: number[] = [];
-    for (let c = 0; c < numChannels; c++) {
-      let prev = 0;
-      for (let ly = 0; ly < lineCount; ly++) {
+    const segments: Uint8Array[] = [];
+    for (let ly = 0; ly < lineCount; ly++) {
+      for (let c = 0; c < numChannels; c++) {
+        const lineDelta: number[] = [];
+        let prev = 0;
         for (let x = 0; x < width; x++) {
-          const offset = (ly * numChannels * width + c * width + x) * 2;
+          const offset = offsetAt(ly, c, x);
           const value = (planar[offset] ?? 0) | ((planar[offset + 1] ?? 0) << 8);
-          const diff = (value - prev) & 0xffff;
+          const diff = (value - prev) | 0;
           prev = value;
-          deltaBuffer.push(diff & 0xff, (diff >> 8) & 0xff);
+          lineDelta.push((diff >> 8) & 0xff, diff & 0xff);
         }
+        segments.push(transposePxr24Bytes(new Uint8Array(lineDelta), 2));
       }
     }
-
-    const deltaBytes = new Uint8Array(deltaBuffer.length);
-    for (let i = 0; i < deltaBuffer.length; i++) {
-      deltaBytes[i] = deltaBuffer[i] ?? 0;
-    }
-
-    const raw = new Uint8Array(deltaBytes.length);
+    const raw = new Uint8Array(segments.reduce((s, t) => s + t.length, 0));
     let off = 0;
-    for (let c = 0; c < numChannels; c++) {
-      const chBytes = samplesPerChannel * 2;
-      raw.set(transposePxr24Bytes(deltaBytes.subarray(off, off + chBytes), 2), off);
-      off += chBytes;
+    for (const s of segments) {
+      raw.set(s, off);
+      off += s.length;
     }
     const compressed = zlibSync(raw, { level: 4 });
 

@@ -39,16 +39,16 @@ describe('PXR24 delta encoding', () => {
     ]);
     const raw = unzlibSync(compressed);
     const untransposed = undoPxr24Transposition(raw, 2);
-    // After undo transposition: [d0_lo,d0_hi, d1_lo,d1_hi, d2_lo,d2_hi, d3_lo,d3_hi]
-    // Deltas: 0, 1, 1, 1 (since 1-0=1, 2-1=1, 3-2=1)
+    // Encoder stores delta high byte first: [d0_hi,d0_lo, d1_hi,d1_lo, ...]. After undo: [d0_hi,d0_lo, d1_hi,d1_lo, ...]
+    // Deltas: 0, 1, 1, 1 (prev=0 per segment). So bytes: (0,0), (0,1), (0,1), (0,1)
     expect(untransposed[0]).toBe(0);
     expect(untransposed[1]).toBe(0);
-    expect(untransposed[2]).toBe(1);
-    expect(untransposed[3]).toBe(0);
-    expect(untransposed[4]).toBe(1);
-    expect(untransposed[5]).toBe(0);
-    expect(untransposed[6]).toBe(1);
-    expect(untransposed[7]).toBe(0);
+    expect(untransposed[2]).toBe(0);
+    expect(untransposed[3]).toBe(1);
+    expect(untransposed[4]).toBe(0);
+    expect(untransposed[5]).toBe(1);
+    expect(untransposed[6]).toBe(0);
+    expect(untransposed[7]).toBe(1);
   });
 
   it('delta decode reconstructs original from untransposed bytes', () => {
@@ -95,64 +95,49 @@ describe('PXR24 output layout for readExr', () => {
 });
 
 describe('PXR24 per-channel vs whole-block transposition', () => {
-  /** Simulate "external" format: per-channel transposition (each channel transposed separately) */
-  function compressWithPerChannelTransposition(
+  /** Build raw buffer in same order as our encoder: line-major, prev=0 per segment, high byte first. */
+  function compressLineMajorOpenEXRFormat(
     planar: Uint8Array,
     width: number,
     lineCount: number,
     channels: ExrChannel[],
   ): Uint8Array {
     const numChannels = channels.length;
-    const samplesPerChannel = width * lineCount;
     const bytesPerSample = 2;
-    const deltaBuffer: number[] = [];
+    const segments: Uint8Array[] = [];
 
-    for (let c = 0; c < numChannels; c++) {
-      let prev = 0;
-      for (let ly = 0; ly < lineCount; ly++) {
+    for (let ly = 0; ly < lineCount; ly++) {
+      for (let c = 0; c < numChannels; c++) {
+        let prev = 0;
+        const lineDelta: number[] = [];
         for (let x = 0; x < width; x++) {
           const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
           const value = (planar[offset] ?? 0) | ((planar[offset + 1] ?? 0) << 8);
           const diff = (value - prev) & 0xffff;
           prev = value;
-          deltaBuffer.push(diff & 0xff, (diff >> 8) & 0xff);
+          lineDelta.push((diff >> 8) & 0xff, diff & 0xff);
         }
+        segments.push(transposePxr24Bytes(new Uint8Array(lineDelta), bytesPerSample));
       }
     }
-
-    const deltaBytes = new Uint8Array(deltaBuffer.length);
-    for (let i = 0; i < deltaBuffer.length; i++) {
-      deltaBytes[i] = deltaBuffer[i] ?? 0;
-    }
-
-    // Per-channel transposition: transpose each channel's data separately
-    const transposedParts: Uint8Array[] = [];
+    const raw = new Uint8Array(segments.reduce((s, t) => s + t.length, 0));
     let off = 0;
-    for (let c = 0; c < numChannels; c++) {
-      const chBytes = samplesPerChannel * bytesPerSample;
-      const chDelta = deltaBytes.subarray(off, off + chBytes);
-      transposedParts.push(transposePxr24Bytes(chDelta, bytesPerSample));
-      off += chBytes;
-    }
-    const raw = new Uint8Array(deltaBytes.length);
-    off = 0;
-    for (const p of transposedParts) {
+    for (const p of segments) {
       raw.set(p, off);
       off += p.length;
     }
-
     return zlibSync(raw, { level: 4 });
   }
 
-  it('our compress uses per-channel transposition (OpenEXR format)', () => {
+  it('our compress uses line-major per-segment transposition (OpenEXR format)', () => {
     const width = 2;
     const lineCount = 2;
     const planar = new Uint8Array(width * lineCount * 4 * 2);
     planar[0] = 1;
     planar[1] = 0;
     const ourCompressed = compressPxr24Block(planar, width, lineCount, RGBA_CHANNELS);
-    const perChCompressed = compressWithPerChannelTransposition(planar, width, lineCount, RGBA_CHANNELS);
-    expect(ourCompressed).toEqual(perChCompressed);
+    const lineMajorCompressed = compressLineMajorOpenEXRFormat(planar, width, lineCount, RGBA_CHANNELS);
+    expect(ourCompressed).toEqual(lineMajorCompressed);
   });
 
   it('decompress handles our whole-block format', () => {

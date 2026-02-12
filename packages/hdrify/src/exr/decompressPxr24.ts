@@ -36,8 +36,8 @@ function getOutputBytesPerSample(pixelType: number): number {
 
 /**
  * Decompress PXR24-compressed scanline block data.
+ * Uses line-major order (OpenEXR reference: for each scanline, for each channel, transposed segment).
  * Output is channel-planar, line-major (same as ZIP/RLE) for readExr parsing.
- * Layout: for each scanline, for each channel, for each pixel.
  */
 export function decompressPxr24(
   compressedData: Uint8Array,
@@ -46,79 +46,117 @@ export function decompressPxr24(
   _dataSize: number,
   blockHeight: number,
 ): Uint8Array {
-  let raw = unzlibSync(compressedData);
+  const raw = unzlibSync(compressedData);
 
+  const numChannels = channels.length;
   const samplesPerChannel = width * blockHeight;
 
-  // OpenEXR PXR24 uses byte transposition. Apply per-channel (matches external tools like Blender).
-  // Format: [ch0_lo][ch0_hi][ch1_lo][ch1_hi]... per channel.
-  const rawUntransposed = new Uint8Array(raw.length);
-  let off = 0;
+  let totalOutputSize = 0;
+  const channelMeta: { chBytesPerSample: number; outBytesPerSample: number }[] = [];
   for (const ch of channels) {
     const chBytesPerSample = getPxr24BytesPerSample(ch.pixelType);
-    const chBytes = samplesPerChannel * chBytesPerSample;
-    const chRaw = raw.subarray(off, off + chBytes);
-    rawUntransposed.set(undoPxr24Transposition(chRaw, chBytesPerSample), off);
-    off += chBytes;
+    const outBytesPerSample = getOutputBytesPerSample(ch.pixelType);
+    channelMeta.push({ chBytesPerSample, outBytesPerSample });
+    totalOutputSize += samplesPerChannel * outBytesPerSample;
   }
-  raw = rawUntransposed;
 
-  let totalOutputSize = 0;
-  for (const ch of channels) {
-    totalOutputSize += samplesPerChannel * getOutputBytesPerSample(ch.pixelType);
+  const channelData: { bytesPerSample: number; values: Uint8Array }[] = [];
+  for (let c = 0; c < numChannels; c++) {
+    const outBytesPerSample = channelMeta[c]?.outBytesPerSample ?? 2;
+    channelData.push({
+      bytesPerSample: outBytesPerSample,
+      values: new Uint8Array(samplesPerChannel * outBytesPerSample),
+    });
+  }
+
+  let readOffset = 0;
+  const accum: number[] = [];
+  for (let c = 0; c < numChannels; c++) {
+    accum.push(0);
+  }
+
+  // Line-major (OpenEXR reference): for each scanline, for each channel, one transposed segment
+  for (let ly = 0; ly < blockHeight; ly++) {
+    for (let c = 0; c < numChannels; c++) {
+      const channel = channels[c];
+      if (!channel) continue;
+
+      const { chBytesPerSample, outBytesPerSample } = channelMeta[c] ?? {
+        chBytesPerSample: 2,
+        outBytesPerSample: 2,
+      };
+
+      const chOut = channelData[c]?.values;
+      const chView = chOut != null ? new DataView(chOut.buffer, chOut.byteOffset, chOut.byteLength) : null;
+
+      // Reset accumulator for each scanline per channel (reference: pixel = 0 per segment)
+      accum[c] = 0;
+
+      const segmentSize = width * chBytesPerSample;
+      if (readOffset + segmentSize > raw.length) {
+        throw new Error('PXR24: not enough data in decompressed stream');
+      }
+      const segment = raw.subarray(readOffset, readOffset + segmentSize);
+      readOffset += segmentSize;
+
+      const untransposed = undoPxr24Transposition(segment, chBytesPerSample);
+
+      if (chOut == null || chView == null) continue;
+
+      const lineStart = ly * width;
+
+      for (let x = 0; x < width; x++) {
+        const s = lineStart + x;
+        const byteOff = x * chBytesPerSample;
+
+        let diff: number;
+        if (channel.pixelType === HALF) {
+          // OpenEXR/C++ store delta high byte first in segment; after untranspose we have [high, low] per sample
+          const u16 = ((untransposed[byteOff] ?? 0) << 8) | (untransposed[byteOff + 1] ?? 0);
+          diff = u16 > 0x7fff ? u16 - 0x10000 : u16;
+          accum[c] = ((accum[c] ?? 0) + diff) & 0xffff;
+          chView.setUint16(s * outBytesPerSample, accum[c] ?? 0, true);
+        } else if (channel.pixelType === FLOAT) {
+          // 24-bit: C++ stores MSB first
+          const u24 =
+            ((untransposed[byteOff] ?? 0) << 16) |
+            ((untransposed[byteOff + 1] ?? 0) << 8) |
+            (untransposed[byteOff + 2] ?? 0);
+          diff = u24 > 0x7fffff ? u24 - 0x1000000 : u24;
+          accum[c] = ((accum[c] ?? 0) + diff) & 0xffffff;
+          const f32 = f24ToFloat32(
+            (accum[c] ?? 0) & 0xff,
+            ((accum[c] ?? 0) >> 8) & 0xff,
+            ((accum[c] ?? 0) >> 16) & 0xff,
+          );
+          chView.setFloat32(s * outBytesPerSample, f32, true);
+        } else {
+          // UINT: C++ stores MSB first
+          const u32 =
+            ((untransposed[byteOff] ?? 0) << 24) |
+            ((untransposed[byteOff + 1] ?? 0) << 16) |
+            ((untransposed[byteOff + 2] ?? 0) << 8) |
+            (untransposed[byteOff + 3] ?? 0);
+          diff = u32 > 0x7fffffff ? u32 - 0x100000000 : u32;
+          accum[c] = ((accum[c] ?? 0) + diff) >>> 0;
+          chView.setUint32(s * outBytesPerSample, accum[c] ?? 0, true);
+        }
+      }
+    }
+  }
+
+  if (readOffset !== raw.length) {
+    throw new Error(`PXR24: unexpected trailing data (read ${readOffset}, total ${raw.length})`);
   }
 
   const output = new Uint8Array(totalOutputSize);
-
-  let readOffset = 0;
-
-  // Decompress each channel (raw buffer is channel-major)
-  const channelData: { bytesPerSample: number; values: Uint8Array }[] = [];
-
-  for (const channel of channels) {
-    const chBytesPerSample = getPxr24BytesPerSample(channel.pixelType);
-    const outBytesPerSample = getOutputBytesPerSample(channel.pixelType);
-    const chOut = new Uint8Array(samplesPerChannel * outBytesPerSample);
-    const chView = new DataView(chOut.buffer, chOut.byteOffset, chOut.byteLength);
-
-    let accum = 0;
-
-    for (let s = 0; s < samplesPerChannel; s++) {
-      if (readOffset + chBytesPerSample > raw.length) {
-        throw new Error('PXR24: not enough data in decompressed stream');
-      }
-
-      let diff: number;
-      if (channel.pixelType === HALF) {
-        diff = (raw[readOffset] ?? 0) | ((raw[readOffset + 1] ?? 0) << 8);
-        accum = (accum + diff) & 0xffff;
-        chView.setUint16(s * outBytesPerSample, accum, true);
-      } else if (channel.pixelType === FLOAT) {
-        diff = (raw[readOffset] ?? 0) | ((raw[readOffset + 1] ?? 0) << 8) | ((raw[readOffset + 2] ?? 0) << 16);
-        accum = (accum + diff) & 0xffffff;
-        const f32 = f24ToFloat32(accum & 0xff, (accum >> 8) & 0xff, (accum >> 16) & 0xff);
-        chView.setFloat32(s * outBytesPerSample, f32, true);
-      } else {
-        diff =
-          (raw[readOffset] ?? 0) |
-          ((raw[readOffset + 1] ?? 0) << 8) |
-          ((raw[readOffset + 2] ?? 0) << 16) |
-          ((raw[readOffset + 3] ?? 0) << 24);
-        accum = (accum + diff) >>> 0;
-        chView.setUint32(s * outBytesPerSample, accum, true);
-      }
-
-      readOffset += chBytesPerSample;
-    }
-
-    channelData.push({ bytesPerSample: outBytesPerSample, values: chOut });
-  }
-
-  // Reorder to line-major (for each line, for each channel, for each pixel)
   let writeOffset = 0;
   for (let ly = 0; ly < blockHeight; ly++) {
-    for (let c = 0; c < channels.length; c++) {
-      const { bytesPerSample: bs, values } = channelData[c] ?? { bytesPerSample: 0, values: new Uint8Array(0) };
+    for (let c = 0; c < numChannels; c++) {
+      const { bytesPerSample: bs, values } = channelData[c] ?? {
+        bytesPerSample: 0,
+        values: new Uint8Array(0),
+      };
       const chLineStart = ly * width * bs;
       for (let x = 0; x < width; x++) {
         const srcOffset = chLineStart + x * bs;
