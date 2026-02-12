@@ -257,46 +257,10 @@ function Index() {
           </SelectContent>
         </Select>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
-        {/* Desktop: left sidebar — vertical exposure (only when image loaded) */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        {/* Tone controls above image — horizontal exposure */}
         {imageData && (
-          <div className="hidden min-w-[10.5rem] flex-col items-center gap-3 md:flex">
-            <div className="flex w-full flex-col gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
-              <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
-                <SelectTrigger className="w-full" size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {hdrSupported && <SelectItem value="none">Direct HDR</SelectItem>}
-                  <SelectItem value="aces">ACES</SelectItem>
-                  <SelectItem value="reinhard">Reinhard</SelectItem>
-                  <SelectItem value="neutral">Khronos Neutral</SelectItem>
-                  <SelectItem value="agx">AgX (Blender)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <span className="text-xs font-medium text-muted-foreground">Exposure</span>
-              <div className="flex h-48 flex-1 items-center">
-                <Slider
-                  className="h-full"
-                  max={10}
-                  min={0.1}
-                  onValueChange={handleExposureChange}
-                  orientation="vertical"
-                  step={0.1}
-                  value={[exposure]}
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">{exposure.toFixed(1)}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Mobile: tone controls above image — horizontal exposure */}
-        {imageData && (
-          <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2 md:hidden">
+          <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
             <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
             <span className="text-xs font-medium text-muted-foreground">Exposure</span>
             <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
@@ -374,11 +338,10 @@ function Index() {
           )}
         </button>
 
-        {/* Right on desktop / below image on mobile: Info (left) + Download (right) in two columns on mobile */}
+        {/* Below image: Info (left) + Download (right) in two columns */}
         {imageData && (
-          <div className="grid w-full grid-cols-2 gap-4 md:flex md:w-auto md:flex-col md:gap-2">
-            {/* Info — left on mobile, below Download on desktop */}
-            <div className="order-1 flex flex-col gap-1.5 md:order-2 md:mt-4">
+          <div className="grid w-full grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Info</span>
               <dl className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <div className="flex justify-between gap-4">
@@ -408,8 +371,7 @@ function Index() {
                 )}
               </dl>
             </div>
-            {/* Download — right on mobile, above Info on desktop */}
-            <div className="order-2 flex flex-col gap-2 md:order-1">
+            <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-muted-foreground">Download</span>
               <Button
                 className="justify-start gap-2"
