@@ -27,7 +27,7 @@ import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
 import { cn } from '@/lib/utils';
 
 const indexSearchSchema = z.object({
-  image: z.string().min(1).default('/examples/blouberg_sunrise_2_1k.hdr'),
+  image: z.string().min(1).optional(),
 });
 
 export type IndexSearch = z.infer<typeof indexSearchSchema>;
@@ -339,7 +339,8 @@ function Index() {
           ) : (
             <div className="text-center text-muted-foreground">
               <p className="text-lg">{isDragging ? 'Drop the file here' : 'Drop EXR or HDR here'}</p>
-              <p className="mt-1 text-sm">or click to select a file</p>
+              <p className="mt-1 text-sm">or click to select a file.</p>
+              <p className="mt-1 text-sm">Or load an example image by clicking the <b>Examples dropdown</b>.</p>
             </div>
           )}
         </button>
