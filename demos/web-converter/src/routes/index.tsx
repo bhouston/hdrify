@@ -270,6 +270,52 @@ function Index() {
           </div>
         )}
       </div>
+
+      <section className="mt-8 border-t border-border pt-6" aria-labelledby="features-heading">
+        <h2 id="features-heading" className="mb-3 text-sm font-semibold text-foreground">
+          About this tool
+        </h2>
+        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-1 md:grid-cols-2">
+          <li>
+            <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and
+            Ultra HDR / Ultra JPG (JPEG with gain maps).
+          </li>
+          <li>
+            <strong className="text-foreground">True HDR display:</strong> On compatible browsers (mainly Chrome at
+            this time), the viewer can display images in true HDR when you choose “Direct HDR” in the tone mapping
+            dropdown.
+          </li>
+          <li>
+            <strong className="text-foreground">Pure JavaScript:</strong> Read and write these formats in pure
+            JavaScript—no native bindings. Works in Node.js and in the browser.
+          </li>
+          <li>
+            <strong className="text-foreground">Tree-shaking friendly:</strong> The library is written in a functional
+            style to maximize tree-shaking and keep deployment sizes small.
+          </li>
+          <li>
+            <strong className="text-foreground">EXR compression:</strong> Read and write EXR with no compression,
+            RLE, ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit).
+          </li>
+          <li>
+            <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX
+            (Blender).
+          </li>
+          <li className="sm:col-span-2">
+            <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion
+            and inspection:{' '}
+            <a
+              className="text-primary underline underline-offset-2 hover:no-underline"
+              href="https://www.npmjs.com/package/hdrify-cli"
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              hdrify-cli on npm
+            </a>
+            .
+          </li>
+        </ul>
+      </section>
     </div>
   );
 }
