@@ -7,6 +7,8 @@
 
 CLI for converting and inspecting EXR/HDR files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
 
+An **online demo** (the web-converter from this repository) is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — an HDR, EXR, and Ultra HDR (JPEG-R) format viewer and converter; try it in your browser without installing the CLI.
+
 ## Installation
 
 ```sh
