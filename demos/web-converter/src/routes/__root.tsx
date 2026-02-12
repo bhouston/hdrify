@@ -1,6 +1,4 @@
-import { TanStackDevtools } from '@tanstack/react-devtools';
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router';
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools';
 import { Toaster } from 'sonner';
 
 import Footer from '../components/Footer';
@@ -43,17 +41,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
-        <TanStackDevtools
-          config={{
-            position: 'bottom-right',
-          }}
-          plugins={[
-            {
-              name: 'Tanstack Router',
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
         <Toaster />
         <Scripts />
       </body>

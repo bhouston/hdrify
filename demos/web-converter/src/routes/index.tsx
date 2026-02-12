@@ -59,7 +59,6 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/example_nonRGB.exr', label: 'Example non-RGB (EXR)' },
   { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
   { value: '/examples/example_pxr24.exr', label: 'Example PXR24 (EXR)' },
-  { value: '/examples/example_pxr24-v2.exr', label: 'Example PXR24 v2 (EXR)' },
   { value: '/examples/example_rle.exr', label: 'Example RLE compression (EXR)' },
   { value: '/examples/example_tiles.exr', label: 'Example tiled (EXR)' },
   { value: '/examples/example_wideColorSpace.exr', label: 'Example wide color space (EXR)' },

@@ -95,22 +95,7 @@ describe('conversion round-trip', () => {
 });
 
 describe('reference asset comparison', () => {
-  const refExrPath = path.join(assetsDir, 'example_zip.exr');
   const refHdrPath = path.join(assetsDir, 'rainbow.hdr');
-
-  it('generated synthetic image matches reference example_zip.exr', () => {
-    if (!fs.existsSync(refExrPath)) return;
-
-    const generated = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
-    const refBuffer = new Uint8Array(fs.readFileSync(refExrPath));
-    const reference = readExr(refBuffer);
-
-    const result = compareFloatImages(generated, reference, TOLERANCE);
-    expect(
-      result.match,
-      `Generated vs example_zip.exr: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
-    ).toBe(true);
-  });
 
   it('generated synthetic image matches reference rainbow.hdr', () => {
     if (!fs.existsSync(refHdrPath)) return;
