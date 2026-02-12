@@ -257,10 +257,10 @@ function Index() {
           </SelectContent>
         </Select>
       </div>
-      <div className="flex min-h-0 flex-1 gap-4">
-        {/* Left: vertical exposure slider (only when image loaded) */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
+        {/* Desktop: left sidebar — vertical exposure (only when image loaded) */}
         {imageData && (
-          <div className="flex min-w-[10.5rem] flex-col items-center gap-3">
+          <div className="hidden min-w-[10.5rem] flex-col items-center gap-3 md:flex">
             <div className="flex w-full flex-col gap-2">
               <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
               <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
@@ -290,6 +290,38 @@ function Index() {
                 />
               </div>
               <span className="text-xs text-muted-foreground">{exposure.toFixed(1)}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile: tone controls above image — horizontal exposure */}
+        {imageData && (
+          <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2 md:hidden">
+            <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
+            <span className="text-xs font-medium text-muted-foreground">Exposure</span>
+            <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
+              <SelectTrigger className="w-full min-w-[140px]" size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {hdrSupported && <SelectItem value="none">Direct HDR</SelectItem>}
+                <SelectItem value="aces">ACES</SelectItem>
+                <SelectItem value="reinhard">Reinhard</SelectItem>
+                <SelectItem value="neutral">Khronos Neutral</SelectItem>
+                <SelectItem value="agx">AgX (Blender)</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex min-w-0 items-center gap-2">
+              <Slider
+                className="flex-1"
+                max={10}
+                min={0.1}
+                onValueChange={handleExposureChange}
+                orientation="horizontal"
+                step={0.1}
+                value={[exposure]}
+              />
+              <span className="w-8 shrink-0 text-xs text-muted-foreground">{exposure.toFixed(1)}</span>
             </div>
           </div>
         )}
@@ -342,47 +374,11 @@ function Index() {
           )}
         </button>
 
-        {/* Right: download buttons (only when image loaded) */}
+        {/* Right on desktop / below image on mobile: Info (left) + Download (right) in two columns on mobile */}
         {imageData && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Download</span>
-            <Button
-              className="justify-start gap-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadExr();
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <Download className="size-4" />
-              EXR
-            </Button>
-            <Button
-              className="justify-start gap-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadHdr();
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <Download className="size-4" />
-              HDR
-            </Button>
-            <Button
-              className="justify-start gap-2"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadJpegR();
-              }}
-              size="sm"
-              variant="outline"
-            >
-              <Download className="size-4" />
-              UltraHDR JPEG
-            </Button>
-            <div className="mt-4 flex flex-col gap-1.5">
+          <div className="grid w-full grid-cols-2 gap-4 md:flex md:w-auto md:flex-col md:gap-2">
+            {/* Info — left on mobile, below Download on desktop */}
+            <div className="order-1 flex flex-col gap-1.5 md:order-2 md:mt-4">
               <span className="text-xs font-medium text-muted-foreground">Info</span>
               <dl className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <div className="flex justify-between gap-4">
@@ -412,15 +408,55 @@ function Index() {
                 )}
               </dl>
             </div>
+            {/* Download — right on mobile, above Info on desktop */}
+            <div className="order-2 flex flex-col gap-2 md:order-1">
+              <span className="text-xs font-medium text-muted-foreground">Download</span>
+              <Button
+                className="justify-start gap-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadExr();
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="size-4" />
+                EXR
+              </Button>
+              <Button
+                className="justify-start gap-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadHdr();
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="size-4" />
+                HDR
+              </Button>
+              <Button
+                className="justify-start gap-2"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadJpegR();
+                }}
+                size="sm"
+                variant="outline"
+              >
+                <Download className="size-4" />
+                UltraHDR JPEG
+              </Button>
+            </div>
           </div>
         )}
       </div>
 
-      <section aria-labelledby="features-heading" className="mt-8 border-t border-border pt-6">
+      <section aria-labelledby="features-heading" className="mt-8 min-w-0 border-t border-border pt-6">
         <h2 className="mb-3 text-sm font-semibold text-foreground" id="features-heading">
           About this tool
         </h2>
-        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-1 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
           <li>
             <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and Ultra
             HDR / Ultra JPG (JPEG with gain maps).
@@ -445,7 +481,7 @@ function Index() {
             <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX
             (Blender).
           </li>
-          <li className="sm:col-span-2">
+          <li className="md:col-span-2">
             <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion and
             inspection:{' '}
             <a
