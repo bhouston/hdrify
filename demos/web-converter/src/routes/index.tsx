@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
-  type FloatImageData,
   encodeGainMap,
+  type FloatImageData,
   readExr,
   readHdr,
   type ToneMappingType,
@@ -10,13 +10,18 @@ import {
   writeJpegGainMap,
 } from 'hdrify';
 import { Download } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+/** Display mode: 'none' = Direct HDR (no tone mapping), or a real tone mapping type */
+type DisplayMode = ToneMappingType | 'none';
+
 import { FloatImageCanvas } from '@/components/FloatImageCanvas';
+import { FloatImageCanvasHDR } from '@/components/FloatImageCanvasHDR';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
 import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/')({
@@ -33,11 +38,21 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function Index() {
+  const hdrSupported = useHdrCanvasSupport();
   const [imageData, setImageData] = useState<FloatImageData | null>(null);
   const [exposure, setExposure] = useState(1.0);
-  const [toneMapping, setToneMapping] = useState<ToneMappingType>('neutral');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('neutral');
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevHdrSupportedRef = useRef(false);
+
+  // Default to Direct HDR when HDR support is first detected
+  useEffect(() => {
+    if (hdrSupported && !prevHdrSupportedRef.current) {
+      setDisplayMode('none');
+    }
+    prevHdrSupportedRef.current = hdrSupported;
+  }, [hdrSupported]);
 
   const handleFile = useCallback(async (file: File) => {
     try {
@@ -117,11 +132,12 @@ function Index() {
 
   const handleDownloadJpegR = useCallback(() => {
     if (!imageData) return;
-    const encoding = encodeGainMap(imageData, { toneMapping });
+    const toneMappingForEncode = displayMode === 'none' ? 'neutral' : displayMode;
+    const encoding = encodeGainMap(imageData, { toneMapping: toneMappingForEncode });
     const bytes = writeJpegGainMap(encoding, { quality: 90 });
     const blob = new Blob([bytes], { type: 'image/jpeg' });
     downloadBlob(blob, 'image.jpg');
-  }, [imageData, toneMapping]);
+  }, [imageData, displayMode]);
 
   const handleAreaClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -135,14 +151,15 @@ function Index() {
       <div className="flex min-h-0 flex-1 gap-4">
         {/* Left: vertical exposure slider (only when image loaded) */}
         {imageData && (
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex min-w-[10.5rem] flex-col items-center gap-3">
             <div className="flex w-full flex-col gap-2">
               <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
-              <Select onValueChange={(v) => setToneMapping(v as ToneMappingType)} value={toneMapping}>
+              <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
                 <SelectTrigger className="w-full" size="sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {hdrSupported && <SelectItem value="none">Direct HDR</SelectItem>}
                   <SelectItem value="aces">ACES</SelectItem>
                   <SelectItem value="reinhard">Reinhard</SelectItem>
                   <SelectItem value="neutral">Khronos Neutral</SelectItem>
@@ -186,12 +203,21 @@ function Index() {
           <input accept=".exr,.hdr" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
           {imageData ? (
             <div className="flex h-full w-full items-center justify-center p-4">
-              <FloatImageCanvas
-                className="max-h-full max-w-full rounded object-contain"
-                exposure={exposure}
-                imageData={imageData}
-                toneMapping={toneMapping}
-              />
+              {hdrSupported && displayMode === 'none' ? (
+                <FloatImageCanvasHDR
+                  className="max-h-full max-w-full rounded object-contain"
+                  exposure={exposure}
+                  imageData={imageData}
+                  toneMapping="neutral"
+                />
+              ) : (
+                <FloatImageCanvas
+                  className="max-h-full max-w-full rounded object-contain"
+                  exposure={exposure}
+                  imageData={imageData}
+                  toneMapping={displayMode === 'none' ? 'neutral' : displayMode}
+                />
+              )}
             </div>
           ) : (
             <div className="text-center text-muted-foreground">

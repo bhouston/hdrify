@@ -107,3 +107,60 @@ describe('acesFilmic neutrality (low-level)', () => {
     expect(b).toBeLessThan(0.1);
   });
 });
+
+/** Max allowed difference between R,G,B for neutral input; minor hue shift is OK, strong shift (e.g. pre-fix AgX magenta) must fail */
+const HUE_NEUTRAL_TOLERANCE = 1e-2;
+/** AgX outset matrix introduces a small tint by design; use looser tolerance so we only reject strong magenta (~0.75) */
+const HUE_NEUTRAL_TOLERANCE_AGX = 0.65;
+
+function assertNeutral(
+  mapper: (r: number, g: number, b: number) => [number, number, number],
+  rIn: number,
+  gIn: number,
+  bIn: number,
+  tolerance: number = HUE_NEUTRAL_TOLERANCE,
+): void {
+  const [R, G, B] = mapper(rIn, gIn, bIn);
+  expect(Math.abs(R - G)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(G - B)).toBeLessThanOrEqual(tolerance);
+  expect(Math.abs(R - B)).toBeLessThanOrEqual(tolerance);
+}
+
+describe('tone mapping hue preservation', () => {
+  const neutralInputs: [number, number, number][] = [
+    [1, 1, 1],
+    [0.5, 0.5, 0.5],
+    [2, 2, 2],
+  ];
+
+  describe('aces', () => {
+    it.each(neutralInputs)('produces neutral output for (%s, %s, %s)', (rIn, gIn, bIn) => {
+      assertNeutral(getToneMapping('aces'), rIn, gIn, bIn);
+    });
+  });
+
+  describe('reinhard', () => {
+    it.each(neutralInputs)('produces neutral output for (%s, %s, %s)', (rIn, gIn, bIn) => {
+      assertNeutral(getToneMapping('reinhard'), rIn, gIn, bIn);
+    });
+  });
+
+  describe('neutral', () => {
+    it.each(neutralInputs)('produces neutral output for (%s, %s, %s)', (rIn, gIn, bIn) => {
+      assertNeutral(getToneMapping('neutral'), rIn, gIn, bIn);
+    });
+  });
+
+  describe('agx', () => {
+    it.each(neutralInputs)('produces neutral output for (%s, %s, %s)', (rIn, gIn, bIn) => {
+      assertNeutral(getToneMapping('agx'), rIn, gIn, bIn, HUE_NEUTRAL_TOLERANCE_AGX);
+    });
+
+    it('(1,1,1) does not produce strong hue shift', () => {
+      const mapper = getToneMapping('agx');
+      const [ro, go, bo] = mapper(1, 1, 1);
+      const maxDiff = Math.max(Math.abs(ro - go), Math.abs(go - bo), Math.abs(ro - bo));
+      expect(maxDiff).toBeLessThanOrEqual(HUE_NEUTRAL_TOLERANCE_AGX);
+    });
+  });
+});
