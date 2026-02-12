@@ -1,5 +1,7 @@
 # HDFify
 
+<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="64" height="64">
+
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
 [![Tests][tests-badge]][tests-url]

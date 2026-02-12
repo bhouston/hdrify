@@ -3,7 +3,10 @@ import { Github, Package } from 'lucide-react';
 export default function Header() {
   return (
     <header className="flex items-center justify-between border-b border-border bg-card px-6 py-4 shadow-sm">
-      <h1 className="text-xl font-semibold text-foreground">HDRify</h1>
+      <div className="flex items-center gap-3">
+        <img src="/logo192.png" alt="HDRify logo" className="size-8 shrink-0" />
+        <h1 className="text-xl font-semibold text-foreground">HDRify</h1>
+      </div>
       <nav className="flex items-center gap-4">
         <a
           aria-label="GitHub repository"
