@@ -1,15 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { applyToneMapping, encodeGainMap, readExr, readHdr, writeExr, writeHdr, writeJpegGainMap } from 'hdrify';
+import {
+  type FloatImageData,
+  encodeGainMap,
+  readExr,
+  readHdr,
+  type ToneMappingType,
+  writeExr,
+  writeHdr,
+  writeJpegGainMap,
+} from 'hdrify';
 import { Download } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { FloatImageCanvas } from '@/components/FloatImageCanvas';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
-
-type ToneMappingType = 'aces' | 'reinhard' | 'neutral' | 'agx';
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -25,50 +33,11 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function Index() {
-  const [imageData, setImageData] = useState<{
-    width: number;
-    height: number;
-    data: Float32Array;
-  } | null>(null);
+  const [imageData, setImageData] = useState<FloatImageData | null>(null);
   const [exposure, setExposure] = useState(1.0);
-  const [toneMapping, setToneMapping] = useState<ToneMappingType>('reinhard');
+  const [toneMapping, setToneMapping] = useState<ToneMappingType>('neutral');
   const [isDragging, setIsDragging] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const renderToCanvas = useCallback(
-    (data: Float32Array, width: number, height: number, exp: number, tone: ToneMappingType) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const ldrRgb = applyToneMapping(data, width, height, {
-        toneMapping: tone,
-        exposure: exp,
-      });
-
-      const canvasImageData = ctx.createImageData(width, height);
-      const pixels = canvasImageData.data;
-      for (let i = 0; i < width * height; i++) {
-        pixels[i * 4] = ldrRgb[i * 3] ?? 0;
-        pixels[i * 4 + 1] = ldrRgb[i * 3 + 1] ?? 0;
-        pixels[i * 4 + 2] = ldrRgb[i * 3 + 2] ?? 0;
-        pixels[i * 4 + 3] = 255;
-      }
-
-      ctx.putImageData(canvasImageData, 0, 0);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (!imageData) return;
-    renderToCanvas(imageData.data, imageData.width, imageData.height, exposure, toneMapping);
-  }, [imageData, exposure, toneMapping, renderToCanvas]);
 
   const handleFile = useCallback(async (file: File) => {
     try {
@@ -76,7 +45,7 @@ function Index() {
       const buffer = new Uint8Array(arrayBuffer);
 
       const ext = file.name.toLowerCase().split('.').pop();
-      let parsed: { width: number; height: number; data: Float32Array };
+      let parsed: FloatImageData;
 
       if (ext === 'exr') {
         parsed = readExr(buffer);
@@ -217,7 +186,12 @@ function Index() {
           <input accept=".exr,.hdr" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
           {imageData ? (
             <div className="flex h-full w-full items-center justify-center p-4">
-              <canvas className="max-h-full max-w-full rounded object-contain" ref={canvasRef} />
+              <FloatImageCanvas
+                className="max-h-full max-w-full rounded object-contain"
+                exposure={exposure}
+                imageData={imageData}
+                toneMapping={toneMapping}
+              />
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
