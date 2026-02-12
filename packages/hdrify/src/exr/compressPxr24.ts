@@ -54,7 +54,7 @@ export function compressPxr24Block(
 
   const deltaBytes = new Uint8Array(deltaBuffer.length);
   for (let i = 0; i < deltaBuffer.length; i++) {
-    deltaBytes[i] = deltaBuffer[i]!;
+    deltaBytes[i] = deltaBuffer[i] ?? 0;
   }
 
   // Per-channel transposition (matches OpenEXR / external tools)

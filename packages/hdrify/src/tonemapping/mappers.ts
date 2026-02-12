@@ -20,9 +20,9 @@ function saturate3(r: number, g: number, b: number): [number, number, number] {
  */
 function acesFilmic(r: number, g: number, b: number): [number, number, number] {
   // Clamp negative and non-finite inputs - tonemappers assume non-negative HDR
-  r = r > 0 && Number.isFinite(r) ? r : 0;
-  g = g > 0 && Number.isFinite(g) ? g : 0;
-  b = b > 0 && Number.isFinite(b) ? b : 0;
+  const r0 = r > 0 && Number.isFinite(r) ? r : 0;
+  const g0 = g > 0 && Number.isFinite(g) ? g : 0;
+  const b0 = b > 0 && Number.isFinite(b) ? b : 0;
 
   // ACESInputMat (sRGB => AP1) - row-major, from Stephen Hill's BakingLab
   const m00 = 0.59719;
@@ -34,9 +34,9 @@ function acesFilmic(r: number, g: number, b: number): [number, number, number] {
   const m20 = 0.0284;
   const m21 = 0.13383;
   const m22 = 0.83777;
-  const r1 = m00 * r + m01 * g + m02 * b;
-  const g1 = m10 * r + m11 * g + m12 * b;
-  const b1 = m20 * r + m21 * g + m22 * b;
+  const r1 = m00 * r0 + m01 * g0 + m02 * b0;
+  const g1 = m10 * r0 + m11 * g0 + m12 * b0;
+  const b1 = m20 * r0 + m21 * g0 + m22 * b0;
 
   // RRTAndODTFit
   const RRTAndODTFit = (v: number) => {
@@ -82,38 +82,38 @@ function reinhard(r: number, g: number, b: number): [number, number, number] {
  * Preserves neutral greys and provides smooth shoulder compression.
  */
 function neutral(r: number, g: number, b: number): [number, number, number] {
-  r = r > 0 && Number.isFinite(r) ? r : 0;
-  g = g > 0 && Number.isFinite(g) ? g : 0;
-  b = b > 0 && Number.isFinite(b) ? b : 0;
+  let r0 = r > 0 && Number.isFinite(r) ? r : 0;
+  let g0 = g > 0 && Number.isFinite(g) ? g : 0;
+  let b0 = b > 0 && Number.isFinite(b) ? b : 0;
 
   const StartCompression = 0.8 - 0.04;
   const Desaturation = 0.15;
 
-  const x = Math.min(r, Math.min(g, b));
+  const x = Math.min(r0, Math.min(g0, b0));
   const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
 
-  r -= offset;
-  g -= offset;
-  b -= offset;
+  r0 -= offset;
+  g0 -= offset;
+  b0 -= offset;
 
-  const peak = Math.max(r, Math.max(g, b));
+  const peak = Math.max(r0, Math.max(g0, b0));
 
   if (peak < StartCompression) {
-    return saturate3(r, g, b);
+    return saturate3(r0, g0, b0);
   }
 
   const d = 1.0 - StartCompression;
   const newPeak = 1.0 - (d * d) / (peak + d - StartCompression);
 
-  r *= newPeak / peak;
-  g *= newPeak / peak;
-  b *= newPeak / peak;
+  r0 *= newPeak / peak;
+  g0 *= newPeak / peak;
+  b0 *= newPeak / peak;
 
   const gMix = 1.0 - 1.0 / (Desaturation * (peak - newPeak) + 1.0);
 
-  const rOut = r * (1 - gMix) + newPeak * gMix;
-  const gOut = g * (1 - gMix) + newPeak * gMix;
-  const bOut = b * (1 - gMix) + newPeak * gMix;
+  const rOut = r0 * (1 - gMix) + newPeak * gMix;
+  const gOut = g0 * (1 - gMix) + newPeak * gMix;
+  const bOut = b0 * (1 - gMix) + newPeak * gMix;
 
   return saturate3(rOut, gOut, bOut);
 }
@@ -132,9 +132,9 @@ function agxDefaultContrastApprox(x: number): number {
  * Inputs and outputs: Linear sRGB.
  */
 function agx(r: number, g: number, b: number): [number, number, number] {
-  r = r > 0 && Number.isFinite(r) ? r : 0;
-  g = g > 0 && Number.isFinite(g) ? g : 0;
-  b = b > 0 && Number.isFinite(b) ? b : 0;
+  const r0 = r > 0 && Number.isFinite(r) ? r : 0;
+  const g0 = g > 0 && Number.isFinite(g) ? g : 0;
+  const b0 = b > 0 && Number.isFinite(b) ? b : 0;
 
   // sRGB => linear Rec 2020 (row-major, from Three.js)
   const LINEAR_SRGB_TO_LINEAR_REC2020: Mat3 = [
@@ -174,7 +174,7 @@ function agx(r: number, g: number, b: number): [number, number, number] {
   const AgxMinEv = -12.47393;
   const AgxMaxEv = 4.026069;
 
-  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r, g, b]);
+  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r0, g0, b0]);
   [r1, g1, b1] = mvm(AgXInsetMatrix, [r1, g1, b1]);
 
   r1 = Math.max(r1, 1e-10);

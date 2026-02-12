@@ -98,7 +98,7 @@ describe('decompressPxr24', () => {
 
     const deltaBytes = new Uint8Array(deltaBuffer.length);
     for (let i = 0; i < deltaBuffer.length; i++) {
-      deltaBytes[i] = deltaBuffer[i]!;
+      deltaBytes[i] = deltaBuffer[i] ?? 0;
     }
 
     const raw = new Uint8Array(deltaBytes.length);

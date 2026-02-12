@@ -89,7 +89,7 @@ describe('compressPxr24Block', () => {
     planar[3] = 0;
     const compressed = compressPxr24Block(planar, width, lineCount, DEFAULT_CHANNELS);
     const raw = unzlibSync(compressed);
-    const totalSamples = raw.length / 2;
+    const _totalSamples = raw.length / 2;
     const untransposed = undoPxr24Transposition(raw, 2);
     expect(untransposed.length).toBe(planar.length);
   });

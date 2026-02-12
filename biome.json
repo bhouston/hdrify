@@ -1,5 +1,10 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.3.4/schema.json",
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
   "assist": {
     "actions": {
       "source": {
@@ -76,7 +81,35 @@
         "rules": {
           "performance": {
             "useTopLevelRegex": "warn"
+          },
+          "security": {
+            "noSecrets": "off"
           }
+        }
+      }
+    },
+    {
+      "includes": ["**/components/ui/slider.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noArrayIndexKey": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["**/routeTree.gen.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noExplicitAny": "off" },
+          "correctness": { "noUnusedImports": "off" }
+        }
+      }
+    },
+    {
+      "includes": ["scripts/**/*"],
+      "linter": {
+        "rules": {
+          "security": { "noSecrets": "off" }
         }
       }
     },

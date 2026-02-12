@@ -17,7 +17,7 @@ const RGBA_CHANNELS: ExrChannel[] = [
   { name: 'A', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
 ];
 
-const RGB_CHANNELS: ExrChannel[] = [
+const _RGB_CHANNELS: ExrChannel[] = [
   { name: 'R', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
   { name: 'G', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
   { name: 'B', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
@@ -122,7 +122,7 @@ describe('PXR24 per-channel vs whole-block transposition', () => {
 
     const deltaBytes = new Uint8Array(deltaBuffer.length);
     for (let i = 0; i < deltaBuffer.length; i++) {
-      deltaBytes[i] = deltaBuffer[i]!;
+      deltaBytes[i] = deltaBuffer[i] ?? 0;
     }
 
     // Per-channel transposition: transpose each channel's data separately

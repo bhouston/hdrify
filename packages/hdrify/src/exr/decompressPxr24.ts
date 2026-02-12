@@ -90,17 +90,20 @@ export function decompressPxr24(
 
       let diff: number;
       if (channel.pixelType === HALF) {
-        diff = raw[readOffset]! | (raw[readOffset + 1]! << 8);
+        diff = (raw[readOffset] ?? 0) | ((raw[readOffset + 1] ?? 0) << 8);
         accum = (accum + diff) & 0xffff;
         chView.setUint16(s * outBytesPerSample, accum, true);
       } else if (channel.pixelType === FLOAT) {
-        diff = raw[readOffset]! | (raw[readOffset + 1]! << 8) | (raw[readOffset + 2]! << 16);
+        diff = (raw[readOffset] ?? 0) | ((raw[readOffset + 1] ?? 0) << 8) | ((raw[readOffset + 2] ?? 0) << 16);
         accum = (accum + diff) & 0xffffff;
         const f32 = f24ToFloat32(accum & 0xff, (accum >> 8) & 0xff, (accum >> 16) & 0xff);
         chView.setFloat32(s * outBytesPerSample, f32, true);
       } else {
         diff =
-          raw[readOffset]! | (raw[readOffset + 1]! << 8) | (raw[readOffset + 2]! << 16) | (raw[readOffset + 3]! << 24);
+          (raw[readOffset] ?? 0) |
+          ((raw[readOffset + 1] ?? 0) << 8) |
+          ((raw[readOffset + 2] ?? 0) << 16) |
+          ((raw[readOffset + 3] ?? 0) << 24);
         accum = (accum + diff) >>> 0;
         chView.setUint32(s * outBytesPerSample, accum, true);
       }
@@ -115,12 +118,12 @@ export function decompressPxr24(
   let writeOffset = 0;
   for (let ly = 0; ly < blockHeight; ly++) {
     for (let c = 0; c < channels.length; c++) {
-      const { bytesPerSample: bs, values } = channelData[c]!;
+      const { bytesPerSample: bs, values } = channelData[c] ?? { bytesPerSample: 0, values: new Uint8Array(0) };
       const chLineStart = ly * width * bs;
       for (let x = 0; x < width; x++) {
         const srcOffset = chLineStart + x * bs;
         for (let b = 0; b < bs; b++) {
-          output[writeOffset++] = values[srcOffset + b]!;
+          output[writeOffset++] = values[srcOffset + b] ?? 0;
         }
       }
     }

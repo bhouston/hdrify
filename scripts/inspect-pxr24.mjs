@@ -5,16 +5,16 @@
  * Usage: pnpm build && node scripts/inspect-pxr24.mjs
  */
 import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unzlibSync } from 'fflate';
-import * as path from 'path';
 import { createHsvRainbowImage, writeExr } from '../packages/hdrify/dist/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');
 const assetsDir = path.join(workspaceRoot, 'assets');
 
-const ULONG_SIZE = 8;
+const _ULONG_SIZE = 8;
 const INT32_SIZE = 4;
 const PXR24_COMPRESSION = 5;
 
@@ -129,8 +129,8 @@ function analyzeStructure(raw, label) {
     sequentialHi.push(raw[i + 1]);
   }
 
-  const transposedLo = raw.subarray(0, half);
-  const transposedHi = raw.subarray(half, half * 2);
+  const _transposedLo = raw.subarray(0, half);
+  const _transposedHi = raw.subarray(half, half * 2);
 
   // Sample statistics
   const first16 = Array.from(raw.subarray(0, Math.min(32, n)));
@@ -201,7 +201,7 @@ async function main() {
       }
       return out;
     };
-    const externalAsSequential = asSequential(external.raw);
+    const _externalAsSequential = asSequential(external.raw);
     const matchHdrify = external.raw.length === hdrify.raw.length && external.raw.every((b, i) => b === hdrify.raw[i]);
     console.log(`External raw === Hdrify raw (byte-for-byte): ${matchHdrify}`);
 

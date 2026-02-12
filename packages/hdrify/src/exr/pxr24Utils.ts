@@ -58,7 +58,7 @@ export function transposePxr24Bytes(src: Uint8Array, bytesPerSample: number): Ui
   const out = new Uint8Array(src.length);
   for (let s = 0; s < totalSamples; s++) {
     for (let b = 0; b < bytesPerSample; b++) {
-      out[b * totalSamples + s] = src[s * bytesPerSample + b]!;
+      out[b * totalSamples + s] = src[s * bytesPerSample + b] ?? 0;
     }
   }
   return out;
@@ -72,7 +72,7 @@ export function undoPxr24Transposition(src: Uint8Array, bytesPerSample: number):
   const out = new Uint8Array(src.length);
   for (let s = 0; s < totalSamples; s++) {
     for (let b = 0; b < bytesPerSample; b++) {
-      out[s * bytesPerSample + b] = src[b * totalSamples + s]!;
+      out[s * bytesPerSample + b] = src[b * totalSamples + s] ?? 0;
     }
   }
   return out;

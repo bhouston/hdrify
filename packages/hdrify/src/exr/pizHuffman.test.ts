@@ -19,7 +19,7 @@ describe('hufCompress / hufUncompress', () => {
 
   it('throws on invalid im (out of HUF_ENCSIZE bounds)', () => {
     const validCompressed = hufCompress(new Uint16Array([1, 2, 3]));
-    const view = new DataView(validCompressed.buffer, validCompressed.byteOffset, validCompressed.byteLength);
+    const _view = new DataView(validCompressed.buffer, validCompressed.byteOffset, validCompressed.byteLength);
     const modified = new Uint8Array(validCompressed.length + 32);
     modified.set(validCompressed);
     const mView = new DataView(modified.buffer, modified.byteOffset, modified.byteLength);
@@ -31,7 +31,7 @@ describe('hufCompress / hufUncompress', () => {
 
   it('throws on invalid nBits (beyond available data)', () => {
     const validCompressed = hufCompress(new Uint16Array([1, 2, 3]));
-    const view = new DataView(validCompressed.buffer, validCompressed.byteOffset, validCompressed.byteLength);
+    const _view = new DataView(validCompressed.buffer, validCompressed.byteOffset, validCompressed.byteLength);
     const modified = new Uint8Array(validCompressed.length);
     modified.set(validCompressed);
     const mView = new DataView(modified.buffer, modified.byteOffset, modified.byteLength);
