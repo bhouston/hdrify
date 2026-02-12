@@ -12,10 +12,10 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-RUN pnpm fetch
-RUN pnpm install --frozen-lockfile --offline
+RUN pnpm install --frozen-lockfile
 
 COPY . .
+
 RUN pnpm build
 
 EXPOSE 8080
