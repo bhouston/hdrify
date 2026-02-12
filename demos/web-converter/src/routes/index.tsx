@@ -1,4 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { zodValidator } from '@tanstack/zod-adapter';
 import {
   encodeGainMap,
   type FloatImageData,
@@ -12,6 +13,7 @@ import {
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
 
 /** Display mode: 'none' = Direct HDR (no tone mapping), or a real tone mapping type */
 type DisplayMode = ToneMappingType | 'none';
@@ -24,9 +26,46 @@ import { Slider } from '@/components/ui/slider';
 import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
 import { cn } from '@/lib/utils';
 
+const indexSearchSchema = z.object({
+  image: z.string().min(1).optional(),
+});
+
+export type IndexSearch = z.infer<typeof indexSearchSchema>;
+
 export const Route = createFileRoute('/')({
   component: Index,
+  validateSearch: zodValidator(indexSearchSchema),
 });
+
+/** EXR compression type → display name (matches OpenEXR standard) */
+const EXR_COMPRESSION_NAMES: Record<number, string> = {
+  0: 'none',
+  1: 'RLE',
+  2: 'ZIPS',
+  3: 'ZIP',
+  4: 'PIZ',
+  5: 'PXR24',
+  6: 'B44',
+  7: 'B44A',
+};
+
+const EXAMPLE_FILES: { value: string; label: string }[] = [
+  { value: '/examples/blouberg_sunrise_2_1k.hdr', label: 'Blouberg Sunrise 1k (HDR)' },
+  { value: '/examples/moonless_golf_1k.hdr', label: 'Moonless Golf 1k (HDR)' },
+  { value: '/examples/pedestrian_overpass_1k.hdr', label: 'Pedestrian Overpass 1k (HDR)' },
+  { value: '/examples/rainbow.hdr', label: 'Rainbow (HDR)' },
+  { value: '/examples/example_b44.exr', label: 'Example B44 compression (EXR)' },
+  { value: '/examples/example_halfs.exr', label: 'Example half float (EXR)' },
+  { value: '/examples/example_nonRGB.exr', label: 'Example non-RGB (EXR)' },
+  { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
+  { value: '/examples/example_pxr24.exr', label: 'Example PXR24 (EXR)' },
+  { value: '/examples/example_pxr24-v2.exr', label: 'Example PXR24 v2 (EXR)' },
+  { value: '/examples/example_rle.exr', label: 'Example RLE compression (EXR)' },
+  { value: '/examples/example_tiles.exr', label: 'Example tiled (EXR)' },
+  { value: '/examples/example_wideColorSpace.exr', label: 'Example wide color space (EXR)' },
+  { value: '/examples/example_zip.exr', label: 'Example ZIP compression (EXR)' },
+  { value: '/examples/example_zips.exr', label: 'Example ZIPS compression (EXR)' },
+];
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -38,11 +77,16 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function Index() {
+  const navigate = useNavigate();
+  const { image: imageParam } = Route.useSearch();
   const hdrSupported = useHdrCanvasSupport();
   const [imageData, setImageData] = useState<FloatImageData | null>(null);
   const [exposure, setExposure] = useState(1.0);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('neutral');
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedExampleUrl, setSelectedExampleUrl] = useState<string>('');
+  const [loadingExample, setLoadingExample] = useState(false);
+  const [sourceFileName, setSourceFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevHdrSupportedRef = useRef(false);
 
@@ -54,29 +98,70 @@ function Index() {
     prevHdrSupportedRef.current = hdrSupported;
   }, [hdrSupported]);
 
-  const handleFile = useCallback(async (file: File) => {
+  const handleFile = useCallback(
+    async (file: File) => {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer);
+
+        const ext = file.name.toLowerCase().split('.').pop();
+        let parsed: FloatImageData;
+
+        if (ext === 'exr') {
+          parsed = readExr(buffer);
+        } else if (ext === 'hdr') {
+          parsed = readHdr(buffer);
+        } else {
+          toast.error('Unsupported file format. Please use .exr or .hdr files.');
+          return;
+        }
+
+        setImageData(parsed);
+        setSourceFileName(file.name);
+        setSelectedExampleUrl('');
+        void navigate({ to: '.', search: {} as IndexSearch });
+      } catch (error) {
+        console.error('Error parsing file:', error);
+        toast.error(`Error parsing file: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    },
+    [navigate],
+  );
+
+  const loadFromUrl = useCallback(async (url: string) => {
+    setLoadingExample(true);
     try {
-      const arrayBuffer = await file.arrayBuffer();
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.statusText);
+      const arrayBuffer = await res.arrayBuffer();
       const buffer = new Uint8Array(arrayBuffer);
-
-      const ext = file.name.toLowerCase().split('.').pop();
+      const ext = url.toLowerCase().split('.').pop() ?? '';
       let parsed: FloatImageData;
-
       if (ext === 'exr') {
         parsed = readExr(buffer);
       } else if (ext === 'hdr') {
         parsed = readHdr(buffer);
       } else {
-        toast.error('Unsupported file format. Please use .exr or .hdr files.');
+        toast.error('Unsupported format. Example must be .exr or .hdr.');
         return;
       }
-
       setImageData(parsed);
+      setSourceFileName(url.split('/').pop() ?? '');
+      setSelectedExampleUrl(url);
+      toast.success('Example loaded');
     } catch (error) {
-      console.error('Error parsing file:', error);
-      toast.error(`Error parsing file: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('Error loading example:', error);
+      toast.error(`Failed to load example: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoadingExample(false);
     }
   }, []);
+
+  // Load image from URL when ?image= is present (shared link or example selection)
+  useEffect(() => {
+    if (!imageParam) return;
+    void loadFromUrl(imageParam);
+  }, [imageParam, loadFromUrl]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -146,8 +231,28 @@ function Index() {
   return (
     <div className="flex flex-1 flex-col p-4">
       <p className="mb-4 text-sm text-muted-foreground">
-        HDRify implements HDR, EXR, and JPEG-R reading and writing in pure JavaScript—no native bindings.
+        This is a web demo of the {/** biome-ignore assist/source/useSortedAttributes: <explanation> */}
+               <a href="https://github.com/bhouston/hdrify" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>HDRify library</a>, which can read/write HDR, EXR, and JPEG-R and apply tone mapping transformations.
       </p>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">Examples</span>
+        <Select
+          disabled={loadingExample}
+          onValueChange={(value) => void navigate({ to: '/', search: { image: value } as IndexSearch })}
+          value={selectedExampleUrl}
+        >
+          <SelectTrigger className="w-[280px]" size="sm">
+            <SelectValue placeholder="Load an example…" />
+          </SelectTrigger>
+          <SelectContent>
+            {EXAMPLE_FILES.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div className="flex min-h-0 flex-1 gap-4">
         {/* Left: vertical exposure slider (only when image loaded) */}
         {imageData && (
@@ -202,22 +307,27 @@ function Index() {
         >
           <input accept=".exr,.hdr" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
           {imageData ? (
-            <div className="flex h-full w-full items-center justify-center p-4">
-              {hdrSupported && displayMode === 'none' ? (
-                <FloatImageCanvasHDR
-                  className="max-h-full max-w-full rounded object-contain"
-                  exposure={exposure}
-                  imageData={imageData}
-                  toneMapping="neutral"
-                />
-              ) : (
-                <FloatImageCanvas
-                  className="max-h-full max-w-full rounded object-contain"
-                  exposure={exposure}
-                  imageData={imageData}
-                  toneMapping={displayMode === 'none' ? 'neutral' : displayMode}
-                />
-              )}
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
+              <div className="flex min-h-0 flex-1 items-center justify-center">
+                {hdrSupported && displayMode === 'none' ? (
+                  <FloatImageCanvasHDR
+                    className="max-h-full max-w-full rounded object-contain"
+                    exposure={exposure}
+                    imageData={imageData}
+                    toneMapping="neutral"
+                  />
+                ) : (
+                  <FloatImageCanvas
+                    className="max-h-full max-w-full rounded object-contain"
+                    exposure={exposure}
+                    imageData={imageData}
+                    toneMapping={displayMode === 'none' ? 'neutral' : displayMode}
+                  />
+                )}
+              </div>
+              <p className="shrink-0 text-center text-xs text-muted-foreground">
+                Drag another file here or click to load a different image
+              </p>
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
@@ -267,6 +377,36 @@ function Index() {
               <Download className="size-4" />
               UltraHDR JPEG
             </Button>
+            <div className="mt-4 flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Info</span>
+              <dl className="flex flex-col gap-1 text-xs text-muted-foreground">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-foreground">Width</dt>
+                  <dd>{imageData.width}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-foreground">Height</dt>
+                  <dd>{imageData.height}</dd>
+                </div>
+                {imageData.metadata?.compression != null && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-foreground">Compression</dt>
+                    <dd>
+                      {EXR_COMPRESSION_NAMES[imageData.metadata.compression as number] ??
+                        `unknown (${imageData.metadata.compression})`}
+                    </dd>
+                  </div>
+                )}
+                {sourceFileName && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-foreground">File name</dt>
+                    <dd className="truncate" title={sourceFileName}>
+                      {sourceFileName}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
           </div>
         )}
       </div>
