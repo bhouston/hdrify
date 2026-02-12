@@ -27,7 +27,7 @@ jobs:
         run: gcloud auth configure-docker ${{ vars.GAR_HOSTNAME }}
 
       - name: Set image path
-        run: echo "IMAGE_PATH=${{ vars.GAR_HOSTNAME }}/${{ vars.PROJECT_ID }}/general/hdrify:${{ github.sha }}" >> $GITHUB_ENV
+        run: echo "IMAGE_PATH=${{ vars.GAR_HOSTNAME }}/${{ vars.PROJECT_ID }}/shared-docker-registry/hdrify:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Build and Push Container
         uses: docker/build-push-action@v6
