@@ -27,7 +27,7 @@ import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
 import { cn } from '@/lib/utils';
 
 const indexSearchSchema = z.object({
-  image: z.string().min(1).optional(),
+  image: z.string().min(1).default('/examples/blouberg_sunrise_2_1k.hdr'),
 });
 
 export type IndexSearch = z.infer<typeof indexSearchSchema>;
