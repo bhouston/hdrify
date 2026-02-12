@@ -5,9 +5,9 @@
  * Usage: pnpm build && node scripts/inspect-pxr24.mjs
  */
 import * as fs from 'node:fs';
-import * as path from 'path';
 import { fileURLToPath } from 'node:url';
 import { unzlibSync } from 'fflate';
+import * as path from 'path';
 import { createHsvRainbowImage, writeExr } from '../packages/hdrify/dist/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,7 @@ function parseExrHeaderSimple(buffer) {
   const dv = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   let offset = 8; // skip magic + version
   let dataWindow = null;
-  let channels = [];
+  const channels = [];
   let compression = null;
 
   while (offset < buffer.length) {
@@ -141,7 +141,9 @@ function analyzeStructure(raw, label) {
   console.log(`First 32 bytes (hex): ${Buffer.from(raw.subarray(0, 32)).toString('hex')}`);
   console.log(`First 32 bytes: [${first16.join(', ')}]`);
   if (n > 64) {
-    console.log(`Bytes at mid-32 (transposed would be start of hi): ${Array.from(raw.subarray(half, half + 32)).join(', ')}`);
+    console.log(
+      `Bytes at mid-32 (transposed would be start of hi): ${Array.from(raw.subarray(half, half + 32)).join(', ')}`,
+    );
   }
   console.log(`Last 32 bytes: [${last16.join(', ')}]`);
 
@@ -167,7 +169,9 @@ async function main() {
   const external = extractFirstPxr24Block(externalBuf);
   console.log('External example_pxr24.exr first block:');
   console.log(`  width=${external.width}, lines=${external.linesInBlock}, channels=${external.numChannels}`);
-  console.log(`  totalSamples=${external.totalSamples}, expectedBytes=${external.expectedBytes}, raw.length=${external.raw.length}`);
+  console.log(
+    `  totalSamples=${external.totalSamples}, expectedBytes=${external.expectedBytes}, raw.length=${external.raw.length}`,
+  );
 
   // Create hdrify PXR24 with same dimensions for first block (16 lines)
   const hdrifyImage = createHsvRainbowImage({ width: external.width, height: 16, value: 1, intensity: 1 });
@@ -175,7 +179,9 @@ async function main() {
   const hdrify = extractFirstPxr24Block(new Uint8Array(hdrifyBuf));
   console.log('\nHdrify-generated PXR24 first block:');
   console.log(`  width=${hdrify.width}, lines=${hdrify.linesInBlock}, channels=${hdrify.numChannels}`);
-  console.log(`  totalSamples=${hdrify.totalSamples}, expectedBytes=${hdrify.expectedBytes}, raw.length=${hdrify.raw.length}`);
+  console.log(
+    `  totalSamples=${hdrify.totalSamples}, expectedBytes=${hdrify.expectedBytes}, raw.length=${hdrify.raw.length}`,
+  );
 
   analyzeStructure(external.raw, 'External (example_pxr24.exr)');
   analyzeStructure(hdrify.raw, 'Hdrify-generated');
@@ -196,15 +202,13 @@ async function main() {
       return out;
     };
     const externalAsSequential = asSequential(external.raw);
-    const matchHdrify = external.raw.length === hdrify.raw.length &&
-      external.raw.every((b, i) => b === hdrify.raw[i]);
+    const matchHdrify = external.raw.length === hdrify.raw.length && external.raw.every((b, i) => b === hdrify.raw[i]);
     console.log(`External raw === Hdrify raw (byte-for-byte): ${matchHdrify}`);
 
     // Try interpreting external as transposed
     const externalUntransposed = asSequential(external.raw);
     const matchHdrifyAfterUntranspose =
-      externalUntransposed.length === hdrify.raw.length &&
-      externalUntransposed.every((b, i) => b === hdrify.raw[i]);
+      externalUntransposed.length === hdrify.raw.length && externalUntransposed.every((b, i) => b === hdrify.raw[i]);
     console.log(`External (undo transposition) === Hdrify raw: ${matchHdrifyAfterUntranspose}`);
   }
 }

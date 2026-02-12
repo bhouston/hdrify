@@ -50,9 +50,9 @@ export const command = defineCommand({
         demandOption: true,
       })
       .option('tonemapping', {
-        describe: 'Tone mapping for SDR output (aces or reinhard)',
+        describe: 'Tone mapping for SDR output (aces, reinhard, neutral, agx)',
         type: 'string',
-        choices: ['aces', 'reinhard'],
+        choices: ['aces', 'reinhard', 'neutral', 'agx'],
         default: 'reinhard' as const,
       })
       .option('gamma', {
@@ -128,13 +128,13 @@ export const command = defineCommand({
         fs.writeFileSync(output, outputBuffer);
       } else {
         // SDR output: tone mapping + format-specific encoding
-        const gammaVal = gamma ?? (tonemapping === 'aces' ? 1 : 2.2);
+        const gammaVal = gamma ?? (tonemapping === 'reinhard' ? 2.2 : 1);
 
         if (outputExt === '.jpg' || outputExt === '.jpeg') {
           // JPEG: encodeGainMap + writeJpegGainMap (JPEG-R / Ultra HDR)
           const gammaTriple = [gammaVal, gammaVal, gammaVal] as [number, number, number];
           const encodingResult = encodeGainMap(imageData, {
-            toneMapping: tonemapping as 'aces' | 'reinhard',
+            toneMapping: tonemapping as 'aces' | 'reinhard' | 'neutral' | 'agx',
             exposure,
             gamma: gammaTriple,
           });
@@ -143,7 +143,7 @@ export const command = defineCommand({
         } else {
           // PNG / WebP: applyToneMapping + sharp
           const ldrRgb = applyToneMapping(imageData.data, imageData.width, imageData.height, {
-            toneMapping: tonemapping as 'aces' | 'reinhard',
+            toneMapping: tonemapping as 'aces' | 'reinhard' | 'neutral' | 'agx',
             exposure,
             gamma: gammaVal,
             metadata: imageData.metadata,

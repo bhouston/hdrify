@@ -46,6 +46,30 @@ describe('getToneMapping', () => {
     const [r] = mapper(10, 0, 0);
     expect(r).toBeCloseTo(10 / 11);
   });
+
+  it('should return neutral mapper for neutral type', () => {
+    const mapper = getToneMapping('neutral');
+    expect(typeof mapper).toBe('function');
+    const [r, g, b] = mapper(1, 1, 1);
+    expect(r).toBeGreaterThanOrEqual(0);
+    expect(r).toBeLessThanOrEqual(1);
+    expect(g).toBeGreaterThanOrEqual(0);
+    expect(g).toBeLessThanOrEqual(1);
+    expect(b).toBeGreaterThanOrEqual(0);
+    expect(b).toBeLessThanOrEqual(1);
+  });
+
+  it('should return agx mapper for agx type', () => {
+    const mapper = getToneMapping('agx');
+    expect(typeof mapper).toBe('function');
+    const [r, g, b] = mapper(1, 1, 1);
+    expect(r).toBeGreaterThanOrEqual(0);
+    expect(r).toBeLessThanOrEqual(1);
+    expect(g).toBeGreaterThanOrEqual(0);
+    expect(g).toBeLessThanOrEqual(1);
+    expect(b).toBeGreaterThanOrEqual(0);
+    expect(b).toBeLessThanOrEqual(1);
+  });
 });
 
 describe('acesFilmic neutrality (low-level)', () => {

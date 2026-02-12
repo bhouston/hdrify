@@ -77,6 +77,129 @@ function reinhard(r: number, g: number, b: number): [number, number, number] {
   return saturate3(sr / (1 + sr), sg / (1 + sg), sb / (1 + sb));
 }
 
+/**
+ * Khronos Neutral tone mapping - https://modelviewer.dev/examples/tone-mapping
+ * Preserves neutral greys and provides smooth shoulder compression.
+ */
+function neutral(r: number, g: number, b: number): [number, number, number] {
+  r = r > 0 && Number.isFinite(r) ? r : 0;
+  g = g > 0 && Number.isFinite(g) ? g : 0;
+  b = b > 0 && Number.isFinite(b) ? b : 0;
+
+  const StartCompression = 0.8 - 0.04;
+  const Desaturation = 0.15;
+
+  const x = Math.min(r, Math.min(g, b));
+  const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+
+  r -= offset;
+  g -= offset;
+  b -= offset;
+
+  const peak = Math.max(r, Math.max(g, b));
+
+  if (peak < StartCompression) {
+    return saturate3(r, g, b);
+  }
+
+  const d = 1.0 - StartCompression;
+  const newPeak = 1.0 - (d * d) / (peak + d - StartCompression);
+
+  r *= newPeak / peak;
+  g *= newPeak / peak;
+  b *= newPeak / peak;
+
+  const gMix = 1.0 - 1.0 / (Desaturation * (peak - newPeak) + 1.0);
+
+  const rOut = r * (1 - gMix) + newPeak * gMix;
+  const gOut = g * (1 - gMix) + newPeak * gMix;
+  const bOut = b * (1 - gMix) + newPeak * gMix;
+
+  return saturate3(rOut, gOut, bOut);
+}
+
+/** AgX default contrast sigmoid approximation - https://iolite-engine.com/blog_posts/minimal_agx_implementation */
+function agxDefaultContrastApprox(x: number): number {
+  const x2 = x * x;
+  const x4 = x2 * x2;
+  return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
+}
+
+/**
+ * AgX tone mapping from Blender via Filament.
+ * Uses rec 2020 primaries, log2 encoding, and sigmoid contrast.
+ * https://github.com/google/filament/pull/7236
+ * Inputs and outputs: Linear sRGB.
+ */
+function agx(r: number, g: number, b: number): [number, number, number] {
+  r = r > 0 && Number.isFinite(r) ? r : 0;
+  g = g > 0 && Number.isFinite(g) ? g : 0;
+  b = b > 0 && Number.isFinite(b) ? b : 0;
+
+  // sRGB => linear Rec 2020 (row-major, from Three.js)
+  const LINEAR_SRGB_TO_LINEAR_REC2020: Mat3 = [
+    [0.6274, 0.3293, 0.0433],
+    [0.0691, 0.9195, 0.0113],
+    [0.0164, 0.088, 0.8956],
+  ];
+
+  type Mat3 = [[number, number, number], [number, number, number], [number, number, number]];
+  const mvm = (m: Mat3, v: [number, number, number]): [number, number, number] => [
+    m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+    m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+    m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
+  ];
+
+  // AgX inset matrix (row-major)
+  const AgXInsetMatrix: Mat3 = [
+    [0.856627153315983, 0.137318972929847, 0.11189821299995],
+    [0.0951212405381588, 0.761241990602591, 0.0767994186031903],
+    [0.0482516061458583, 0.101439036467562, 0.811302368396859],
+  ];
+
+  // AgX outset matrix (row-major)
+  const AgXOutsetMatrix: Mat3 = [
+    [1.1271005818144368, -0.1413297634984383, -0.14132976349843826],
+    [-0.11060664309660323, 1.157823702216272, -0.11060664309660294],
+    [-0.016493938717834573, -0.016493938717834257, 1.2519364065950405],
+  ];
+
+  // Rec 2020 => sRGB (row-major)
+  const LINEAR_REC2020_TO_LINEAR_SRGB: Mat3 = [
+    [1.6605, -0.1246, -0.0182],
+    [-0.5876, 1.1329, -0.1006],
+    [-0.0728, -0.0083, 1.1187],
+  ];
+
+  const AgxMinEv = -12.47393;
+  const AgxMaxEv = 4.026069;
+
+  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r, g, b]);
+  [r1, g1, b1] = mvm(AgXInsetMatrix, [r1, g1, b1]);
+
+  r1 = Math.max(r1, 1e-10);
+  g1 = Math.max(g1, 1e-10);
+  b1 = Math.max(b1, 1e-10);
+
+  r1 = Math.max(0, Math.min(1, (Math.log2(r1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
+  g1 = Math.max(0, Math.min(1, (Math.log2(g1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
+  b1 = Math.max(0, Math.min(1, (Math.log2(b1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
+
+  r1 = agxDefaultContrastApprox(r1);
+  g1 = agxDefaultContrastApprox(g1);
+  b1 = agxDefaultContrastApprox(b1);
+
+  [r1, g1, b1] = mvm(AgXOutsetMatrix, [r1, g1, b1]);
+
+  r1 = Math.max(0, r1) ** 2.2;
+  g1 = Math.max(0, g1) ** 2.2;
+  b1 = Math.max(0, b1) ** 2.2;
+
+  [r1, g1, b1] = mvm(LINEAR_REC2020_TO_LINEAR_SRGB, [r1, g1, b1]);
+
+  return saturate3(r1, g1, b1);
+}
+
 export function getToneMapping(type: ToneMappingType): ToneMappingFn {
   // biome-ignore lint/nursery/noUnnecessaryConditions: exhaustive switch over union type
   switch (type) {
@@ -84,6 +207,10 @@ export function getToneMapping(type: ToneMappingType): ToneMappingFn {
       return acesFilmic;
     case 'reinhard':
       return reinhard;
+    case 'neutral':
+      return neutral;
+    case 'agx':
+      return agx;
     default:
       return acesFilmic;
   }

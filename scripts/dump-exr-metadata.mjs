@@ -4,8 +4,8 @@
  * Usage: node scripts/dump-exr-metadata.mjs [path_to.exr]
  */
 import * as fs from 'node:fs';
-import * as path from 'path';
 import { fileURLToPath } from 'node:url';
+import * as path from 'path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');

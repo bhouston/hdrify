@@ -1,4 +1,4 @@
-export type ToneMappingType = 'aces' | 'reinhard';
+export type ToneMappingType = 'aces' | 'reinhard' | 'neutral' | 'agx';
 
 export type ToneMappingFn = (r: number, g: number, b: number) => [number, number, number];
 

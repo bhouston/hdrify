@@ -8,7 +8,7 @@ import { validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.
  * Input: Float32Array RGBA. Output: Uint8Array RGB.
  * Pipeline: exposure → tone mapping → gamma (default per mapper) → 0-255
  *
- * - ACES: outputs sRGB 0-1, default gamma: 1 (no-op)
+ * - ACES, Neutral, AgX: output sRGB 0-1, default gamma: 1 (no-op)
  * - Reinhard: outputs linear 0-1, default gamma: 2.2 for display
  */
 export function applyToneMapping(
@@ -23,7 +23,8 @@ export function applyToneMapping(
 
   const toneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
-  const gamma = options.gamma ?? (toneMappingType === 'aces' ? 1 : 2.2);
+  // ACES, Neutral, AgX output sRGB 0-1; Reinhard outputs linear 0-1
+  const gamma = options.gamma ?? (toneMappingType === 'reinhard' ? 2.2 : 1);
 
   const mapper = getToneMapping(toneMappingType);
   const totalPixels = width * height;

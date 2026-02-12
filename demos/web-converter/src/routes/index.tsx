@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 
-type ToneMappingType = 'aces' | 'reinhard';
+type ToneMappingType = 'aces' | 'reinhard' | 'neutral' | 'agx';
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -176,6 +176,8 @@ function Index() {
                 <SelectContent>
                   <SelectItem value="aces">ACES</SelectItem>
                   <SelectItem value="reinhard">Reinhard</SelectItem>
+                  <SelectItem value="neutral">Khronos Neutral</SelectItem>
+                  <SelectItem value="agx">AgX (Blender)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -143,12 +143,7 @@ describe('exrReader', () => {
       // Sanity: pixels should be finite and in reasonable HDR range (not stripes/NaN/Inf)
       const { width, height, data } = result;
       const maxReasonable = 1e6;
-      const samples = [
-        0,
-        width * 4,
-        (width * (height >> 1) + (width >> 1)) * 4,
-        (width * height - 1) * 4,
-      ];
+      const samples = [0, width * 4, (width * (height >> 1) + (width >> 1)) * 4, (width * height - 1) * 4];
       let finiteCount = 0;
       for (const i of samples) {
         if (i >= data.length) continue;

@@ -61,7 +61,7 @@ describe('applyToneMapping', () => {
     expect(result[2]).toBe(0);
   });
 
-  it('should use default gamma 1 for aces and 2.2 for reinhard', () => {
+  it('should use default gamma 1 for aces, neutral, agx and 2.2 for reinhard', () => {
     const hdrData = new Float32Array([0.5, 0.5, 0.5, 1]);
     const acesDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'aces' });
     const acesExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
@@ -76,5 +76,19 @@ describe('applyToneMapping', () => {
       gamma: 2.2,
     });
     expect(reinhardDefault).toEqual(reinhardExplicitGamma22);
+
+    const neutralDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'neutral' });
+    const neutralExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
+      toneMapping: 'neutral',
+      gamma: 1,
+    });
+    expect(neutralDefault).toEqual(neutralExplicitGamma1);
+
+    const agxDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'agx' });
+    const agxExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
+      toneMapping: 'agx',
+      gamma: 1,
+    });
+    expect(agxDefault).toEqual(agxExplicitGamma1);
   });
 });

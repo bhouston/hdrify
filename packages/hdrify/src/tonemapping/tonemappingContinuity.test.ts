@@ -53,6 +53,30 @@ describe('tonemapping continuity', () => {
       }
     }
   });
+
+  it('preserves continuity for horizontal gradient 0→1 with Neutral', () => {
+    const img = createGradientImage({ width: 256, height: 1, mode: 'horizontal', min: 0, max: 1 });
+    const result = applyToneMapping(img.data, img.width, img.height, { toneMapping: 'neutral' });
+
+    for (let i = 0; i < 255; i++) {
+      for (let c = 0; c < 3; c++) {
+        const diff = Math.abs((result[i * 3 + c] ?? 0) - (result[(i + 1) * 3 + c] ?? 0));
+        expect(diff).toBeLessThanOrEqual(CONTINUITY_TOLERANCE);
+      }
+    }
+  });
+
+  it('preserves continuity for horizontal gradient 0→1 with AgX', () => {
+    const img = createGradientImage({ width: 256, height: 1, mode: 'horizontal', min: 0, max: 1 });
+    const result = applyToneMapping(img.data, img.width, img.height, { toneMapping: 'agx' });
+
+    for (let i = 0; i < 255; i++) {
+      for (let c = 0; c < 3; c++) {
+        const diff = Math.abs((result[i * 3 + c] ?? 0) - (result[(i + 1) * 3 + c] ?? 0));
+        expect(diff).toBeLessThanOrEqual(CONTINUITY_TOLERANCE);
+      }
+    }
+  });
 });
 
 describe('ACES pure white neutrality', () => {

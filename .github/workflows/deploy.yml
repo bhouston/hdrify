@@ -1,0 +1,47 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy hdrify to Cloud Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          skip_install: true
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ vars.GAR_HOSTNAME }}
+
+      - name: Set image path
+        run: echo "IMAGE_PATH=${{ vars.GAR_HOSTNAME }}/${{ vars.PROJECT_ID }}/general/hdrify:${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Build and Push Container
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: demos/web-converter/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PATH }}
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: hdrify
+          region: ${{ vars.REGION }}
+          image: ${{ env.IMAGE_PATH }}
+          flags: '--allow-unauthenticated'
