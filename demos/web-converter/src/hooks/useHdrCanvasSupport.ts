@@ -9,13 +9,16 @@ export function useHdrCanvasSupport(): boolean {
 
   useEffect(() => {
     function detect(): boolean {
-      if (typeof Float16Array === 'undefined') return false;
+      const isFloat16 = typeof Float16Array !== 'undefined';
+      console.log('isFloat16', isFloat16);
+      if (!isFloat16) return false;
 
       try {
         const canvas = document.createElement('canvas');
         canvas.width = 1;
         canvas.height = 1;
         const ctx = canvas.getContext('2d', { colorSpace: 'display-p3' });
+        console.log('isDisplayP3', true);
         if (!ctx) return false;
 
         const f16 = new Float16Array(4);
@@ -24,6 +27,7 @@ export function useHdrCanvasSupport(): boolean {
           colorSpace: 'display-p3',
         });
         ctx.putImageData(imageData, 0, 0);
+        console.log('isDisplayP3 with Float16', true);
         return true;
       } catch {
         return false;
