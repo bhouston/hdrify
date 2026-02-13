@@ -193,6 +193,14 @@ MIT
 
 Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
 
+## Acknowledgements
+
+This project would not have been possible without these two projects which were used a reference:
+
+* [Three.js](https://github.com/mrdoob/three.js) - tone mapping, UltraHDR loader, EXR loader, example images.
+* [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - UltraHDR loading, saving, example images.
+* [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) - EXR encoding/decoding for all the various compression formats, example images.
+
 [npm]: https://img.shields.io/npm/v/hdrify
 [npm-url]: https://www.npmjs.com/package/hdrify
 [npm-downloads]: https://img.shields.io/npm/dw/hdrify
