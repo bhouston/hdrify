@@ -21,13 +21,14 @@ export function applyToneMapping(
   const sourceColorSpace = options.sourceColorSpace ?? 'linear-rec709';
   let dataToUse = hdrData;
 
+  ensureNonNegativeFinite(dataToUse);
+
   if (sourceColorSpace !== 'linear-rec709') {
-    dataToUse = convertFloat32ToLinearColorSpace(hdrData, width, height, sourceColorSpace, 'linear-rec709');
+    dataToUse = convertFloat32ToLinearColorSpace(dataToUse, width, height, sourceColorSpace, 'linear-rec709');
   } else if (options.metadata) {
     validateToneMappingColorSpaceFromMetadata(options.metadata);
   }
 
-  ensureNonNegativeFinite(dataToUse);
 
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
@@ -39,11 +40,11 @@ export function applyToneMapping(
     const dataIndex = pixelIndex * 4;
     if (dataIndex + 2 >= dataToUse.length) break;
 
-    const rValue = dataToUse[dataIndex];
-    const gValue = dataToUse[dataIndex + 1];
-    const bValue = dataToUse[dataIndex + 2];
-
-    if (rValue === undefined || gValue === undefined || bValue === undefined) continue;
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by dataToUse.length loop
+    const rValue = dataToUse[dataIndex]!;
+    const gValue = dataToUse[dataIndex + 1]!;
+    const bValue = dataToUse[dataIndex + 2]!;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by dataToUse.length loop
 
     let r = rValue * exposure;
     let g = gValue * exposure;
@@ -52,17 +53,14 @@ export function applyToneMapping(
     [r, g, b] = mapper(r, g, b);
 
     // All mappers output linear; apply sRGB transfer for display
-    r = Number.isFinite(r) ? linearTosRGB(r) : 0;
-    g = Number.isFinite(g) ? linearTosRGB(g) : 0;
-    b = Number.isFinite(b) ? linearTosRGB(b) : 0;
+    r = linearTosRGB(r);
+    g = linearTosRGB(g);
+    b = linearTosRGB(b);
 
     const outputIndex = pixelIndex * 3;
-    const rOut = Number.isFinite(r) ? Math.round(r * 255) : 0;
-    const gOut = Number.isFinite(g) ? Math.round(g * 255) : 0;
-    const bOut = Number.isFinite(b) ? Math.round(b * 255) : 0;
-    ldrData[outputIndex] = Math.max(0, Math.min(255, rOut));
-    ldrData[outputIndex + 1] = Math.max(0, Math.min(255, gOut));
-    ldrData[outputIndex + 2] = Math.max(0, Math.min(255, bOut));
+    ldrData[outputIndex] = Math.max(0, Math.min(255, r * 255 + 0.5));
+    ldrData[outputIndex + 1] = Math.max(0, Math.min(255, g * 255 + 0.5));
+    ldrData[outputIndex + 2] = Math.max(0, Math.min(255, b * 255 + 0.5));
   }
 
   return ldrData;
