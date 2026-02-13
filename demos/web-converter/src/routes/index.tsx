@@ -270,7 +270,7 @@ function Index() {
         >
           HDRify library
         </a>
-        , which can read/write HDR, EXR, Adobe Gain Map JPEG, and UltraHDR JPEG and apply tone mapping transformations.
+        , which can read/write <a href="https://en.wikipedia.org/wiki/RGBE_image_format" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>HDR</a>, <a href="https://en.wikipedia.org/wiki/OpenEXR" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>EXR</a>, and <a href="https://en.wikipedia.org/wiki/Ultra_HDR" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline' }}>UltraHDR JPEG</a>, and apply tone mapping transformations.
       </p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">Examples</span>
