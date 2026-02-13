@@ -138,9 +138,7 @@ export const command = defineCommand({
     const ext = path.extname(file).toLowerCase();
 
     if (ext !== '.exr' && ext !== '.hdr' && ext !== '.jpg' && ext !== '.jpeg') {
-      console.error(
-        `Error: Unsupported file format: ${ext}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`,
-      );
+      console.error(`Error: Unsupported file format: ${ext}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`);
       process.exit(1);
     }
 

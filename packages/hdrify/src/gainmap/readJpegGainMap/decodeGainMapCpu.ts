@@ -1,7 +1,9 @@
 /**
  * CPU decode: apply gain map to SDR to produce HDR Float32 RGBA.
  * Matches UltraHDR/gainmap-js formula: logRecovery, logBoost, weightFactor, offsets.
- * SDR base is sRGB in the file; we linearize (bytes→float then sRGB→linear) before applying gain.
+ *
+ * Adobe/Ultra HDR spec: SDR base image is sRGB (display-ready for standard viewers).
+ * We linearize before applying gain; the gain formula uses linear light.
  */
 
 import { sRGBToLinear } from '../../color/srgb.js';
@@ -31,12 +33,10 @@ export function decodeGainMapCpu(
   metadata: GainMapMetadata,
   options: DecodeGainMapOptions = {},
 ): FloatImageData {
-  const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } =
-    metadata;
+  const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
-  const unclampedWeight =
-    (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
+  const unclampedWeight = (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
   const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
 
   const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]] as [number, number, number];
@@ -51,16 +51,10 @@ export function decodeGainMapCpu(
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
 
-    // Float SDR from our encoder is linear 0-1; 8-bit SDR from file is sRGB, linearize
-    const sdrR = sdrIsFloat
-      ? (sdr[i4] ?? 0)
-      : sRGBToLinear((sdr[i4] ?? 0) / 255);
-    const sdrG = sdrIsFloat
-      ? (sdr[i4 + 1] ?? 0)
-      : sRGBToLinear((sdr[i4 + 1] ?? 0) / 255);
-    const sdrB = sdrIsFloat
-      ? (sdr[i4 + 2] ?? 0)
-      : sRGBToLinear((sdr[i4 + 2] ?? 0) / 255);
+    // Spec: SDR base is sRGB. Linearize to get SDR_linear for the gain formula.
+    const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4] ?? 0) : sRGBToLinear((sdr[i4] ?? 0) / 255);
+    const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1] ?? 0) : sRGBToLinear((sdr[i4 + 1] ?? 0) / 255);
+    const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2] ?? 0) : sRGBToLinear((sdr[i4 + 2] ?? 0) / 255);
 
     const gainR = gainMapIsFloat ? (gainMap[i4] ?? 0) : (gainMap[i4] ?? 0) / 255;
     const gainG = gainMapIsFloat ? (gainMap[i4 + 1] ?? 0) : (gainMap[i4 + 1] ?? 0) / 255;
@@ -75,12 +69,9 @@ export function decodeGainMapCpu(
     const logBoostB = gainMapMin[2] * (1 - logRecoveryB) + gainMapMax[2] * logRecoveryB;
 
     const w = weightFactor;
-    const hdrR =
-      (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
-    const hdrG =
-      (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
-    const hdrB =
-      (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
+    const hdrR = (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
+    const hdrG = (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
+    const hdrB = (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
 
     out[i4] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrR));
     out[i4 + 1] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrG));
@@ -97,7 +88,7 @@ export function decodeGainMapCpu(
 
 /**
  * Decode from float SDR and float gain map (no quantization). For testing and incremental pipeline.
- * Same formula as decodeGainMapCpu; inputs are already in [0,1] (sdrFloat = sRGB 0-1, gainMapFloat = post-gamma 0-1).
+ * Same formula as decodeGainMapCpu. sdrFloat is sRGB [0,1] per spec (matches stored base image).
  */
 export function decodeGainMapFromFloat(
   sdrFloat: Float32Array,
@@ -107,12 +98,10 @@ export function decodeGainMapFromFloat(
   metadata: GainMapMetadata,
   options: DecodeGainMapOptions = {},
 ): FloatImageData {
-  const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } =
-    metadata;
+  const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
-  const unclampedWeight =
-    (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
+  const unclampedWeight = (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
   const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
 
   const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]] as [number, number, number];
@@ -124,6 +113,7 @@ export function decodeGainMapFromFloat(
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
 
+    // Spec: SDR base is sRGB. sdrFloat mirrors the stored format; linearize for gain formula.
     const sdrR = sRGBToLinear(sdrFloat[i4] ?? 0);
     const sdrG = sRGBToLinear(sdrFloat[i4 + 1] ?? 0);
     const sdrB = sRGBToLinear(sdrFloat[i4 + 2] ?? 0);
@@ -141,12 +131,9 @@ export function decodeGainMapFromFloat(
     const logBoostB = gainMapMin[2] * (1 - logRecoveryB) + gainMapMax[2] * logRecoveryB;
 
     const w = weightFactor;
-    const hdrR =
-      (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
-    const hdrG =
-      (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
-    const hdrB =
-      (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
+    const hdrR = (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
+    const hdrG = (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
+    const hdrB = (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
 
     out[i4] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrR));
     out[i4 + 1] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrG));

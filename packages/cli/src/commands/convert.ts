@@ -95,11 +95,7 @@ export const command = defineCommand({
     const inputExt = path.extname(input).toLowerCase();
     const outputExt = path.extname(output).toLowerCase();
 
-    if (
-      inputExt !== '.exr' &&
-      inputExt !== '.hdr' &&
-      !isJpegGainMapExtension(inputExt)
-    ) {
+    if (inputExt !== '.exr' && inputExt !== '.hdr' && !isJpegGainMapExtension(inputExt)) {
       console.error(
         `Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`,
       );

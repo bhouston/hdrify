@@ -1,6 +1,6 @@
 # HDFify
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="64" height="64">
+<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -9,18 +9,18 @@
 
 HDRify implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
-**→ [Online demo](https://hdrify.benhouston3d.com)** — HDR, EXR, and Ultra HDR (JPEG-R) viewer and converter (the `demos/web-converter` from this repo). Try it in your browser.
+**→ [Online demo](https://hdrify.benhouston3d.com)** — HDR, EXR, Adobe Gain Maps & UltraHDR viewer and converter (the `demos/web-converter` from this repo). Try it in your browser.
 
 ## Features
 
 - Read and write RGB EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression)
 - Read and write HDR (Radiance RGBE) files
-- Write JPEGs with gain maps (JPEG-R / Ultra HDR) — a new, highly compressible HDR format. Convert EXR or HDR to JPEG-R for efficient storage and broad compatibility (modern browsers, mobile).
-- Tone mapping utilities for easing conversion of HDR to LDR images
+- Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
+- Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
 - Full TypeScript support
 - No DOM or Node.js dependencies (works in browser, web workers, and node.js)
 - Written in a functional style to support tree-shaking
-- Web app example of HDR, EXR and Ultra HDR conversion and vieweing: https://hdrify.benhouston3d.com
+- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.benhouston3d.com
 - [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
 
 ## Installation

@@ -1,4 +1,4 @@
-import type { FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { applyToneMapping } from '../tonemapping/applyToneMapping.js';
 import type { ToneMappingType } from '../tonemapping/types.js';
 
@@ -62,6 +62,7 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): F
     }
   }
 
+  ensureNonNegativeFinite(floatArray);
   return {
     width: w,
     height: h,

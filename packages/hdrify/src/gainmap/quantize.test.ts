@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  dequantizeU8ToFloat,
-  dequantizeU8ToRgbaFloat,
-  quantizeFloatToU8,
-  quantizeRgbaFloatToU8,
-} from './quantize.js';
+import { dequantizeU8ToFloat, dequantizeU8ToRgbaFloat, quantizeFloatToU8, quantizeRgbaFloatToU8 } from './quantize.js';
 
 describe('quantizeFloatToU8', () => {
   it('maps 0 to 0', () => {

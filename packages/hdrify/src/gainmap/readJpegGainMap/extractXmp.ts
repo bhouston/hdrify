@@ -11,11 +11,7 @@ const GAIN_MAP_METADATA_ERROR = 'Not a valid JPEG with gain map: missing gain ma
 const HDR_CAPACITY_MIN_REGEX = /hdrgm:HDRCapacityMin="([^"]*)"/i;
 const HDR_CAPACITY_MAX_REGEX = /hdrgm:HDRCapacityMax="([^"]*)"/i;
 
-function getXmlValue(
-  xml: string,
-  tag: string,
-  defaultValue?: string,
-): string | [string, string, string] {
+function getXmlValue(xml: string, tag: string, defaultValue?: string): string | [string, string, string] {
   const attributeMatch = new RegExp(`${tag.replace(/:/g, '\\:')}="([^"]*)"`, 'i').exec(xml);
   if (attributeMatch) return attributeMatch[1] ?? '';
 
@@ -24,11 +20,7 @@ function getXmlValue(
     const inner = tagMatch[1];
     const liMatches = inner?.match(/<rdf:li[^>]*>([^<]*)<\/rdf:li>/gi);
     if (liMatches && liMatches.length === 3) {
-      return liMatches.map((v) => v.replace(/<\/?rdf:li[^>]*>/gi, '').trim()) as [
-        string,
-        string,
-        string,
-      ];
+      return liMatches.map((v) => v.replace(/<\/?rdf:li[^>]*>/gi, '').trim()) as [string, string, string];
     }
     return (inner?.trim() ?? '') as string;
   }
@@ -37,9 +29,7 @@ function getXmlValue(
   throw new Error(`Can't find ${tag} in gainmap metadata`);
 }
 
-function parseTriple(
-  val: string | [string, string, string],
-): [number, number, number] {
+function parseTriple(val: string | [string, string, string]): [number, number, number] {
   if (Array.isArray(val)) {
     return val.map((v) => parseFloat(v)) as [number, number, number];
   }

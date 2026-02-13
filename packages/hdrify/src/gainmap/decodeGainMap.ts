@@ -5,9 +5,9 @@
 
 import type { FloatImageData } from '../floatImage.js';
 import {
+  type DecodeGainMapOptions,
   decodeGainMapCpu,
   decodeGainMapFromFloat,
-  type DecodeGainMapOptions,
 } from './readJpegGainMap/decodeGainMapCpu.js';
 import type { EncodingResult, EncodingResultFloat } from './types.js';
 
@@ -18,10 +18,7 @@ export type { DecodeGainMapOptions } from './readJpegGainMap/decodeGainMapCpu.js
  * Does not involve JPEG; use for round-trip tests and when you already have
  * in-memory SDR and gain map buffers.
  */
-export function decodeGainMap(
-  encodingResult: EncodingResult,
-  options?: DecodeGainMapOptions,
-): FloatImageData {
+export function decodeGainMap(encodingResult: EncodingResult, options?: DecodeGainMapOptions): FloatImageData {
   return decodeGainMapCpu(
     encodingResult.sdr,
     encodingResult.gainMap,

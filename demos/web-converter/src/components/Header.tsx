@@ -5,11 +5,11 @@ export default function Header() {
   return (
     <header className="flex h-14 items-stretch border-b border-border bg-card pl-0 pr-6 py-0 shadow-sm">
       <Link
-        to="/"
-        search={{}}
         className="flex flex-shrink-0 items-center gap-3 self-stretch text-foreground no-underline hover:text-foreground"
+        search={{}}
+        to="/"
       >
-        <img src="/logo192.png" alt="HDRify logo" className="h-full w-auto object-contain" />
+        <img alt="HDRify logo" className="h-full w-auto object-contain" src="/logo192.png" />
         <h1 className="text-xl font-semibold">HDRify</h1>
       </Link>
       <nav className="ml-auto flex items-center gap-4">

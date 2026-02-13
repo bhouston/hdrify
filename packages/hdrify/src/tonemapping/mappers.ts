@@ -2,19 +2,13 @@
  * Pure TypeScript tone mapping implementations.
  * Ported from gainmap-js SDRMaterial GLSL.
  *
- * Output space varies by mapper (see getToneMappingOutputSpace):
- * - Reinhard, Neutral: linear 0-1 (callers apply linearToSrgb for display).
- * - ACES, AgX: display-referred (sRGB-like) 0-1; no further transfer needed for display.
+ * All mappers output linear 0-1. Callers apply linearToSrgb for display (matches Three.js).
  */
 
 import type { ToneMappingFn, ToneMappingType } from './types.js';
 
-/** 'linear': mapper returns linear 0-1. 'srgb': mapper returns display-referred (sRGB-like) 0-1. */
-export type ToneMappingOutputSpace = 'linear' | 'srgb';
-
-export function getToneMappingOutputSpace(type: ToneMappingType): ToneMappingOutputSpace {
-  return type === 'aces' || type === 'agx' ? 'srgb' : 'linear';
-}
+/** Color space of tone mapper output: 'linear' or 'srgb'. */
+export type ColorSpace = 'linear' | 'srgb';
 
 function saturate(x: number): number {
   if (!Number.isFinite(x)) return 0;
@@ -27,14 +21,9 @@ function saturate3(r: number, g: number, b: number): [number, number, number] {
 
 /**
  * ACES Filmic tone mapping - matches gainmap-js default.
- * Input: linear RGB. Output: display-referred (sRGB-like) 0-1 from RRT+ODT.
+ * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1 (callers apply linearToSrgb for display).
  */
 function acesFilmic(r: number, g: number, b: number): [number, number, number] {
-  // Clamp negative and non-finite inputs - tonemappers assume non-negative HDR
-  const r0 = r > 0 && Number.isFinite(r) ? r : 0;
-  const g0 = g > 0 && Number.isFinite(g) ? g : 0;
-  const b0 = b > 0 && Number.isFinite(b) ? b : 0;
-
   // ACESInputMat (sRGB => AP1) - row-major, from Stephen Hill's BakingLab
   const m00 = 0.59719;
   const m01 = 0.35458;
@@ -45,13 +34,12 @@ function acesFilmic(r: number, g: number, b: number): [number, number, number] {
   const m20 = 0.0284;
   const m21 = 0.13383;
   const m22 = 0.83777;
-  const r1 = m00 * r0 + m01 * g0 + m02 * b0;
-  const g1 = m10 * r0 + m11 * g0 + m12 * b0;
-  const b1 = m20 * r0 + m21 * g0 + m22 * b0;
+  const r1 = m00 * r + m01 * g + m02 * b;
+  const g1 = m10 * r + m11 * g + m12 * b;
+  const b1 = m20 * r + m21 * g + m22 * b;
 
   // RRTAndODTFit
   const RRTAndODTFit = (v: number) => {
-    if (!Number.isFinite(v) || v < 0) return 0;
     const a = v * (v + 0.0245786) - 0.000090537;
     const bVal = v * (0.983729 * v + 0.432951) + 0.238081;
     return a / bVal;
@@ -79,23 +67,21 @@ function acesFilmic(r: number, g: number, b: number): [number, number, number] {
 
 /**
  * Reinhard tone mapping: x / (1 + x). Output: linear 0-1.
- * Uses max(0,x) to avoid discontinuity at zero for negative inputs.
+ * Callers ensure non-negative finite input.
  */
 function reinhard(r: number, g: number, b: number): [number, number, number] {
-  const sr = r > 0 && Number.isFinite(r) ? r : 0;
-  const sg = g > 0 && Number.isFinite(g) ? g : 0;
-  const sb = b > 0 && Number.isFinite(b) ? b : 0;
-  return saturate3(sr / (1 + sr), sg / (1 + sg), sb / (1 + sb));
+  return saturate3(r / (1 + r), g / (1 + g), b / (1 + b));
 }
 
 /**
  * Khronos Neutral tone mapping - https://modelviewer.dev/examples/tone-mapping
  * Preserves neutral greys and provides smooth shoulder compression. Output: linear 0-1.
+ * Callers ensure non-negative finite input.
  */
 function neutral(r: number, g: number, b: number): [number, number, number] {
-  let r0 = r > 0 && Number.isFinite(r) ? r : 0;
-  let g0 = g > 0 && Number.isFinite(g) ? g : 0;
-  let b0 = b > 0 && Number.isFinite(b) ? b : 0;
+  let r0 = r;
+  let g0 = g;
+  let b0 = b;
 
   const StartCompression = 0.8 - 0.04;
   const Desaturation = 0.15;
@@ -140,13 +126,9 @@ function agxDefaultContrastApprox(x: number): number {
  * AgX tone mapping from Blender via Filament.
  * Uses rec 2020 primaries, log2 encoding, and sigmoid contrast.
  * https://github.com/google/filament/pull/7236
- * Output: display-referred (gamma 2.2–like) 0-1; do not apply linearToSrgb again.
+ * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1 (callers apply linearToSrgb for display).
  */
 function agx(r: number, g: number, b: number): [number, number, number] {
-  const r0 = r > 0 && Number.isFinite(r) ? r : 0;
-  const g0 = g > 0 && Number.isFinite(g) ? g : 0;
-  const b0 = b > 0 && Number.isFinite(b) ? b : 0;
-
   // sRGB => linear Rec 2020 (row-major, from Three.js)
   const LINEAR_SRGB_TO_LINEAR_REC2020: Mat3 = [
     [0.6274, 0.3293, 0.0433],
@@ -185,7 +167,7 @@ function agx(r: number, g: number, b: number): [number, number, number] {
   const AgxMinEv = -12.47393;
   const AgxMaxEv = 4.026069;
 
-  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r0, g0, b0]);
+  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r, g, b]);
   [r1, g1, b1] = mvm(AgXInsetMatrix, [r1, g1, b1]);
 
   r1 = Math.max(r1, 1e-10);
@@ -211,18 +193,13 @@ function agx(r: number, g: number, b: number): [number, number, number] {
   return saturate3(r1, g1, b1);
 }
 
+const TONE_MAPPING_MAP: Record<ToneMappingType, ToneMappingFn> = {
+  aces: acesFilmic,
+  reinhard,
+  neutral,
+  agx,
+};
+
 export function getToneMapping(type: ToneMappingType): ToneMappingFn {
-  // biome-ignore lint/nursery/noUnnecessaryConditions: exhaustive switch over union type
-  switch (type) {
-    case 'aces':
-      return acesFilmic;
-    case 'reinhard':
-      return reinhard;
-    case 'neutral':
-      return neutral;
-    case 'agx':
-      return agx;
-    default:
-      return acesFilmic;
-  }
+  return TONE_MAPPING_MAP[type];
 }

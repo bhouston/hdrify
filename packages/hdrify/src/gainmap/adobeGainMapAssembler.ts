@@ -4,9 +4,9 @@
  * No MPF, no Container:Directory. Matches the second-SOI structure that readJpegGainMap expects.
  */
 
-import type { CompressedImage, GainMapMetadataExtended } from './types.js';
 import { MARKER_PREFIX, MARKERS, XMP_NAMESPACE } from './libultrahdr/jpeg-markers.js';
 import { generateXmpForSecondaryImage } from './libultrahdr/xmp-generator.js';
+import type { CompressedImage, GainMapMetadataExtended } from './types.js';
 
 export interface AdobeGainMapAssembleOptions {
   sdr: CompressedImage;
@@ -52,8 +52,7 @@ export function assembleJpegAdobeGainMap(options: AdobeGainMapAssembleOptions): 
   xmpSecondaryData.set(namespaceBytes, 0);
   xmpSecondaryData.set(xmpSecondaryBytes, namespaceBytes.length);
 
-  const totalSize =
-    sdr.data.length + 2 + 2 + 2 + xmpSecondaryData.length + (gainMap.data.length - 2);
+  const totalSize = sdr.data.length + 2 + 2 + 2 + xmpSecondaryData.length + (gainMap.data.length - 2);
 
   const output = new Uint8Array(totalSize);
   let pos = 0;

@@ -5,7 +5,14 @@
  */
 import { Buffer as BufferPolyfill } from 'buffer';
 
-const g = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : (typeof self !== 'undefined' ? self : {}));
+const g =
+  typeof globalThis !== 'undefined'
+    ? globalThis
+    : typeof window !== 'undefined'
+      ? window
+      : typeof self !== 'undefined'
+        ? self
+        : {};
 if (typeof (g as typeof globalThis & { Buffer?: typeof BufferPolyfill }).Buffer === 'undefined') {
   (g as typeof globalThis & { Buffer: typeof BufferPolyfill }).Buffer = BufferPolyfill;
 }

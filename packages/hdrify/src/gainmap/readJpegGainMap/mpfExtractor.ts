@@ -68,9 +68,7 @@ export function extractImagesFromMpf(buffer: Uint8Array): MpfExtractResult {
           const gainmapStored = payloadView.getUint32(mpEntryOffset + 24, bigEndian);
           const relativeOffset = gainmapStored + offset + 6;
           gainmapOffsetInFile =
-            relativeOffset >= 0 && relativeOffset + gainmapSize <= buffer.length
-              ? relativeOffset
-              : gainmapStored;
+            relativeOffset >= 0 && relativeOffset + gainmapSize <= buffer.length ? relativeOffset : gainmapStored;
         } else {
           const fixed60 = 60;
           if (payload.length < fixed60 + 2 * MP_ENTRY_SIZE) {
@@ -83,9 +81,7 @@ export function extractImagesFromMpf(buffer: Uint8Array): MpfExtractResult {
           const gainmapStored = payloadView.getUint32(fixed60 + 20, bigEndian);
           const relativeOffset = gainmapStored + offset + 6;
           gainmapOffsetInFile =
-            relativeOffset >= 0 && relativeOffset + gainmapSize <= buffer.length
-              ? relativeOffset
-              : gainmapStored;
+            relativeOffset >= 0 && relativeOffset + gainmapSize <= buffer.length ? relativeOffset : gainmapStored;
         }
 
         if (primaryOffset >= buffer.length || primaryOffset + primarySize > buffer.length) {

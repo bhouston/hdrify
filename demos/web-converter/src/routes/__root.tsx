@@ -36,8 +36,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-<script async={true} src="https://www.googletagmanager.com/gtag/js?id=G-CJJ7XP4N79"></script>
-<script>{`
+        <script async={true} src="https://www.googletagmanager.com/gtag/js?id=G-CJJ7XP4N79"></script>
+        <script>{`
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());

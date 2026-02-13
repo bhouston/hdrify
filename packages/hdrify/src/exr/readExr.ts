@@ -5,7 +5,7 @@
  * Supports PIZ, ZIP, RLE, and uncompressed EXR files
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { decompressPiz } from './decompressPiz.js';
 import { decompressPxr24 } from './decompressPxr24.js';
 import { decompressRleBlock } from './decompressRle.js';
@@ -299,6 +299,7 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
     }
   }
 
+  ensureNonNegativeFinite(pixelData);
   return {
     width,
     height,

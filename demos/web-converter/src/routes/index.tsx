@@ -251,7 +251,7 @@ function Index() {
         >
           HDRify library
         </a>
-        , which can read/write HDR, EXR, and JPEG-R and apply tone mapping transformations.
+        , which can read/write HDR, EXR, Adobe Gain Map JPEG, and UltraHDR JPEG and apply tone mapping transformations.
       </p>
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">Examples</span>
@@ -287,7 +287,7 @@ function Index() {
                 <SelectItem value="aces">ACES</SelectItem>
                 <SelectItem value="reinhard">Reinhard</SelectItem>
                 <SelectItem value="neutral">Khronos Neutral</SelectItem>
-                <SelectItem value="agx">AgX (Blender)</SelectItem>
+                <SelectItem value="agx">AgX</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex min-w-0 items-center gap-2">
@@ -320,7 +320,13 @@ function Index() {
           onDrop={handleDrop}
           type="button"
         >
-          <input accept=".exr,.hdr,.jpg,.jpeg" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
+          <input
+            accept=".exr,.hdr,.jpg,.jpeg"
+            className="sr-only"
+            onChange={handleFileInput}
+            ref={fileInputRef}
+            type="file"
+          />
           {imageData ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
               <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -348,7 +354,9 @@ function Index() {
             <div className="text-center text-muted-foreground">
               <p className="text-lg">{isDragging ? 'Drop the file here' : 'Drop EXR, HDR or JPEG gain map here'}</p>
               <p className="mt-1 text-sm">or click to select a file.</p>
-              <p className="mt-1 text-sm">Or load an example image from the <b>Examples dropdown</b>.</p>
+              <p className="mt-1 text-sm">
+                Or load an example image from the <b>Examples dropdown</b>.
+              </p>
             </div>
           )}
         </button>
@@ -359,7 +367,15 @@ function Index() {
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Info</span>
               <dl className="flex flex-col gap-1 text-xs text-muted-foreground">
-                <div className="flex justify-between gap-4">
+              {sourceFileName && (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-foreground">File name</dt>
+                    <dd className="truncate" title={sourceFileName}>
+                      {sourceFileName}
+                    </dd>
+                  </div>
+                )}
+                  <div className="flex justify-between gap-4">
                   <dt className="text-foreground">Width</dt>
                   <dd>{imageData.width}</dd>
                 </div>
@@ -380,9 +396,7 @@ function Index() {
                   (imageData.metadata.format === 'ultrahdr' || imageData.metadata.format === 'adobe-gainmap') && (
                     <div className="flex justify-between gap-4">
                       <dt className="text-foreground">Gain map format</dt>
-                      <dd>
-                        {imageData.metadata.format === 'ultrahdr' ? 'Ultra HDR (JPEG-R)' : 'Adobe gain map'}
-                      </dd>
+                      <dd>{imageData.metadata.format === 'ultrahdr' ? 'Ultra HDR (JPEG-R)' : 'Adobe gain map'}</dd>
                     </div>
                   )}
                 {(() => {
@@ -412,14 +426,7 @@ function Index() {
                     </>
                   );
                 })()}
-                {sourceFileName && (
-                  <div className="flex justify-between gap-4">
-                    <dt className="text-foreground">File name</dt>
-                    <dd className="truncate" title={sourceFileName}>
-                      {sourceFileName}
-                    </dd>
-                  </div>
-                )}
+               
               </dl>
             </div>
             <div className="flex flex-col gap-2">
@@ -491,8 +498,10 @@ function Index() {
             ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit).
           </li>
           <li>
-            <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX
-            (Blender).
+            <strong className="text-foreground">Gain maps:</strong> Read and write both Adobe Gain Map JPEGs and UltraHDR (Android compatible) JPEGs.
+          </li>
+          <li>
+            <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX.
           </li>
           <li className="md:col-span-2">
             <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion and

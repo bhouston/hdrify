@@ -1,15 +1,15 @@
 import { linearTosRGB } from '../color/srgb.js';
-import { getToneMapping, getToneMappingOutputSpace } from './mappers.js';
-import type { ApplyToneMappingOptions } from './types.js';
-import type { ToneMappingType } from './types.js';
+import { ensureNonNegativeFinite } from '../floatImage.js';
+import { getToneMapping } from './mappers.js';
+import type { ApplyToneMappingOptions, ToneMappingType } from './types.js';
 import { validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';
 
 /**
  * Apply full HDR-to-LDR tone mapping pipeline.
  *
  * Input: Float32Array RGBA. Output: Uint8Array RGB in sRGB (IEC 61966-2-1).
- * Pipeline: exposure → tone mapping → (linearToSrgb only if mapper output is linear) → 0-255
- * ACES and AgX output display-referred; Reinhard and Neutral output linear.
+ * Pipeline: exposure → tone mapping (linear 0-1) → linearToSrgb → 0-255
+ * Mutates hdrData in-place (sanitizes to non-negative finite) before processing.
  */
 export function applyToneMapping(
   hdrData: Float32Array,
@@ -21,10 +21,10 @@ export function applyToneMapping(
     validateToneMappingColorSpaceFromMetadata(options.metadata);
   }
 
+  ensureNonNegativeFinite(hdrData);
+
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
-  const outputSpace = getToneMappingOutputSpace(toneMappingType);
-
   const mapper = getToneMapping(toneMappingType);
   const totalPixels = width * height;
   const ldrData = new Uint8Array(totalPixels * 3);
@@ -43,19 +43,12 @@ export function applyToneMapping(
     let g = gValue * exposure;
     let b = bValue * exposure;
 
-    // Sanitize: replace NaN/Inf with 0 before tone mapping
-    r = Number.isFinite(r) ? r : 0;
-    g = Number.isFinite(g) ? g : 0;
-    b = Number.isFinite(b) ? b : 0;
-
     [r, g, b] = mapper(r, g, b);
 
-    // Only apply linearToSrgb when mapper output is linear (Reinhard, Neutral)
-    if (outputSpace === 'linear') {
-      r = Number.isFinite(r) ? linearTosRGB(r) : 0;
-      g = Number.isFinite(g) ? linearTosRGB(g) : 0;
-      b = Number.isFinite(b) ? linearTosRGB(b) : 0;
-    }
+    // All mappers output linear; apply sRGB transfer for display
+    r = Number.isFinite(r) ? linearTosRGB(r) : 0;
+    g = Number.isFinite(g) ? linearTosRGB(g) : 0;
+    b = Number.isFinite(b) ? linearTosRGB(b) : 0;
 
     const outputIndex = pixelIndex * 3;
     const rOut = Number.isFinite(r) ? Math.round(r * 255) : 0;

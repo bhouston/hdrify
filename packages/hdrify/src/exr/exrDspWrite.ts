@@ -13,10 +13,12 @@ export function reorderForWriting(dst: Uint8Array, src: Uint8Array): void {
   const halfSize = Math.floor(src.length / 2);
   const t1 = dst.subarray(0, halfSize);
   const t2 = dst.subarray(halfSize, halfSize * 2);
+  // biome-ignore-start lint/style/noNonNullAssertion: i < halfSize ensures valid indices
   for (let i = 0; i < halfSize; i++) {
-    t1[i] = src[i * 2] ?? 0;
-    t2[i] = src[i * 2 + 1] ?? 0;
+    t1[i] = src[i * 2]!;
+    t2[i] = src[i * 2 + 1]!;
   }
+  // biome-ignore-end lint/style/noNonNullAssertion: i < halfSize ensures valid indices
 }
 
 /**
@@ -28,17 +30,19 @@ export function applyExrPredictorEncode(src: Uint8Array): void {
   const size = src.length;
   if (size < 2) return;
   let prev: number;
+  // biome-ignore-start lint/style/noNonNullAssertion: size and indices checked
   if ((size & 1) === 0) {
-    prev = src[1] ?? 0;
-    src[1] = (prev - ((src[0] ?? 0) ^ 0x80) + 256) & 0xff;
+    prev = src[1]!;
+    src[1] = (prev - (src[0]! ^ 0x80) + 256) & 0xff;
   } else {
-    prev = src[1] ?? 0;
+    prev = src[1]!;
   }
   for (let i = 2; i < size - 1; i += 2) {
-    const rawI = src[i] ?? 0;
-    const rawI1 = src[i + 1] ?? 0;
+    const rawI = src[i]!;
+    const rawI1 = src[i + 1]!;
     src[i] = ((rawI ^ 0x80) - prev + 256) & 0xff;
     src[i + 1] = (rawI1 - (rawI ^ 0x80) + 256) & 0xff;
     prev = rawI1;
   }
+  // biome-ignore-end lint/style/noNonNullAssertion: size and indices checked
 }

@@ -29,10 +29,9 @@ describe('readJpegGainMap', () => {
       tolerancePercent: 0.25,
       toleranceAbsolute: 0.05,
     });
-    expect(
-      result.match,
-      `Round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
-    ).toBe(true);
+    expect(result.match, `Round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(
+      true,
+    );
   });
 
   it('throws when given a plain JPEG without gain map metadata', () => {

@@ -56,11 +56,13 @@ export function f24ToFloat32(b0: number, b1: number, b2: number): number {
 export function transposePxr24Bytes(src: Uint8Array, bytesPerSample: number): Uint8Array {
   const totalSamples = src.length / bytesPerSample;
   const out = new Uint8Array(src.length);
+  // biome-ignore-start lint/style/noNonNullAssertion: indices derived from src.length
   for (let s = 0; s < totalSamples; s++) {
     for (let b = 0; b < bytesPerSample; b++) {
-      out[b * totalSamples + s] = src[s * bytesPerSample + b] ?? 0;
+      out[b * totalSamples + s] = src[s * bytesPerSample + b]!;
     }
   }
+  // biome-ignore-end lint/style/noNonNullAssertion: indices derived from src.length
   return out;
 }
 
@@ -70,10 +72,12 @@ export function transposePxr24Bytes(src: Uint8Array, bytesPerSample: number): Ui
 export function undoPxr24Transposition(src: Uint8Array, bytesPerSample: number): Uint8Array {
   const totalSamples = src.length / bytesPerSample;
   const out = new Uint8Array(src.length);
+  // biome-ignore-start lint/style/noNonNullAssertion: indices derived from src.length
   for (let s = 0; s < totalSamples; s++) {
     for (let b = 0; b < bytesPerSample; b++) {
-      out[s * bytesPerSample + b] = src[b * totalSamples + s] ?? 0;
+      out[s * bytesPerSample + b] = src[b * totalSamples + s]!;
     }
   }
+  // biome-ignore-end lint/style/noNonNullAssertion: indices derived from src.length
   return out;
 }

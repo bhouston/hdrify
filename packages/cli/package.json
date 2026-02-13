@@ -1,6 +1,6 @@
 {
   "name": "hdrify-cli",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "type": "module",
   "description": "CLI tool for converting between EXR and HDR and Ultra JPEG-R formats",
   "license": "MIT",

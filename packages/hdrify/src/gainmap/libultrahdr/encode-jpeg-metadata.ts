@@ -1,6 +1,6 @@
-import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
-import type { GainMapFormat } from '../readJpegGainMap.js';
 import { assembleJpegAdobeGainMap } from '../adobeGainMapAssembler.js';
+import type { GainMapFormat } from '../readJpegGainMap.js';
+import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
 import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
 export interface EncodeJPEGMetadataOptions {

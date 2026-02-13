@@ -1,6 +1,6 @@
 # HDFify-cli
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="64" height="64">
+<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -29,8 +29,8 @@ pnpm add -g hdrify-cli
 # Convert between formats
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr --compression piz
-hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
-hdrify convert input.exr output.jpg --format adobe-gainmap   # Adobe gain map format
+hdrify convert input.exr output.ultrahdr.jpg    # JPEG-R with gain map (Ultra HDR, default)
+hdrify convert input.exr output.gainmap.jpg --format adobe-gainmap   # Adobe gain map format
 hdrify convert input.jpg output.exr    # Read JPEG gain map (Ultra HDR or Adobe) as input
 hdrify convert input.exr output.webp   # Tonemaps the HDR during conversion to SDR webp format
 

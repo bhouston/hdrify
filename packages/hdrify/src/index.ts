@@ -6,16 +6,14 @@ export { linearTosRGB, sRGBToLinear } from './color/srgb.js';
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';
-export type { FloatImageData } from './floatImage.js';
-// Gainmap
-export { decodeGainMap } from './gainmap/decodeGainMap.js';
+export { ensureNonNegativeFinite, type FloatImageData } from './floatImage.js';
 export type { DecodeGainMapOptions } from './gainmap/decodeGainMap.js';
-export { encodeGainMap } from './gainmap/gainMapEncoder.js';
+// Gainmap
+export { decodeGainMap, decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';
+export { encodeGainMap, encodeGainMapToFloat } from './gainmap/gainMapEncoder.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';
-export { readJpegGainMap } from './gainmap/readJpegGainMap.js';
 export type { GainMapFormat } from './gainmap/readJpegGainMap.js';
-export { decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';
-export { encodeGainMapToFloat } from './gainmap/gainMapEncoder.js';
+export { readJpegGainMap } from './gainmap/readJpegGainMap.js';
 export type {
   CompressedImage,
   EncodingResult,

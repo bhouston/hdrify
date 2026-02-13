@@ -5,7 +5,7 @@
  * Implements the Radiance RGBE encoding format
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 
 /**
  * Write an HDR file buffer from FloatImageData
@@ -14,6 +14,7 @@ import type { FloatImageData } from '../floatImage.js';
  * @returns Uint8Array containing HDR file data
  */
 export function writeHdr(floatImageData: FloatImageData): Uint8Array {
+  ensureNonNegativeFinite(floatImageData.data);
   const { width, height, data } = floatImageData;
 
   // Calculate file size: header + pixel data

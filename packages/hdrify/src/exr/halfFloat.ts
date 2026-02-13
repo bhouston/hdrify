@@ -11,7 +11,8 @@ const _int32View = new Int32Array(_floatView.buffer);
  */
 export function encodeFloat16(float32: number): number {
   _floatView[0] = float32;
-  const x = _int32View[0] ?? 0;
+  // biome-ignore lint/style/noNonNullAssertion: single-element shared buffer
+  const x = _int32View[0]!;
 
   const bits = (x >> 16) & 0x8000;
   const m = (x >> 12) & 0x07ff;

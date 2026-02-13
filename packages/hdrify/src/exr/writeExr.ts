@@ -6,7 +6,7 @@
  * Supports NO_COMPRESSION, RLE, ZIP, ZIPS.
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import {
   HALF,
   PIZ_COMPRESSION,
@@ -53,6 +53,7 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
  * @returns Uint8Array containing EXR file data
  */
 export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptions): Uint8Array {
+  ensureNonNegativeFinite(floatImageData.data);
   const { width, height } = floatImageData;
   const compression = options?.compression ?? ZIP_COMPRESSION;
   const channels = getChannelsForCompression(compression);

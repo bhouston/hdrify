@@ -1,14 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  compareFloatImages,
-  encodeGainMap,
-  encodeToJpeg,
-  readExr,
-  readJpegGainMap,
-  writeJpegGainMap,
-} from 'hdrify';
+import { compareFloatImages, encodeGainMap, encodeToJpeg, readExr, readJpegGainMap, writeJpegGainMap } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

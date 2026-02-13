@@ -1,13 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import {
-  createTempDir,
-  exrFilePaths,
-  hdrFilePaths,
-  jpgGainMapFilePath,
-  runCli,
-} from '../test-utils/cliTestEnv.js';
+import { createTempDir, exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
 
 describe('CLI convert command', () => {

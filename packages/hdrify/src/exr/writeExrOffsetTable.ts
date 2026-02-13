@@ -108,10 +108,12 @@ export function buildExrOffsetTableFromBlocks(options: BuildExrOffsetTableFromBl
 
   let currentOffset = offsetTableStart + blockCount * ULONG_SIZE;
 
+  // biome-ignore-start lint/style/noNonNullAssertion: b < blockCount = blocks.length
   for (let b = 0; b < blockCount; b++) {
     view.setBigUint64(b * ULONG_SIZE, BigInt(currentOffset), true);
-    currentOffset += blocks[b]?.length ?? 0;
+    currentOffset += blocks[b]!.length;
   }
+  // biome-ignore-end lint/style/noNonNullAssertion: b < blockCount = blocks.length
 
   return result;
 }
