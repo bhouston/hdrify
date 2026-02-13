@@ -5,12 +5,8 @@
 
 import type { FloatImageData } from '../floatImage.js';
 import type { DisplayColorSpace, LinearColorSpace } from './colorSpaces.js';
-import {
-  getChromaticitiesForDisplay,
-  getChromaticitiesForLinear,
-  getLinearColorSpaceForDisplay,
-} from './colorSpaces.js';
-import { applyMatrix3, buildLinearToLinearMatrix } from './matrixConversion.js';
+import { DISPLAY_TO_LINEAR } from './colorSpaces.js';
+import { applyMatrix3, getLinearToLinearMatrix } from './matrixConversion.js';
 import { displayToLinear, linearToDisplay } from './transfer.js';
 
 /**
@@ -32,19 +28,20 @@ export function convertFloat32ToLinearColorSpace(
   from: LinearColorSpace,
   to: LinearColorSpace,
 ): Float32Array {
-  if (from === to) {
+  const matrix = getLinearToLinearMatrix(from, to);
+  if (matrix === null) {
     return data;
   }
-
-  const matrix = buildLinearToLinearMatrix(getChromaticitiesForLinear(from), getChromaticitiesForLinear(to));
 
   const out = new Float32Array(data.length);
   out.set(data);
 
   for (let i = 0; i < data.length; i += 4) {
-    const r = data[i] ?? 0;
-    const g = data[i + 1] ?? 0;
-    const b = data[i + 2] ?? 0;
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
+    const r = data[i]!;
+    const g = data[i + 1]!;
+    const b = data[i + 2]!;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
     const [r2, g2, b2] = applyMatrix3(r, g, b, matrix);
     out[i] = r2;
     out[i + 1] = g2;
@@ -77,7 +74,7 @@ export function convertLinearToDisplay(
   image: FloatImageData,
   to: DisplayColorSpace,
 ): FloatImageData & { displayColorSpace: DisplayColorSpace } {
-  const targetLinear = getLinearColorSpaceForDisplay(to);
+  const targetLinear = DISPLAY_TO_LINEAR[to];
   const linearData = convertFloat32ToLinearColorSpace(
     image.data,
     image.width,
@@ -91,10 +88,12 @@ export function convertLinearToDisplay(
 
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 4;
-    const r = linearData[si] ?? 0;
-    const g = linearData[si + 1] ?? 0;
-    const b = linearData[si + 2] ?? 0;
-    const a = linearData[si + 3] ?? 1;
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
+    const r = linearData[si]!;
+    const g = linearData[si + 1]!;
+    const b = linearData[si + 2]!;
+    const a = linearData[si + 3]!;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
 
     const [r2, g2, b2] = linearToDisplay(r, g, b, to);
     out[si] = r2;
@@ -121,22 +120,24 @@ export function convertDisplayToLinear(
   from: DisplayColorSpace,
   linearColorSpace: LinearColorSpace,
 ): FloatImageData {
-  const fromCh = getChromaticitiesForDisplay(from);
-  const toCh = getChromaticitiesForLinear(linearColorSpace);
-  const matrix = buildLinearToLinearMatrix(fromCh, toCh);
+  const fromLinear = DISPLAY_TO_LINEAR[from];
+  const matrix = getLinearToLinearMatrix(fromLinear, linearColorSpace);
 
   const linearData = new Float32Array(data.length);
   const pixelCount = width * height;
 
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 4;
-    const r = data[si] ?? 0;
-    const g = data[si + 1] ?? 0;
-    const b = data[si + 2] ?? 0;
-    const a = data[si + 3] ?? 1;
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
+    const r = data[si]!;
+    const g = data[si + 1]!;
+    const b = data[si + 2]!;
+    const a = data[si + 3]!;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
 
     const [rLinear, gLinear, bLinear] = displayToLinear(r, g, b, from);
-    const [r2, g2, b2] = applyMatrix3(rLinear, gLinear, bLinear, matrix);
+    const [r2, g2, b2] =
+      matrix !== null ? applyMatrix3(rLinear, gLinear, bLinear, matrix) : [rLinear, gLinear, bLinear];
 
     linearData[si] = r2;
     linearData[si + 1] = g2;

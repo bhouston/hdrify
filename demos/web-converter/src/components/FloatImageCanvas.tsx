@@ -11,13 +11,7 @@ export interface FloatImageCanvasProps {
   forwardedRef?: React.RefObject<HTMLCanvasElement | null>;
 }
 
-export function FloatImageCanvas({
-  imageData,
-  toneMapping,
-  exposure,
-  className,
-  forwardedRef,
-}: FloatImageCanvasProps) {
+export function FloatImageCanvas({ imageData, toneMapping, exposure, className, forwardedRef }: FloatImageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const setRef = useCallback(
@@ -51,12 +45,14 @@ export function FloatImageCanvas({
 
     const canvasImageData = ctx.createImageData(width, height);
     const pixels = canvasImageData.data;
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
     for (let i = 0; i < width * height; i++) {
-      pixels[i * 4] = ldrRgb[i * 3] ?? 0;
-      pixels[i * 4 + 1] = ldrRgb[i * 3 + 1] ?? 0;
-      pixels[i * 4 + 2] = ldrRgb[i * 3 + 2] ?? 0;
+      pixels[i * 4] = ldrRgb[i * 3]!;
+      pixels[i * 4 + 1] = ldrRgb[i * 3 + 1]!;
+      pixels[i * 4 + 2] = ldrRgb[i * 3 + 2]!;
       pixels[i * 4 + 3] = 255;
     }
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
 
     ctx.putImageData(canvasImageData, 0, 0);
   }, []);

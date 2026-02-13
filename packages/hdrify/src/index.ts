@@ -14,12 +14,12 @@ export {
 export {
   chromaticitiesToLinearColorSpace,
   DISPLAY_COLOR_SPACES,
+  DISPLAY_TO_CHROMATICITIES,
+  DISPLAY_TO_LINEAR,
   type DisplayColorSpace,
-  getChromaticitiesForDisplay,
-  getChromaticitiesForLinear,
-  getDisplayColorSpaceForLinear,
-  getLinearColorSpaceForDisplay,
   LINEAR_COLOR_SPACES,
+  LINEAR_TO_CHROMATICITIES,
+  LINEAR_TO_DISPLAY,
   type LinearColorSpace,
 } from './color/colorSpaces.js';
 export {

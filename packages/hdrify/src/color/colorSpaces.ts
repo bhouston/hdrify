@@ -26,45 +26,33 @@ export const DISPLAY_COLOR_SPACES: readonly DisplayColorSpace[] = [
   'display-rec2020',
 ] as const;
 
-const LINEAR_TO_CHROMATICITIES: Record<LinearColorSpace, Chromaticities> = {
+/** Chromaticities for each linear color space (for matrix building). */
+export const LINEAR_TO_CHROMATICITIES: Record<LinearColorSpace, Chromaticities> = {
   'linear-rec709': CHROMATICITIES_REC709,
   'linear-p3': CHROMATICITIES_P3,
   'linear-rec2020': CHROMATICITIES_REC2020,
 };
 
-const DISPLAY_TO_CHROMATICITIES: Record<DisplayColorSpace, Chromaticities> = {
+/** Chromaticities for each display color space. */
+export const DISPLAY_TO_CHROMATICITIES: Record<DisplayColorSpace, Chromaticities> = {
   'display-srgb': CHROMATICITIES_REC709,
   'display-p3': CHROMATICITIES_P3,
   'display-rec2020': CHROMATICITIES_REC2020,
 };
 
-const LINEAR_TO_DISPLAY: Record<LinearColorSpace, DisplayColorSpace> = {
+/** Display color space that corresponds to each linear space. */
+export const LINEAR_TO_DISPLAY: Record<LinearColorSpace, DisplayColorSpace> = {
   'linear-rec709': 'display-srgb',
   'linear-p3': 'display-p3',
   'linear-rec2020': 'display-rec2020',
 };
 
-const DISPLAY_TO_LINEAR: Record<DisplayColorSpace, LinearColorSpace> = {
+/** Linear color space that corresponds to each display space. */
+export const DISPLAY_TO_LINEAR: Record<DisplayColorSpace, LinearColorSpace> = {
   'display-srgb': 'linear-rec709',
   'display-p3': 'linear-p3',
   'display-rec2020': 'linear-rec2020',
 };
-
-export function getChromaticitiesForLinear(space: LinearColorSpace): Chromaticities {
-  return LINEAR_TO_CHROMATICITIES[space];
-}
-
-export function getChromaticitiesForDisplay(space: DisplayColorSpace): Chromaticities {
-  return DISPLAY_TO_CHROMATICITIES[space];
-}
-
-export function getDisplayColorSpaceForLinear(linear: LinearColorSpace): DisplayColorSpace {
-  return LINEAR_TO_DISPLAY[linear];
-}
-
-export function getLinearColorSpaceForDisplay(display: DisplayColorSpace): LinearColorSpace {
-  return DISPLAY_TO_LINEAR[display];
-}
 
 /** Tolerance for matching chromaticities (CIE xy) */
 const CHROMATICITY_TOLERANCE = 0.01;

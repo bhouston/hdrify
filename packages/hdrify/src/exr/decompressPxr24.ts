@@ -108,39 +108,33 @@ export function decompressPxr24(
       for (let x = 0; x < width; x++) {
         const s = lineStart + x;
         const byteOff = x * chBytesPerSample;
-
+        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width*chBytesPerSample and accum init
         let diff: number;
         if (channel.pixelType === HALF) {
           // OpenEXR/C++ store delta high byte first in segment; after untranspose we have [high, low] per sample
-          const u16 = ((untransposed[byteOff] ?? 0) << 8) | (untransposed[byteOff + 1] ?? 0);
+          const u16 = (untransposed[byteOff]! << 8) | untransposed[byteOff + 1]!;
           diff = u16 > 0x7fff ? u16 - 0x10000 : u16;
-          accum[c] = ((accum[c] ?? 0) + diff) & 0xffff;
-          chView.setUint16(s * outBytesPerSample, accum[c] ?? 0, true);
+          accum[c] = (accum[c]! + diff) & 0xffff;
+          chView.setUint16(s * outBytesPerSample, accum[c]!, true);
         } else if (channel.pixelType === FLOAT) {
           // 24-bit: C++ stores MSB first
-          const u24 =
-            ((untransposed[byteOff] ?? 0) << 16) |
-            ((untransposed[byteOff + 1] ?? 0) << 8) |
-            (untransposed[byteOff + 2] ?? 0);
+          const u24 = (untransposed[byteOff]! << 16) | (untransposed[byteOff + 1]! << 8) | untransposed[byteOff + 2]!;
           diff = u24 > 0x7fffff ? u24 - 0x1000000 : u24;
-          accum[c] = ((accum[c] ?? 0) + diff) & 0xffffff;
-          const f32 = f24ToFloat32(
-            (accum[c] ?? 0) & 0xff,
-            ((accum[c] ?? 0) >> 8) & 0xff,
-            ((accum[c] ?? 0) >> 16) & 0xff,
-          );
+          accum[c] = (accum[c]! + diff) & 0xffffff;
+          const f32 = f24ToFloat32(accum[c]! & 0xff, (accum[c]! >> 8) & 0xff, (accum[c]! >> 16) & 0xff);
           chView.setFloat32(s * outBytesPerSample, f32, true);
         } else {
           // UINT: C++ stores MSB first
           const u32 =
-            ((untransposed[byteOff] ?? 0) << 24) |
-            ((untransposed[byteOff + 1] ?? 0) << 16) |
-            ((untransposed[byteOff + 2] ?? 0) << 8) |
-            (untransposed[byteOff + 3] ?? 0);
+            (untransposed[byteOff]! << 24) |
+            (untransposed[byteOff + 1]! << 16) |
+            (untransposed[byteOff + 2]! << 8) |
+            untransposed[byteOff + 3]!;
           diff = u32 > 0x7fffffff ? u32 - 0x100000000 : u32;
-          accum[c] = ((accum[c] ?? 0) + diff) >>> 0;
-          chView.setUint32(s * outBytesPerSample, accum[c] ?? 0, true);
+          accum[c] = (accum[c]! + diff) >>> 0;
+          chView.setUint32(s * outBytesPerSample, accum[c]!, true);
         }
+        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width*chBytesPerSample and accum init
       }
     }
   }
@@ -161,7 +155,8 @@ export function decompressPxr24(
       for (let x = 0; x < width; x++) {
         const srcOffset = chLineStart + x * bs;
         for (let b = 0; b < bs; b++) {
-          output[writeOffset++] = values[srcOffset + b] ?? 0;
+          // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by channel layout
+          output[writeOffset++] = values[srcOffset + b]!;
         }
       }
     }

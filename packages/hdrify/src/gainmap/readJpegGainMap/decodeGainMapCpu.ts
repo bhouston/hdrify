@@ -50,15 +50,16 @@ export function decodeGainMapCpu(
 
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
-
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
     // Spec: SDR base is sRGB. Linearize to get SDR_linear for the gain formula.
-    const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4] ?? 0) : sRGBToLinear((sdr[i4] ?? 0) / 255);
-    const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1] ?? 0) : sRGBToLinear((sdr[i4 + 1] ?? 0) / 255);
-    const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2] ?? 0) : sRGBToLinear((sdr[i4 + 2] ?? 0) / 255);
+    const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4]!) : sRGBToLinear(sdr[i4]! / 255);
+    const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1]!) : sRGBToLinear(sdr[i4 + 1]! / 255);
+    const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2]!) : sRGBToLinear(sdr[i4 + 2]! / 255);
 
-    const gainR = gainMapIsFloat ? (gainMap[i4] ?? 0) : (gainMap[i4] ?? 0) / 255;
-    const gainG = gainMapIsFloat ? (gainMap[i4 + 1] ?? 0) : (gainMap[i4 + 1] ?? 0) / 255;
-    const gainB = gainMapIsFloat ? (gainMap[i4 + 2] ?? 0) : (gainMap[i4 + 2] ?? 0) / 255;
+    const gainR = gainMapIsFloat ? gainMap[i4]! : gainMap[i4]! / 255;
+    const gainG = gainMapIsFloat ? gainMap[i4 + 1]! : gainMap[i4 + 1]! / 255;
+    const gainB = gainMapIsFloat ? gainMap[i4 + 2]! : gainMap[i4 + 2]! / 255;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
 
     const logRecoveryR = useGammaOne ? gainR : gainR ** invGamma[0];
     const logRecoveryG = useGammaOne ? gainG : gainG ** invGamma[1];
@@ -113,15 +114,16 @@ export function decodeGainMapFromFloat(
 
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
-
+    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
     // Spec: SDR base is sRGB. sdrFloat mirrors the stored format; linearize for gain formula.
-    const sdrR = sRGBToLinear(sdrFloat[i4] ?? 0);
-    const sdrG = sRGBToLinear(sdrFloat[i4 + 1] ?? 0);
-    const sdrB = sRGBToLinear(sdrFloat[i4 + 2] ?? 0);
+    const sdrR = sRGBToLinear(sdrFloat[i4]!);
+    const sdrG = sRGBToLinear(sdrFloat[i4 + 1]!);
+    const sdrB = sRGBToLinear(sdrFloat[i4 + 2]!);
 
-    const gainR = gainMapFloat[i4] ?? 0;
-    const gainG = gainMapFloat[i4 + 1] ?? 0;
-    const gainB = gainMapFloat[i4 + 2] ?? 0;
+    const gainR = gainMapFloat[i4]!;
+    const gainG = gainMapFloat[i4 + 1]!;
+    const gainB = gainMapFloat[i4 + 2]!;
+    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
 
     const logRecoveryR = useGammaOne ? gainR : gainR ** invGamma[0];
     const logRecoveryG = useGammaOne ? gainG : gainG ** invGamma[1];

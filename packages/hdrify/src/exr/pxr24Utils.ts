@@ -11,7 +11,8 @@
 export function float32ToF24(float: number): number {
   const bits = new Float32Array(1);
   bits[0] = float;
-  const x = new Uint32Array(bits.buffer)[0] ?? 0;
+  // biome-ignore lint/style/noNonNullAssertion: Uint32Array of shared buffer always has element at 0
+  const x = new Uint32Array(bits.buffer)[0]!;
 
   const sign = x & 0x80000000;
   const exponent = x & 0x7f800000;

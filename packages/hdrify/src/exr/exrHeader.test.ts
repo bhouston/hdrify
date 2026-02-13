@@ -7,11 +7,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import type { FloatImageData } from '../floatImage.js';
 import { NO_COMPRESSION, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
 import { buildExrHeaderForParsing } from './exrHeaderBuilder.js';
 import { writeExr } from './writeExr.js';
-import type { FloatImageData } from '../floatImage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

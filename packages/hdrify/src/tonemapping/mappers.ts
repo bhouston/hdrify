@@ -5,6 +5,11 @@
  * All mappers output linear 0-1. Callers apply linearToSrgb for display (matches Three.js).
  */
 
+import {
+  applyMatrix3,
+  LINEAR_REC709_TO_LINEAR_REC2020,
+  LINEAR_REC2020_TO_LINEAR_REC709,
+} from '../color/matrixConversion.js';
 import type { ToneMappingFn, ToneMappingType } from './types.js';
 
 /** Color space of tone mapper output: 'linear' or 'srgb'. */
@@ -129,19 +134,8 @@ function agxDefaultContrastApprox(x: number): number {
  * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1 (callers apply linearToSrgb for display).
  */
 function agx(r: number, g: number, b: number): [number, number, number] {
-  // sRGB => linear Rec 2020 (row-major, from Three.js)
-  const LINEAR_SRGB_TO_LINEAR_REC2020: Mat3 = [
-    [0.6274, 0.3293, 0.0433],
-    [0.0691, 0.9195, 0.0113],
-    [0.0164, 0.088, 0.8956],
-  ];
-
   type Mat3 = [[number, number, number], [number, number, number], [number, number, number]];
-  const mvm = (m: Mat3, v: [number, number, number]): [number, number, number] => [
-    m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
-    m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
-    m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
-  ];
+  const mvm = (m: Mat3, v: [number, number, number]): [number, number, number] => applyMatrix3(v[0], v[1], v[2], m);
 
   // AgX inset matrix (row-major; rows = columns of GLSL mat3 so neutral stays neutral)
   const AgXInsetMatrix: Mat3 = [
@@ -157,17 +151,10 @@ function agx(r: number, g: number, b: number): [number, number, number] {
     [-0.14132976349843826, -0.11060664309660294, 1.2519364065950405],
   ];
 
-  // Rec 2020 => sRGB (row-major; rows chosen so (1,1,1) maps to (1,1,1))
-  const LINEAR_REC2020_TO_LINEAR_SRGB: Mat3 = [
-    [1.6605, -0.5876, -0.0728],
-    [-0.1246, 1.1329, -0.0083],
-    [-0.0182, -0.1006, 1.1187],
-  ];
-
   const AgxMinEv = -12.47393;
   const AgxMaxEv = 4.026069;
 
-  let [r1, g1, b1] = mvm(LINEAR_SRGB_TO_LINEAR_REC2020, [r, g, b]);
+  let [r1, g1, b1] = applyMatrix3(r, g, b, LINEAR_REC709_TO_LINEAR_REC2020);
   [r1, g1, b1] = mvm(AgXInsetMatrix, [r1, g1, b1]);
 
   r1 = Math.max(r1, 1e-10);
@@ -188,7 +175,7 @@ function agx(r: number, g: number, b: number): [number, number, number] {
   g1 = Math.max(0, g1) ** 2.2;
   b1 = Math.max(0, b1) ** 2.2;
 
-  [r1, g1, b1] = mvm(LINEAR_REC2020_TO_LINEAR_SRGB, [r1, g1, b1]);
+  [r1, g1, b1] = applyMatrix3(r1, g1, b1, LINEAR_REC2020_TO_LINEAR_REC709);
 
   return saturate3(r1, g1, b1);
 }

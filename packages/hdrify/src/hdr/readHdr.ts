@@ -57,7 +57,8 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): F
     for (let i = 0; i < floatArray.length; i++) {
       if (i % 4 !== 3) {
         // Don't scale alpha
-        (floatArray as Float32Array)[i] = (floatArray[i] ?? 0) * scale;
+        // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by floatArray.length loop
+        (floatArray as Float32Array)[i] = floatArray[i]! * scale;
       }
     }
   }
@@ -81,12 +82,14 @@ function RGBEByteToRGBFloat(
   destArray: Float32Array,
   destOffset: number,
 ): void {
-  const e = sourceArray[sourceOffset + 3] ?? 128;
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
+  const e = sourceArray[sourceOffset + 3]!;
   const scale = 2.0 ** (e - 128.0) / 255.0;
 
-  destArray[destOffset + 0] = (sourceArray[sourceOffset + 0] ?? 0) * scale;
-  destArray[destOffset + 1] = (sourceArray[sourceOffset + 1] ?? 0) * scale;
-  destArray[destOffset + 2] = (sourceArray[sourceOffset + 2] ?? 0) * scale;
+  destArray[destOffset + 0] = sourceArray[sourceOffset + 0]! * scale;
+  destArray[destOffset + 1] = sourceArray[sourceOffset + 1]! * scale;
+  destArray[destOffset + 2] = sourceArray[sourceOffset + 2]! * scale;
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
   destArray[destOffset + 3] = 1;
 }
 

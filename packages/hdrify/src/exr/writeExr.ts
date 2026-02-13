@@ -6,7 +6,7 @@
  * Supports NO_COMPRESSION, RLE, ZIP, ZIPS.
  */
 
-import { getChromaticitiesForLinear } from '../color/colorSpaces.js';
+import { LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
 import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import {
   HALF,
@@ -61,7 +61,7 @@ export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptio
   // OpenEXR requires channels to be sorted alphabetically
   channels.sort((a, b) => a.name.localeCompare(b.name));
 
-  const chromaticities = getChromaticitiesForLinear(floatImageData.linearColorSpace);
+  const chromaticities = LINEAR_TO_CHROMATICITIES[floatImageData.linearColorSpace];
   const magicVersion = buildMagicAndVersion();
   const header = buildExrHeader({ width, height, compression, channels, chromaticities });
   const headerEnd = magicVersion.length + header.length;

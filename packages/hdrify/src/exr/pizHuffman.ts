@@ -252,7 +252,8 @@ function getCode(
     currentLc -= 8;
     let cs = currentC >> currentLc;
     const csArray = new Uint8Array([cs]);
-    cs = csArray[0] ?? 0;
+    // biome-ignore lint/style/noNonNullAssertion: Uint8Array([cs]) always has element at 0
+    cs = csArray[0]!;
 
     if (outBufferOffset.value + cs > outBufferEndOffset) {
       getCodeReturn.c = currentC;
@@ -464,12 +465,14 @@ function hufPackEncTable(hcode: number[], im: number, iM: number, out: number[])
   let currentIm = im;
 
   while (currentIm <= iM) {
-    const l = hufLength(hcode[currentIm] ?? 0);
+    // biome-ignore lint/style/noNonNullAssertion: currentIm in [im, iM] which are valid hcode indices
+    const l = hufLength(hcode[currentIm]!);
 
     if (l === 0) {
       let zerun = 1;
       while (currentIm < iM && zerun < LONGEST_LONG_RUN) {
-        if (hufLength(hcode[currentIm + 1] ?? 0) > 0) break;
+        // biome-ignore lint/style/noNonNullAssertion: currentIm+1 <= iM when currentIm < iM
+        if (hufLength(hcode[currentIm + 1]!) > 0) break;
         currentIm++;
         zerun++;
       }
@@ -516,20 +519,22 @@ function sendCode(
 function hufEncode(hcode: number[], inData: Uint16Array, ni: number, rlc: number, out: number[]): number {
   const c = { value: 0 };
   const lc = { value: 0 };
-  let s = inData[0] ?? 0;
+  // biome-ignore-start lint/style/noNonNullAssertion: inData and hcode indices bounds-checked by ni and Huffman table
+  let s = inData[0]!;
   let cs = 0;
 
   for (let i = 1; i < ni; i++) {
-    const ns = inData[i] ?? 0;
+    const ns = inData[i]!;
     if (s === ns && cs < 255) {
       cs++;
     } else {
-      sendCode(hcode[s] ?? 0, cs, hcode[rlc] ?? 0, c, lc, out);
+      sendCode(hcode[s]!, cs, hcode[rlc]!, c, lc, out);
       cs = 0;
     }
     s = ns;
   }
-  sendCode(hcode[s] ?? 0, cs, hcode[rlc] ?? 0, c, lc, out);
+  sendCode(hcode[s]!, cs, hcode[rlc]!, c, lc, out);
+  // biome-ignore-end lint/style/noNonNullAssertion: inData and hcode indices bounds-checked by ni and Huffman table
 
   if (lc.value > 0) out.push((c.value << (8 - lc.value)) & 0xff);
   return lc.value > 0 ? (out.length - 1) * 8 + lc.value : out.length * 8;

@@ -61,8 +61,10 @@ export function compareFloatImages(
 
     for (let c = 0; c < 4; c++) {
       const i = p * 4 + c;
-      const va = a.data[i] ?? 0;
-      const vb = b.data[i] ?? 0;
+      // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
+      const va = a.data[i]!;
+      const vb = b.data[i]!;
+      // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
       const diff = Math.abs(va - vb);
 
       if (diff > maxDiff) {
@@ -89,13 +91,15 @@ export function compareFloatImages(
       if (maxSamples > 0 && mismatchSamples.length < maxSamples) {
         const x = p % width;
         const y = Math.floor(p / width);
+        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
         mismatchSamples.push({
           pixelIndex: p,
           x,
           y,
-          expected: [a.data[p * 4] ?? 0, a.data[p * 4 + 1] ?? 0, a.data[p * 4 + 2] ?? 0, a.data[p * 4 + 3] ?? 0],
-          actual: [b.data[p * 4] ?? 0, b.data[p * 4 + 1] ?? 0, b.data[p * 4 + 2] ?? 0, b.data[p * 4 + 3] ?? 0],
+          expected: [a.data[p * 4]!, a.data[p * 4 + 1]!, a.data[p * 4 + 2]!, a.data[p * 4 + 3]!],
+          actual: [b.data[p * 4]!, b.data[p * 4 + 1]!, b.data[p * 4 + 2]!, b.data[p * 4 + 3]!],
         });
+        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
       }
     }
   }

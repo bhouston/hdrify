@@ -25,13 +25,7 @@ type PreviewType = 'jpeg' | 'webp';
 import { FloatImageCanvas } from '@/components/FloatImageCanvas';
 import { FloatImageCanvasHDR } from '@/components/FloatImageCanvasHDR';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
@@ -312,7 +306,8 @@ function Index() {
   return (
     <div className="flex flex-1 flex-col p-4">
       <p className="mb-4 text-sm text-muted-foreground">
-        This is a web demo of the {/** biome-ignore assist/source/useSortedAttributes: anchor attribute order preferred for readability */}
+        This is a web demo of the{' '}
+        {/** biome-ignore assist/source/useSortedAttributes: anchor attribute order preferred for readability */}
         <a
           href="https://github.com/bhouston/hdrify"
           target="_blank"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { encodeGainMap } from './gainMapEncoder.js';
 import type { FloatImageData } from '../floatImage.js';
+import { encodeGainMap } from './gainMapEncoder.js';
 
 describe('encodeGainMap', () => {
   const smallImage = {

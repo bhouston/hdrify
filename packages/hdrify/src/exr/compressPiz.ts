@@ -56,11 +56,13 @@ export function bitmapFromData(
     const v = data[i];
     if (v !== undefined) {
       const bi = v >> 3;
-      bitmap[bi] = (bitmap[bi] ?? 0) | (1 << (v & 7));
+      // biome-ignore lint/style/noNonNullAssertion: bi in [0, BITMAP_SIZE-1] for v in [0, 65535]
+      bitmap[bi] = bitmap[bi]! | (1 << (v & 7));
     }
   }
 
-  bitmap[0] = (bitmap[0] ?? 0) & ~1;
+  // biome-ignore lint/style/noNonNullAssertion: index 0 always valid
+  bitmap[0] = bitmap[0]! & ~1;
 
   let mnnz = BITMAP_SIZE - 1;
   let mxnz = 0;
@@ -80,7 +82,8 @@ export function bitmapFromData(
 export function forwardLutFromBitmap(bitmap: Uint8Array, lut: Uint16Array): number {
   let k = 0;
   for (let i = 0; i < USHORT_RANGE; i++) {
-    if (i === 0 || (bitmap[i >> 3] ?? 0) & (1 << (i & 7))) {
+    // biome-ignore lint/style/noNonNullAssertion: i>>3 in [0, BITMAP_SIZE-1] for i in USHORT_RANGE
+    if (i === 0 || bitmap[i >> 3]! & (1 << (i & 7))) {
       lut[i] = k++;
     } else {
       lut[i] = 0;

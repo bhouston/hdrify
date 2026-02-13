@@ -19,7 +19,8 @@ export function decompressRLE(compressedData: Uint8Array, expectedSize: number):
   let dst = 0;
 
   while (src < compressedData.length && dst < expectedSize) {
-    const count = ((compressedData[src++] ?? 0) << 24) >> 24; // signed byte
+    // biome-ignore lint/style/noNonNullAssertion: src < length checked in loop condition
+    const count = (compressedData[src++]! << 24) >> 24; // signed byte
 
     if (count < 0) {
       const n = -count;
@@ -29,13 +30,15 @@ export function decompressRLE(compressedData: Uint8Array, expectedSize: number):
         );
       }
       for (let i = 0; i < n && dst < expectedSize; i++) {
-        out[dst++] = compressedData[src++] ?? 0;
+        // biome-ignore lint/style/noNonNullAssertion: src bounds validated by n check above
+        out[dst++] = compressedData[src++]!;
       }
     } else {
       if (src >= compressedData.length) {
         throw new Error('RLE decompression: truncated repeat run (missing value byte)');
       }
-      const value = compressedData[src++] ?? 0;
+      // biome-ignore lint/style/noNonNullAssertion: src < length checked above
+      const value = compressedData[src++]!;
       for (let i = 0; i <= count && dst < expectedSize; i++) {
         out[dst++] = value;
       }

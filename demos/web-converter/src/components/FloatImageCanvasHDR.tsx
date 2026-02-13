@@ -40,10 +40,12 @@ export function FloatImageCanvasHDR({
 
     for (let i = 0; i < pixelCount; i++) {
       const si = i * 4;
-      const r = (srcData[si] ?? 0) * exp;
-      const g = (srcData[si + 1] ?? 0) * exp;
-      const b = (srcData[si + 2] ?? 0) * exp;
-      const a = srcData[si + 3] ?? 1;
+      // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
+      const r = srcData[si]! * exp;
+      const g = srcData[si + 1]! * exp;
+      const b = srcData[si + 2]! * exp;
+      const a = srcData[si + 3]!;
+      // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
 
       const rSafe = Number.isFinite(r) ? r : 0;
       const gSafe = Number.isFinite(g) ? g : 0;

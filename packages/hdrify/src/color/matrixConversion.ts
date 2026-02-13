@@ -1,9 +1,12 @@
 /**
  * RGB ↔ XYZ matrix conversion from chromaticities (Bruce Lindbloom method).
  * Converts linear RGB between color spaces via XYZ as intermediate.
+ * Precomputed linear-to-linear matrices are built once at module load.
  */
 
 import type { Chromaticities } from './chromaticities.js';
+import type { LinearColorSpace } from './colorSpaces.js';
+import { LINEAR_TO_CHROMATICITIES } from './colorSpaces.js';
 
 /** 3×3 row-major matrix: M[row][col] */
 export type Mat3 = [[number, number, number], [number, number, number], [number, number, number]];
@@ -119,4 +122,51 @@ export function applyMatrix3ToFloat32Array(data: Float32Array, matrix: Mat3): vo
     data[i + 1] = g2;
     data[i + 2] = b2;
   }
+}
+
+// --- Precomputed linear-to-linear matrices (built once at load) ---
+
+const ch709 = LINEAR_TO_CHROMATICITIES['linear-rec709'];
+const chP3 = LINEAR_TO_CHROMATICITIES['linear-p3'];
+const ch2020 = LINEAR_TO_CHROMATICITIES['linear-rec2020'];
+
+/** Linear Rec.709 → Linear P3 */
+export const LINEAR_REC709_TO_LINEAR_P3: Mat3 = buildLinearToLinearMatrix(ch709, chP3);
+/** Linear Rec.709 → Linear Rec.2020 */
+export const LINEAR_REC709_TO_LINEAR_REC2020: Mat3 = buildLinearToLinearMatrix(ch709, ch2020);
+/** Linear P3 → Linear Rec.709 */
+export const LINEAR_P3_TO_LINEAR_REC709: Mat3 = buildLinearToLinearMatrix(chP3, ch709);
+/** Linear P3 → Linear Rec.2020 */
+export const LINEAR_P3_TO_LINEAR_REC2020: Mat3 = buildLinearToLinearMatrix(chP3, ch2020);
+/** Linear Rec.2020 → Linear Rec.709 */
+export const LINEAR_REC2020_TO_LINEAR_REC709: Mat3 = buildLinearToLinearMatrix(ch2020, ch709);
+/** Linear Rec.2020 → Linear P3 */
+export const LINEAR_REC2020_TO_LINEAR_P3: Mat3 = buildLinearToLinearMatrix(ch2020, chP3);
+
+/** Keys for off-diagonal linear→linear conversion (from !== to). */
+type LinearToLinearKey =
+  | 'linear-rec709-linear-p3'
+  | 'linear-rec709-linear-rec2020'
+  | 'linear-p3-linear-rec709'
+  | 'linear-p3-linear-rec2020'
+  | 'linear-rec2020-linear-rec709'
+  | 'linear-rec2020-linear-p3';
+
+const LINEAR_MATRIX_MAP: Record<LinearToLinearKey, Mat3> = {
+  'linear-rec709-linear-p3': LINEAR_REC709_TO_LINEAR_P3,
+  'linear-rec709-linear-rec2020': LINEAR_REC709_TO_LINEAR_REC2020,
+  'linear-p3-linear-rec709': LINEAR_P3_TO_LINEAR_REC709,
+  'linear-p3-linear-rec2020': LINEAR_P3_TO_LINEAR_REC2020,
+  'linear-rec2020-linear-rec709': LINEAR_REC2020_TO_LINEAR_REC709,
+  'linear-rec2020-linear-p3': LINEAR_REC2020_TO_LINEAR_P3,
+};
+
+/**
+ * Return the precomputed matrix to convert linear RGB from `from` to `to`.
+ * Returns null when from === to (identity; caller should skip conversion).
+ */
+export function getLinearToLinearMatrix(from: LinearColorSpace, to: LinearColorSpace): Mat3 | null {
+  if (from === to) return null;
+  const key = `${from}-${to}` as LinearToLinearKey;
+  return LINEAR_MATRIX_MAP[key];
 }
