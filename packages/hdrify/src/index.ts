@@ -50,6 +50,7 @@ export type {
   GainMapMetadata,
   GainMapMetadataExtended,
 } from './gainmap/types.js';
+export { DEFAULT_ICC_PROFILE } from './gainmap/libultrahdr/defaultIccProfile.js';
 export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
 export { writeGainMapAsSeparateFiles, writeJpegGainMap } from './gainmap/writeJpegGainMap.js';
 // HDR

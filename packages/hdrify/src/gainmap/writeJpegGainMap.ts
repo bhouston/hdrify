@@ -8,6 +8,8 @@ export interface GainMapWriterOptions {
   quality?: number;
   /** Output format: ultrahdr (default) or adobe-gainmap */
   format?: GainMapFormat;
+  /** ICC profile (APP2 payload). For ultrahdr, default is the memorial.jpg profile for Apple Preview 10-bit. Pass null to omit. */
+  icc?: Uint8Array | null;
 }
 
 /**
@@ -26,7 +28,7 @@ export function writeJpegGainMap(encodingResult: EncodingResult, options: GainMa
       sdr: sdrCompressed,
       gainMap: gainMapCompressed,
     },
-    { format },
+    { format, icc: options.icc },
   );
 }
 

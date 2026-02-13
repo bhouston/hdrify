@@ -1,10 +1,13 @@
 import { assembleJpegAdobeGainMap } from '../adobeGainMapAssembler.js';
 import type { GainMapFormat } from '../readJpegGainMap.js';
 import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
+import { DEFAULT_ICC_PROFILE } from './defaultIccProfile.js';
 import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
 export interface EncodeJPEGMetadataOptions {
   format?: GainMapFormat;
+  /** ICC profile (APP2 payload). For ultrahdr, default is the memorial.jpg profile so Apple Preview shows 10-bit. Pass null to omit. */
+  icc?: Uint8Array | null;
 }
 
 export function encodeJPEGMetadata(
@@ -44,9 +47,11 @@ export function encodeJPEGMetadata(
     });
   }
 
+  const icc = options.icc !== undefined ? options.icc : DEFAULT_ICC_PROFILE;
   return assembleJpegWithGainMap({
     sdr: encodingResult.sdr,
     gainMap: encodingResult.gainMap,
     metadata,
+    ...(icc && icc.length > 0 && { icc }),
   });
 }

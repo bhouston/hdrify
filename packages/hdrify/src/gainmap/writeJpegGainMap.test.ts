@@ -23,6 +23,20 @@ describe('writeJpegGainMap', () => {
     expect(jpegR[1]).toBe(0xd8);
   });
 
+  it('should embed default ICC profile in ultrahdr output for Apple Preview 10-bit recognition', () => {
+    const encodingResult = encodeGainMap(smallImage);
+    const jpegR = writeJpegGainMap(encodingResult);
+    const hasIcc = new TextDecoder('latin1').decode(jpegR).includes('ICC_PROFILE');
+    expect(hasIcc).toBe(true);
+  });
+
+  it('should omit ICC when icc: null', () => {
+    const encodingResult = encodeGainMap(smallImage);
+    const jpegR = writeJpegGainMap(encodingResult, { icc: null });
+    const hasIcc = new TextDecoder('latin1').decode(jpegR).includes('ICC_PROFILE');
+    expect(hasIcc).toBe(false);
+  });
+
   it('should accept quality option', () => {
     const encodingResult = encodeGainMap(smallImage);
     const jpegRDefault = writeJpegGainMap(encodingResult);
