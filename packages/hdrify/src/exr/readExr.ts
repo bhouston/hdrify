@@ -201,12 +201,6 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
 
     const linesInBlock = Math.min(actualBlockHeightFinal, height - firstLineY);
 
-    if (blockIdx < 2) {
-      console.log(
-        `Block ${blockIdx}: y=${firstLineY}, lines=${linesInBlock}, size=${dataSize}, compression=${compression}, actualBlockHeight=${actualBlockHeightFinal}`,
-      );
-    }
-
     // Decompress block data
     let decompressedData: Uint8Array;
     if (compression === NO_COMPRESSION) {

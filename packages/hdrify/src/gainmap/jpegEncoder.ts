@@ -1,3 +1,4 @@
+import './ensureBuffer.js';
 import { encode as jpegEncode } from 'jpeg-js';
 import type { CompressedImage } from './types.js';
 

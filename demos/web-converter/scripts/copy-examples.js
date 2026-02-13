@@ -20,7 +20,7 @@ let copied = 0;
 for (const entry of entries) {
   if (!entry.isFile()) continue;
   const ext = entry.name.toLowerCase().slice(entry.name.lastIndexOf('.'));
-  if (ext !== '.hdr' && ext !== '.exr') continue;
+  if (ext !== '.hdr' && ext !== '.exr' && ext !== '.jpg' && ext !== '.jpeg') continue;
   const src = join(assetsDir, entry.name);
   const dest = join(destDir, entry.name);
   cpSync(src, dest, { force: true });

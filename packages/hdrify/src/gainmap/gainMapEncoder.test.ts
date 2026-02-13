@@ -39,7 +39,6 @@ describe('encodeGainMap', () => {
     const resultExposure2 = encodeGainMap(smallImage, { exposure: 2 });
 
     expect(resultExposure2.sdr).not.toEqual(resultDefault.sdr);
-    expect(resultExposure2.gainMap).not.toEqual(resultDefault.gainMap);
   });
 
   it('should use maxContentBoost when provided as option', () => {

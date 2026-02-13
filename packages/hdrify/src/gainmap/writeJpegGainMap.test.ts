@@ -31,6 +31,32 @@ describe('writeJpegGainMap', () => {
     expect(jpegRHigh.length).toBeGreaterThanOrEqual(jpegRLow.length);
     expect(jpegRDefault.length).toBeGreaterThan(0);
   });
+
+  it('should produce valid adobe-gainmap format and round-trip', async () => {
+    const { readJpegGainMap } = await import('./readJpegGainMap.js');
+    const { compareFloatImages } = await import('../synthetic/compareFloatImages.js');
+    const encodingResult = encodeGainMap(smallImage);
+    const jpegAdobe = writeJpegGainMap(encodingResult, { format: 'adobe-gainmap', quality: 95 });
+
+    expect(jpegAdobe).toBeInstanceOf(Uint8Array);
+    expect(jpegAdobe.length).toBeGreaterThan(100);
+    expect(jpegAdobe[0]).toBe(0xff);
+    expect(jpegAdobe[1]).toBe(0xd8);
+
+    const decoded = readJpegGainMap(jpegAdobe);
+    expect(decoded.width).toBe(smallImage.width);
+    expect(decoded.height).toBe(smallImage.height);
+    expect(decoded.metadata?.format).toBeDefined();
+
+    const result = compareFloatImages(smallImage, decoded, {
+      tolerancePercent: 0.25,
+      toleranceAbsolute: 0.05,
+    });
+    expect(
+      result.match,
+      `Adobe round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
+  });
 });
 
 describe('writeGainMapAsSeparateFiles', () => {

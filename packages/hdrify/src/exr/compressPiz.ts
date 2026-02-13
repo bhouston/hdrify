@@ -202,8 +202,8 @@ function wav2Encode(buffer: Uint16Array, j: number, nx: number, ox: number, ny: 
 
 /**
  * Rearrange scanline-interleaved half-float bytes to channel-planar uint16.
- * Input: [R0,G0,B0,A0, R1,G1,B1,A1, ...] per scanline
- * Output: [R0..R(n-1), G0..G(n-1), B0..B(n-1), A0..A(n-1)]
+ * Input: [ch0, ch1, ch2, ...] per pixel in header channel order (writer sends channels[c]).
+ * Output: [ch0..ch0(n-1), ch1.., ch2.., ...] so planar index c = channel c for PIZ stream.
  */
 function rearrangeToChannelPlanar(
   src: Uint8Array,
@@ -217,20 +217,13 @@ function rearrangeToChannelPlanar(
   const out = new Uint16Array(total);
   const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
 
-  const rIdx = channels.findIndex((ch) => ch.name === 'R' || ch.name === 'r');
-  const gIdx = channels.findIndex((ch) => ch.name === 'G' || ch.name === 'g');
-  const bIdx = channels.findIndex((ch) => ch.name === 'B' || ch.name === 'b');
-  const aIdx = channels.findIndex((ch) => ch.name === 'A' || ch.name === 'a');
-
   for (let y = 0; y < blockHeight; y++) {
     for (let x = 0; x < width; x++) {
       const pixelIndex = y * width + x;
       const srcOffset = (y * width + x) * numChannels * INT16_SIZE;
-
-      if (rIdx >= 0) out[rIdx * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset, true);
-      if (gIdx >= 0) out[gIdx * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset + 2, true);
-      if (bIdx >= 0) out[bIdx * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset + 4, true);
-      if (aIdx >= 0) out[aIdx * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset + 6, true);
+      for (let c = 0; c < numChannels; c++) {
+        out[c * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset + c * INT16_SIZE, true);
+      }
     }
   }
   return out;
@@ -238,7 +231,7 @@ function rearrangeToChannelPlanar(
 
 /**
  * Compress half-float interleaved block using PIZ.
- * Input: rawHalfFloatInterleaved (scanline-interleaved bytes, R,G,B,A per pixel)
+ * Input: rawHalfFloatInterleaved (scanline-interleaved bytes in header channel order: ch0, ch1, ... per pixel)
  */
 export function compressPizBlock(
   rawHalfFloatInterleaved: Uint8Array,

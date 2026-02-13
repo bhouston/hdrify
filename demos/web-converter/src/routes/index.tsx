@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
 import {
+  addRangeMetadata,
   encodeGainMap,
   type FloatImageData,
   readExr,
   readHdr,
+  readJpegGainMap,
   type ToneMappingType,
   writeExr,
   writeHdr,
@@ -52,8 +54,13 @@ const EXR_COMPRESSION_NAMES: Record<number, string> = {
 const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/blouberg_sunrise_2_1k.hdr', label: 'Blouberg Sunrise 1k (HDR)' },
   { value: '/examples/moonless_golf_1k.hdr', label: 'Moonless Golf 1k (HDR)' },
+  { value: '/examples/moonless_golf_1k.ultrahdr.jpg', label: 'Moonless Golf 1k (Ultra HDR)' },
+  { value: '/examples/moonless_golf_1k.gainmap.jpg', label: 'Moonless Golf 1k (Adobe gain map)' },
   { value: '/examples/pedestrian_overpass_1k.hdr', label: 'Pedestrian Overpass 1k (HDR)' },
   { value: '/examples/rainbow.hdr', label: 'Rainbow (HDR)' },
+  { value: '/examples/memorial.hdr', label: 'Memorial (HDR)' },
+  { value: '/examples/memorial.exr', label: 'Memorial (EXR)' },
+  { value: '/examples/memorial.jpg', label: 'Memorial (JPEG gain map)' },
   { value: '/examples/example_halfs.exr', label: 'Example half float (EXR)' },
   { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
   { value: '/examples/example_pxr24.exr', label: 'Example PXR24 (EXR)' },
@@ -107,8 +114,10 @@ function Index() {
           parsed = readExr(buffer);
         } else if (ext === 'hdr') {
           parsed = readHdr(buffer);
+        } else if (ext === 'jpg' || ext === 'jpeg') {
+          parsed = readJpegGainMap(buffer);
         } else {
-          toast.error('Unsupported file format. Please use .exr or .hdr files.');
+          toast.error('Unsupported file format. Please use .exr, .hdr, or .jpg (gain map) files.');
           return;
         }
 
@@ -137,8 +146,10 @@ function Index() {
         parsed = readExr(buffer);
       } else if (ext === 'hdr') {
         parsed = readHdr(buffer);
+      } else if (ext === 'jpg' || ext === 'jpeg') {
+        parsed = readJpegGainMap(buffer);
       } else {
-        toast.error('Unsupported format. Example must be .exr or .hdr.');
+        toast.error('Unsupported format. Example must be .exr, .hdr, or .jpg (gain map).');
         return;
       }
       setImageData(parsed);
@@ -213,11 +224,15 @@ function Index() {
 
   const handleDownloadJpegR = useCallback(() => {
     if (!imageData) return;
-    const toneMappingForEncode = displayMode === 'none' ? 'neutral' : displayMode;
-    const encoding = encodeGainMap(imageData, { toneMapping: toneMappingForEncode });
-    const bytes = writeJpegGainMap(encoding, { quality: 90 });
-    const blob = new Blob([bytes], { type: 'image/jpeg' });
-    downloadBlob(blob, 'image.jpg');
+    try {
+      const toneMappingForEncode = displayMode === 'none' ? 'neutral' : displayMode;
+      const encoding = encodeGainMap(imageData, { toneMapping: toneMappingForEncode });
+      const bytes = writeJpegGainMap(encoding, { quality: 90 });
+      const blob = new Blob([bytes], { type: 'image/jpeg' });
+      downloadBlob(blob, 'image.jpg');
+    } catch (err) {
+      toast.error(`Failed to create Ultra HDR JPEG: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }, [imageData, displayMode]);
 
   const handleAreaClick = useCallback(() => {
@@ -292,7 +307,7 @@ function Index() {
 
         {/* Center: integrated drop zone + image viewer */}
         <button
-          aria-label="Drop EXR or HDR file here, or click to select a file"
+          aria-label="Drop EXR, HDR or JPEG gain map here, or click to select a file"
           className={cn(
             'flex min-h-[400px] w-full flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
             isDragging
@@ -305,7 +320,7 @@ function Index() {
           onDrop={handleDrop}
           type="button"
         >
-          <input accept=".exr,.hdr" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
+          <input accept=".exr,.hdr,.jpg,.jpeg" className="sr-only" onChange={handleFileInput} ref={fileInputRef} type="file" />
           {imageData ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
               <div className="flex min-h-0 flex-1 items-center justify-center">
@@ -331,9 +346,9 @@ function Index() {
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
-              <p className="text-lg">{isDragging ? 'Drop the file here' : 'Drop EXR or HDR here'}</p>
+              <p className="text-lg">{isDragging ? 'Drop the file here' : 'Drop EXR, HDR or JPEG gain map here'}</p>
               <p className="mt-1 text-sm">or click to select a file.</p>
-              <p className="mt-1 text-sm">Or load an example image by clicking the <b>Examples dropdown</b>.</p>
+              <p className="mt-1 text-sm">Or load an example image from the <b>Examples dropdown</b>.</p>
             </div>
           )}
         </button>
@@ -361,6 +376,42 @@ function Index() {
                     </dd>
                   </div>
                 )}
+                {imageData.metadata?.format != null &&
+                  (imageData.metadata.format === 'ultrahdr' || imageData.metadata.format === 'adobe-gainmap') && (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-foreground">Gain map format</dt>
+                      <dd>
+                        {imageData.metadata.format === 'ultrahdr' ? 'Ultra HDR (JPEG-R)' : 'Adobe gain map'}
+                      </dd>
+                    </div>
+                  )}
+                {(() => {
+                  const rangeMeta = addRangeMetadata(imageData);
+                  const min = rangeMeta.MIN_VALUE as [number, number, number];
+                  const max = rangeMeta.MAX_VALUE as [number, number, number];
+                  return (
+                    <>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-foreground">R range</dt>
+                        <dd title={`min: ${min[0]}, max: ${max[0]}`}>
+                          [{min[0].toFixed(3)}, {max[0].toFixed(3)}]
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-foreground">G range</dt>
+                        <dd title={`min: ${min[1]}, max: ${max[1]}`}>
+                          [{min[1].toFixed(3)}, {max[1].toFixed(3)}]
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="text-foreground">B range</dt>
+                        <dd title={`min: ${min[2]}, max: ${max[2]}`}>
+                          [{min[2].toFixed(3)}, {max[2].toFixed(3)}]
+                        </dd>
+                      </div>
+                    </>
+                  );
+                })()}
                 {sourceFileName && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-foreground">File name</dt>

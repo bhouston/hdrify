@@ -157,8 +157,6 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
       2 +
       4);
 
-  const mpfDataActual = generateMpf(primaryImageSize, 0, secondaryImageSize, secondaryImageOffset);
-
   const output = new Uint8Array(totalSize);
   let pos = 0;
 
@@ -173,6 +171,15 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   if (icc) {
     pos = writeMarker(output, pos, MARKERS.APP2, icc);
   }
+
+  const mpfSegmentStart = pos;
+  const gainmapOffsetInMpf = secondaryImageOffset - mpfSegmentStart - 6;
+  const mpfDataActual = generateMpf(
+    primaryImageSize,
+    0,
+    secondaryImageSize,
+    gainmapOffsetInMpf,
+  );
 
   pos = writeMarker(output, pos, MARKERS.APP2, mpfDataActual);
 

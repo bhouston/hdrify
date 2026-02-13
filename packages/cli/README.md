@@ -7,7 +7,7 @@
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
 
-CLI for converting and inspecting EXR/HDR files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
+CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
 
 An **online demo** (the web-converter from this repository) is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — an HDR, EXR, and Ultra HDR (JPEG-R) format viewer and converter; try it in your browser without installing the CLI.
 
@@ -21,20 +21,23 @@ pnpm add -g hdrify-cli
 
 | Command | Description |
 | ------- | ----------- |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, and JPEG (JPEG-R with gain map when output is .jpg) |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
 | `hdrify info <file>` | Display metadata (format, dimensions, compression) |
 | `hdrify reference <output>` | Create synthetic reference test images |
 
 ```bash
 # Convert between formats
 hdrify convert input.exr output.hdr
-hdrify convert input.hdr output.exr
-hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
-hdrify convert input.exr output.webp   # Tonemaps the HDR during converesion to SDR webp format
+hdrify convert input.hdr output.exr --compression piz
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
+hdrify convert input.exr output.jpg --format adobe-gainmap   # Adobe gain map format
+hdrify convert input.jpg output.exr    # Read JPEG gain map (Ultra HDR or Adobe) as input
+hdrify convert input.exr output.webp   # Tonemaps the HDR during conversion to SDR webp format
 
 # View file metadata
 hdrify info input.exr
 hdrify info input.hdr
+hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
 
 # Create synthetic reference image
 hdrify reference output.exr
@@ -43,7 +46,7 @@ hdrify reference output.hdr --compression zip
 
 ## Options
 
-Key flags for `convert`: `--compression` (EXR: none, rle, zip, zips, piz), `--tonemapping` (aces, reinhard), `--exposure`, `--quality` (JPEG). Run `hdrify --help` for full usage.
+Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). Run `hdrify --help` for full usage.
 
 ## Library
 

@@ -120,7 +120,7 @@ fileInput.addEventListener('change', async (e) => {
 
 ## CLI Tool
 
-The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR/HDR files:
+The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files:
 
 ```sh
 pnpm add -g hdrify-cli
@@ -128,15 +128,18 @@ pnpm add -g hdrify-cli
 
 | Command | Description |
 | ------- | ----------- |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, PNG, WebP, and JPEG (JPEG-R gain map when output is .jpg) |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
 | `hdrify info <file>` | Display metadata (format, dimensions, compression) |
 | `hdrify reference <output>` | Create synthetic reference test images |
 
 ```bash
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr
-hdrify convert input.exr output.jpg    # JPEG-R with gain map (highly compressible HDR)
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
+hdrify convert input.exr output.jpg --format adobe-gainmap   # Adobe gain map format
+hdrify convert input.jpg output.exr    # Read JPEG gain map as input
 hdrify info input.exr
+hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
 hdrify reference output.exr --compression zip
 hdrify convert input.exr output.exr --compression pxr24
 ```

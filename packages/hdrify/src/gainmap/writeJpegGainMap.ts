@@ -1,3 +1,4 @@
+import type { GainMapFormat } from './readJpegGainMap.js';
 import { encodeToJpeg } from './jpegEncoder.js';
 import { encodeJPEGMetadata } from './libultrahdr/encode-jpeg-metadata.js';
 import type { EncodingResult, GainMapMetadata } from './types.js';
@@ -5,6 +6,8 @@ import type { EncodingResult, GainMapMetadata } from './types.js';
 export interface GainMapWriterOptions {
   /** JPEG quality 0-100. Default: 90 */
   quality?: number;
+  /** Output format: ultrahdr (default) or adobe-gainmap */
+  format?: GainMapFormat;
 }
 
 /**
@@ -12,15 +15,19 @@ export interface GainMapWriterOptions {
  */
 export function writeJpegGainMap(encodingResult: EncodingResult, options: GainMapWriterOptions = {}): Uint8Array {
   const quality = options.quality ?? 90;
+  const format = options.format ?? 'ultrahdr';
 
   const sdrCompressed = encodeToJpeg(encodingResult.sdr, encodingResult.width, encodingResult.height, quality);
   const gainMapCompressed = encodeToJpeg(encodingResult.gainMap, encodingResult.width, encodingResult.height, quality);
 
-  return encodeJPEGMetadata({
-    ...encodingResult.metadata,
-    sdr: sdrCompressed,
-    gainMap: gainMapCompressed,
-  });
+  return encodeJPEGMetadata(
+    {
+      ...encodingResult.metadata,
+      sdr: sdrCompressed,
+      gainMap: gainMapCompressed,
+    },
+    { format },
+  );
 }
 
 export interface SeparateFilesResult {

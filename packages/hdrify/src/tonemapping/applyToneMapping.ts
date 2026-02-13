@@ -1,15 +1,15 @@
-import { getToneMapping } from './mappers.js';
+import { linearTosRGB } from '../color/srgb.js';
+import { getToneMapping, getToneMappingOutputSpace } from './mappers.js';
 import type { ApplyToneMappingOptions } from './types.js';
+import type { ToneMappingType } from './types.js';
 import { validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';
 
 /**
  * Apply full HDR-to-LDR tone mapping pipeline.
  *
- * Input: Float32Array RGBA. Output: Uint8Array RGB.
- * Pipeline: exposure → tone mapping → gamma (default per mapper) → 0-255
- *
- * - ACES, Neutral, AgX: output sRGB 0-1, default gamma: 1 (no-op)
- * - Reinhard: outputs linear 0-1, default gamma: 2.2 for display
+ * Input: Float32Array RGBA. Output: Uint8Array RGB in sRGB (IEC 61966-2-1).
+ * Pipeline: exposure → tone mapping → (linearToSrgb only if mapper output is linear) → 0-255
+ * ACES and AgX output display-referred; Reinhard and Neutral output linear.
  */
 export function applyToneMapping(
   hdrData: Float32Array,
@@ -21,10 +21,9 @@ export function applyToneMapping(
     validateToneMappingColorSpaceFromMetadata(options.metadata);
   }
 
-  const toneMappingType = options.toneMapping ?? 'reinhard';
+  const toneMappingType: ToneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
-  // ACES, Neutral, AgX output sRGB 0-1; Reinhard outputs linear 0-1
-  const gamma = options.gamma ?? (toneMappingType === 'reinhard' ? 2.2 : 1);
+  const outputSpace = getToneMappingOutputSpace(toneMappingType);
 
   const mapper = getToneMapping(toneMappingType);
   const totalPixels = width * height;
@@ -51,9 +50,12 @@ export function applyToneMapping(
 
     [r, g, b] = mapper(r, g, b);
 
-    r = Number.isFinite(r) ? r ** (1.0 / gamma) : 0;
-    g = Number.isFinite(g) ? g ** (1.0 / gamma) : 0;
-    b = Number.isFinite(b) ? b ** (1.0 / gamma) : 0;
+    // Only apply linearToSrgb when mapper output is linear (Reinhard, Neutral)
+    if (outputSpace === 'linear') {
+      r = Number.isFinite(r) ? linearTosRGB(r) : 0;
+      g = Number.isFinite(g) ? linearTosRGB(g) : 0;
+      b = Number.isFinite(b) ? linearTosRGB(b) : 0;
+    }
 
     const outputIndex = pixelIndex * 3;
     const rOut = Number.isFinite(r) ? Math.round(r * 255) : 0;

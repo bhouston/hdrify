@@ -1,16 +1,25 @@
 // FloatImageData - shared type
 
+// Color (sRGB ↔ linear, IEC 61966-2-1; use on float [0,1] after bytes→float)
+export { linearTosRGB, sRGBToLinear } from './color/srgb.js';
 // EXR
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';
 export type { FloatImageData } from './floatImage.js';
 // Gainmap
+export { decodeGainMap } from './gainmap/decodeGainMap.js';
+export type { DecodeGainMapOptions } from './gainmap/decodeGainMap.js';
 export { encodeGainMap } from './gainmap/gainMapEncoder.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';
+export { readJpegGainMap } from './gainmap/readJpegGainMap.js';
+export type { GainMapFormat } from './gainmap/readJpegGainMap.js';
+export { decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';
+export { encodeGainMapToFloat } from './gainmap/gainMapEncoder.js';
 export type {
   CompressedImage,
   EncodingResult,
+  EncodingResultFloat,
   GainMapEncodingOptions,
   GainMapMetadata,
   GainMapMetadataExtended,

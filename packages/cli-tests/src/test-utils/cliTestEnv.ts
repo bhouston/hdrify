@@ -17,6 +17,9 @@ export const hdrFiles = ['blouberg_sunrise_2_1k.hdr', 'moonless_golf_1k.hdr', 'p
 /** Explicit list of EXR asset file names (non-empty, const). */
 export const exrFiles = ['example_piz.exr'] as const;
 
+/** JPEG gain map asset file name. */
+export const jpgGainMapFile = 'memorial.jpg';
+
 /** Full paths to HDR assets (non-empty). */
 export const hdrFilePaths: readonly [string, ...string[]] = hdrFiles.map((f) =>
   path.join(assetsDir, f),
@@ -26,6 +29,9 @@ export const hdrFilePaths: readonly [string, ...string[]] = hdrFiles.map((f) =>
 export const exrFilePaths: readonly [string, ...string[]] = exrFiles.map((f) =>
   path.join(assetsDir, f),
 ) as unknown as readonly [string, ...string[]];
+
+/** Full path to JPEG gain map asset. */
+export const jpgGainMapFilePath = path.join(assetsDir, jpgGainMapFile);
 
 export interface RunCliResult {
   stdout: string;

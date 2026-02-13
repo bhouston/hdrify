@@ -7,8 +7,6 @@ export interface HDRToLDROptions {
   toneMapping?: ToneMappingType;
   /** Exposure value for tone mapping (default: 1.0) */
   exposure?: number;
-  /** Gamma value for gamma correction (default: 2.2 for reinhard, 1 for aces) */
-  gamma?: number;
 }
 
 export interface ParseHDROptions {
@@ -516,14 +514,13 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
 /**
  * Convert HDR float data to LDR (Low Dynamic Range) uint8 data using tone mapping
  *
- * Uses unified tone mapping (Reinhard or ACES) with gamma correction to convert
- * high dynamic range floating point values to standard 8-bit RGB values.
+ * Uses unified tone mapping (Reinhard or ACES) with sRGB output transfer.
  *
  * @param hdrData - Float32Array of RGBA pixel data [R, G, B, A, R, G, B, A, ...] where A is always 1.0
  * @param width - Image width in pixels
  * @param height - Image height in pixels
- * @param options - Tone mapping options (toneMapping, exposure, gamma)
- * @returns Uint8Array containing uint8 RGB data ready for image encoding
+ * @param options - Tone mapping options (toneMapping, exposure)
+ * @returns Uint8Array containing uint8 RGB data in sRGB, ready for image encoding
  */
 export function hdrToLdr(
   hdrData: Float32Array,
@@ -534,7 +531,6 @@ export function hdrToLdr(
   return applyToneMapping(hdrData, width, height, {
     toneMapping: options.toneMapping ?? 'reinhard',
     exposure: options.exposure ?? 1.0,
-    gamma: options.gamma ?? 2.2,
   });
 }
 
@@ -542,9 +538,10 @@ export function hdrToLdr(
  * Convert an HDR file buffer to LDR RGB buffer
  *
  * This is a convenience function that combines parsing and conversion.
+ * Output is sRGB.
  *
  * @param hdrBuffer - Uint8Array containing HDR file data
- * @param options - Tone mapping options (exposure and gamma)
+ * @param options - Tone mapping options (toneMapping, exposure)
  * @returns Object containing width, height, and LDR RGB buffer
  */
 export function convertHDRToLDR(
@@ -552,14 +549,10 @@ export function convertHDRToLDR(
   options: HDRToLDROptions = {},
 ): { width: number; height: number; ldrData: Uint8Array } {
   const hdrImage = readHdr(hdrBuffer);
-  const toneMapping = options.toneMapping ?? 'reinhard';
-  const fileGamma = hdrImage.metadata?.GAMMA as number | undefined;
   const fileExposure = hdrImage.metadata?.EXPOSURE as number | undefined;
-  const gamma = options.gamma ?? (toneMapping === 'aces' ? 1 : (fileGamma ?? 2.2));
   const ldrData = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
-    toneMapping,
+    toneMapping: options.toneMapping ?? 'reinhard',
     exposure: options.exposure ?? fileExposure ?? 1.0,
-    gamma,
   });
 
   return {

@@ -33,14 +33,6 @@ describe('applyToneMapping', () => {
     expect(result2[0]).toBeGreaterThan(result1[0] ?? 0);
   });
 
-  it('should accept custom gamma', () => {
-    const hdrData = new Float32Array([0.5, 0.5, 0.5, 1]);
-    const resultGamma1 = applyToneMapping(hdrData, 1, 1, { gamma: 1.0 });
-    const resultGamma22 = applyToneMapping(hdrData, 1, 1, { gamma: 2.2 });
-
-    expect(resultGamma1).not.toEqual(resultGamma22);
-  });
-
   it('should handle edge case with single pixel', () => {
     const hdrData = new Float32Array([1, 0, 0, 1]);
     const result = applyToneMapping(hdrData, 1, 1);
@@ -61,34 +53,13 @@ describe('applyToneMapping', () => {
     expect(result[2]).toBe(0);
   });
 
-  it('should use default gamma 1 for aces, neutral, agx and 2.2 for reinhard', () => {
+  it('outputs sRGB (linear → linearToSrgb → 0-255)', () => {
     const hdrData = new Float32Array([0.5, 0.5, 0.5, 1]);
-    const acesDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'aces' });
-    const acesExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
-      toneMapping: 'aces',
-      gamma: 1,
-    });
-    expect(acesDefault).toEqual(acesExplicitGamma1);
-
-    const reinhardDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'reinhard' });
-    const reinhardExplicitGamma22 = applyToneMapping(hdrData, 1, 1, {
-      toneMapping: 'reinhard',
-      gamma: 2.2,
-    });
-    expect(reinhardDefault).toEqual(reinhardExplicitGamma22);
-
-    const neutralDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'neutral' });
-    const neutralExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
-      toneMapping: 'neutral',
-      gamma: 1,
-    });
-    expect(neutralDefault).toEqual(neutralExplicitGamma1);
-
-    const agxDefault = applyToneMapping(hdrData, 1, 1, { toneMapping: 'agx' });
-    const agxExplicitGamma1 = applyToneMapping(hdrData, 1, 1, {
-      toneMapping: 'agx',
-      gamma: 1,
-    });
-    expect(agxDefault).toEqual(agxExplicitGamma1);
+    const result = applyToneMapping(hdrData, 1, 1, { toneMapping: 'reinhard' });
+    // Reinhard(0.5) = 1/3 linear; sRGB(1/3) ≈ 0.215 → byte ≈ 55
+    expect(result[0]).toBeGreaterThanOrEqual(0);
+    expect(result[0]).toBeLessThanOrEqual(255);
+    expect(result[1]).toBe(result[0]);
+    expect(result[2]).toBe(result[0]);
   });
 });

@@ -1,5 +1,6 @@
+import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { exrFilePaths, hdrFilePaths, runCli } from '../test-utils/cliTestEnv.js';
+import { exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
 
 describe('CLI info command', () => {
   it('displays info for HDR file (default YAML format)', () => {
@@ -38,5 +39,15 @@ describe('CLI info command', () => {
     const result = runCli(['info', '/nonexistent/file.exr']);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('not found');
+  });
+
+  it('displays info for JPEG gain map file', () => {
+    if (!fs.existsSync(jpgGainMapFilePath)) return;
+    const result = runCli(['info', jpgGainMapFilePath]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain('format:');
+    expect(result.stdout).toContain('width:');
+    expect(result.stdout).toContain('height:');
+    expect(result.stdout).toContain('metadata:');
   });
 });

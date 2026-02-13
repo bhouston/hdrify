@@ -1,7 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTempDir, exrFilePaths, hdrFilePaths, runCli } from '../test-utils/cliTestEnv.js';
+import {
+  createTempDir,
+  exrFilePaths,
+  hdrFilePaths,
+  jpgGainMapFilePath,
+  runCli,
+} from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
 
 describe('CLI convert command', () => {
@@ -191,6 +197,33 @@ describe('CLI convert command', () => {
       expect(meta.height).toBeGreaterThan(0);
     });
 
+    it('converts HDR to JPEG with --format adobe-gainmap', async () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.jpg');
+
+      const result = runCli(['convert', input, output, '--format', 'adobe-gainmap']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateWithSharp(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
+
+    it('converts JPEG gain map to EXR when JPEG is input', async () => {
+      if (!fs.existsSync(jpgGainMapFilePath)) return;
+      const input = jpgGainMapFilePath;
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output]);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBeGreaterThan(0);
+      expect(meta.height).toBeGreaterThan(0);
+    });
+
     it('converts EXR to PNG', async () => {
       const input = exrFilePaths[0];
       const output = path.join(tempDir, 'output.png');
@@ -248,6 +281,14 @@ describe('CLI convert command', () => {
       const result = runCli(['convert', input, output, '--compression', 'zip']);
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('--compression is only valid for EXR output');
+    });
+
+    it('fails when --format is used with PNG output', () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.png');
+      const result = runCli(['convert', input, output, '--format', 'adobe-gainmap']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('--format is only valid for JPEG output');
     });
   });
 });

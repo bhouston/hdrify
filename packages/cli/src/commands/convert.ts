@@ -6,6 +6,7 @@ import {
   type FloatImageData,
   readExr,
   readHdr,
+  readJpegGainMap,
   writeExr,
   writeHdr,
   writeJpegGainMap,
@@ -34,13 +35,17 @@ function isHdrExtension(ext: string): ext is '.exr' | '.hdr' {
   return ext === '.exr' || ext === '.hdr';
 }
 
+function isJpegGainMapExtension(ext: string): ext is '.jpg' | '.jpeg' {
+  return ext === '.jpg' || ext === '.jpeg';
+}
+
 export const command = defineCommand({
   command: 'convert <input> <output>',
-  describe: 'Convert between EXR, HDR, and SDR formats (PNG, WebP, JPEG)',
+  describe: 'Convert between EXR, HDR, JPEG gain map (Ultra HDR / Adobe), and SDR formats (PNG, WebP, JPEG)',
   builder: (yargs) =>
     yargs
       .positional('input', {
-        describe: 'Input file path (.exr or .hdr)',
+        describe: 'Input file path (.exr, .hdr, or .jpg/.jpeg with gain map)',
         type: 'string',
         demandOption: true,
       })
@@ -56,7 +61,7 @@ export const command = defineCommand({
         default: 'reinhard' as const,
       })
       .option('gamma', {
-        describe: 'Gamma for SDR output (display gamma for PNG/WebP; gain map gamma for JPEG)',
+        describe: 'Gain map encoding gamma (JPEG gain map output only); LDR PNG/WebP use sRGB',
         type: 'number',
       })
       .option('exposure', {
@@ -73,9 +78,14 @@ export const command = defineCommand({
         describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
         choices: EXR_COMPRESSION_CHOICES,
+      })
+      .option('format', {
+        describe: 'JPEG gain map format: ultrahdr (default) or adobe-gainmap (JPEG output only)',
+        type: 'string',
+        choices: ['ultrahdr', 'adobe-gainmap'],
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality, compression } = argv;
+    const { input, output, tonemapping, gamma, exposure, quality, compression, format } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -85,8 +95,14 @@ export const command = defineCommand({
     const inputExt = path.extname(input).toLowerCase();
     const outputExt = path.extname(output).toLowerCase();
 
-    if (inputExt !== '.exr' && inputExt !== '.hdr') {
-      console.error(`Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr`);
+    if (
+      inputExt !== '.exr' &&
+      inputExt !== '.hdr' &&
+      !isJpegGainMapExtension(inputExt)
+    ) {
+      console.error(
+        `Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`,
+      );
       process.exit(1);
     }
 
@@ -101,6 +117,11 @@ export const command = defineCommand({
       process.exit(1);
     }
 
+    if (format !== undefined && format !== null && !isJpegGainMapExtension(outputExt)) {
+      console.error(`Error: --format is only valid for JPEG output. Output format is ${outputExt}.`);
+      process.exit(1);
+    }
+
     try {
       const inputBuf = fs.readFileSync(input);
       const inputBuffer = new Uint8Array(inputBuf.buffer, inputBuf.byteOffset, inputBuf.byteLength);
@@ -109,6 +130,8 @@ export const command = defineCommand({
       let imageData: FloatImageData;
       if (inputExt === '.exr') {
         imageData = readExr(inputBuffer);
+      } else if (isJpegGainMapExtension(inputExt)) {
+        imageData = readJpegGainMap(inputBuffer);
       } else {
         imageData = readHdr(inputBuffer);
       }
@@ -127,25 +150,26 @@ export const command = defineCommand({
         }
         fs.writeFileSync(output, outputBuffer);
       } else {
-        // SDR output: tone mapping + format-specific encoding
-        const gammaVal = gamma ?? (tonemapping === 'reinhard' ? 2.2 : 1);
-
+        // SDR output: tone mapping + format-specific encoding (LDR uses sRGB)
         if (outputExt === '.jpg' || outputExt === '.jpeg') {
-          // JPEG: encodeGainMap + writeJpegGainMap (JPEG-R / Ultra HDR)
+          // JPEG: encodeGainMap + writeJpegGainMap (JPEG-R / Ultra HDR / Adobe gain map)
+          const gammaVal = gamma ?? 1;
           const gammaTriple = [gammaVal, gammaVal, gammaVal] as [number, number, number];
           const encodingResult = encodeGainMap(imageData, {
             toneMapping: tonemapping as 'aces' | 'reinhard' | 'neutral' | 'agx',
             exposure,
             gamma: gammaTriple,
           });
-          const jpegBuffer = writeJpegGainMap(encodingResult, { quality });
+          const jpegBuffer = writeJpegGainMap(encodingResult, {
+            quality,
+            format: (format ?? 'ultrahdr') as 'ultrahdr' | 'adobe-gainmap',
+          });
           fs.writeFileSync(output, jpegBuffer);
         } else {
-          // PNG / WebP: applyToneMapping + sharp
+          // PNG / WebP: applyToneMapping (sRGB) + sharp
           const ldrRgb = applyToneMapping(imageData.data, imageData.width, imageData.height, {
             toneMapping: tonemapping as 'aces' | 'reinhard' | 'neutral' | 'agx',
             exposure,
-            gamma: gammaVal,
             metadata: imageData.metadata,
           });
           const pipeline = sharp(ldrRgb, {

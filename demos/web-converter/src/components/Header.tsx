@@ -1,13 +1,18 @@
+import { Link } from '@tanstack/react-router';
 import { Github, Package } from 'lucide-react';
 
 export default function Header() {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-card px-6 py-4 shadow-sm">
-      <div className="flex items-center gap-3">
-        <img src="/logo192.png" alt="HDRify logo" className="size-8 shrink-0" />
-        <h1 className="text-xl font-semibold text-foreground">HDRify</h1>
-      </div>
-      <nav className="flex items-center gap-4">
+    <header className="flex h-14 items-stretch border-b border-border bg-card pl-0 pr-6 py-0 shadow-sm">
+      <Link
+        to="/"
+        search={{}}
+        className="flex flex-shrink-0 items-center gap-3 self-stretch text-foreground no-underline hover:text-foreground"
+      >
+        <img src="/logo192.png" alt="HDRify logo" className="h-full w-auto object-contain" />
+        <h1 className="text-xl font-semibold">HDRify</h1>
+      </Link>
+      <nav className="ml-auto flex items-center gap-4">
         <a
           aria-label="GitHub repository"
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"

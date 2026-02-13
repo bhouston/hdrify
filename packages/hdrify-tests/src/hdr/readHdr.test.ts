@@ -47,12 +47,14 @@ describe('hdrReader', () => {
       const result = readHdr(hdrBuffer);
 
       if (result.metadata?.EXPOSURE !== undefined) {
-        expect(typeof result.metadata.EXPOSURE).toBe('number');
-        expect(result.metadata.EXPOSURE).toBeGreaterThan(0);
+        const exp = Number(result.metadata.EXPOSURE);
+        expect(Number.isFinite(exp)).toBe(true);
+        expect(exp).toBeGreaterThan(0);
       }
       if (result.metadata?.GAMMA !== undefined) {
-        expect(typeof result.metadata.GAMMA).toBe('number');
-        expect(result.metadata.GAMMA).toBeGreaterThan(0);
+        const gamma = Number(result.metadata.GAMMA);
+        expect(Number.isFinite(gamma)).toBe(true);
+        expect(gamma).toBeGreaterThan(0);
       }
     });
 
@@ -103,27 +105,12 @@ describe('hdrReader', () => {
       expect(ldrDataDefault.length).toBe(ldrDataHighExposure.length);
     });
 
-    it('should apply custom gamma correction', () => {
-      const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
-      const hdrImage = readHdr(hdrBuffer);
-      const ldrDataGamma1 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
-        gamma: 1.0,
-      });
-      const ldrDataGamma22 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
-        gamma: 2.2,
-      });
-
-      const hasContent = ldrDataGamma1.some((b) => b > 0 && b < 255);
-      if (hasContent) expect(uint8ArrayCompare(ldrDataGamma1, ldrDataGamma22)).not.toBe(0);
-    });
-
-    it('should use default exposure and gamma when not provided', () => {
+    it('should use default exposure when not provided', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const hdrImage = readHdr(hdrBuffer);
       const ldrData1 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height);
       const ldrData2 = hdrToLdr(hdrImage.data, hdrImage.width, hdrImage.height, {
         exposure: 1.0,
-        gamma: 2.2,
       });
 
       expect(uint8ArrayCompare(ldrData1, ldrData2)).toBe(0);
@@ -363,12 +350,11 @@ describe('hdrReader', () => {
       expect(result.ldrData.length).toBeGreaterThan(0);
     });
 
-    it('should allow overriding exposure and gamma', () => {
+    it('should allow overriding exposure', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
       const resultDefault = convertHDRToLDR(hdrBuffer);
       const resultCustom = convertHDRToLDR(hdrBuffer, {
         exposure: 2.0,
-        gamma: 1.8,
       });
 
       const hasContent = resultDefault.ldrData.some((b) => b > 0 && b < 255);

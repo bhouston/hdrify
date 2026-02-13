@@ -257,56 +257,19 @@ export function decompressPiz(
   // Apply LUT
   applyLut(lut, outputBuffer, totalPixels);
 
-  // Rearrange from channel-interleaved to scanline-interleaved (RGBA per pixel per scanline)
-  // PIZ output: [R0...R(n*blockHeight-1), G0...G(n*blockHeight-1), B0...B(n*blockHeight-1), A0...A(n*blockHeight-1)]
-  // We need: [R0, G0, B0, A0, R1, G1, B1, A1, ...] for each scanline
+  // Rearrange from channel-major to scanline-interleaved in header channel order.
+  // PIZ output: [ch0...ch0(n-1), ch1..., ch2..., ...] — slot c in result must be channels[c] for readExr.
   const result = new Uint8Array(totalPixels * INT16_SIZE);
   const resultView = new DataView(result.buffer);
 
-  // Find channel indices
-  const rIdx = channels.findIndex((ch) => ch.name === 'R' || ch.name === 'r');
-  const gIdx = channels.findIndex((ch) => ch.name === 'G' || ch.name === 'g');
-  const bIdx = channels.findIndex((ch) => ch.name === 'B' || ch.name === 'b');
-  const aIdx = channels.findIndex((ch) => ch.name === 'A' || ch.name === 'a');
-
-  // Rearrange data: for each scanline, interleave channels
   for (let y = 0; y < blockHeight; y++) {
     for (let x = 0; x < width; x++) {
       const pixelIndex = y * width + x;
-      let resultOffset = (y * width + x) * numChannels * INT16_SIZE;
-
-      // Write R channel
-      if (rIdx >= 0) {
-        const rValue = outputBuffer[rIdx * pixelsPerChannel + pixelIndex];
-        if (rValue !== undefined) {
-          resultView.setUint16(resultOffset, rValue, true);
-        }
-        resultOffset += INT16_SIZE;
-      }
-
-      // Write G channel
-      if (gIdx >= 0) {
-        const gValue = outputBuffer[gIdx * pixelsPerChannel + pixelIndex];
-        if (gValue !== undefined) {
-          resultView.setUint16(resultOffset, gValue, true);
-        }
-        resultOffset += INT16_SIZE;
-      }
-
-      // Write B channel
-      if (bIdx >= 0) {
-        const bValue = outputBuffer[bIdx * pixelsPerChannel + pixelIndex];
-        if (bValue !== undefined) {
-          resultView.setUint16(resultOffset, bValue, true);
-        }
-        resultOffset += INT16_SIZE;
-      }
-
-      // Write A channel
-      if (aIdx >= 0) {
-        const aValue = outputBuffer[aIdx * pixelsPerChannel + pixelIndex];
-        if (aValue !== undefined) {
-          resultView.setUint16(resultOffset, aValue, true);
+      const resultPixelOffset = (y * width + x) * numChannels * INT16_SIZE;
+      for (let c = 0; c < numChannels; c++) {
+        const value = outputBuffer[c * pixelsPerChannel + pixelIndex];
+        if (value !== undefined) {
+          resultView.setUint16(resultPixelOffset + c * INT16_SIZE, value, true);
         }
       }
     }

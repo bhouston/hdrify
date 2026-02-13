@@ -1,9 +1,20 @@
 /**
  * Pure TypeScript tone mapping implementations.
  * Ported from gainmap-js SDRMaterial GLSL.
+ *
+ * Output space varies by mapper (see getToneMappingOutputSpace):
+ * - Reinhard, Neutral: linear 0-1 (callers apply linearToSrgb for display).
+ * - ACES, AgX: display-referred (sRGB-like) 0-1; no further transfer needed for display.
  */
 
 import type { ToneMappingFn, ToneMappingType } from './types.js';
+
+/** 'linear': mapper returns linear 0-1. 'srgb': mapper returns display-referred (sRGB-like) 0-1. */
+export type ToneMappingOutputSpace = 'linear' | 'srgb';
+
+export function getToneMappingOutputSpace(type: ToneMappingType): ToneMappingOutputSpace {
+  return type === 'aces' || type === 'agx' ? 'srgb' : 'linear';
+}
 
 function saturate(x: number): number {
   if (!Number.isFinite(x)) return 0;
@@ -16,7 +27,7 @@ function saturate3(r: number, g: number, b: number): [number, number, number] {
 
 /**
  * ACES Filmic tone mapping - matches gainmap-js default.
- * Input: linear RGB, Output: sRGB 0-1
+ * Input: linear RGB. Output: display-referred (sRGB-like) 0-1 from RRT+ODT.
  */
 function acesFilmic(r: number, g: number, b: number): [number, number, number] {
   // Clamp negative and non-finite inputs - tonemappers assume non-negative HDR
@@ -67,7 +78,7 @@ function acesFilmic(r: number, g: number, b: number): [number, number, number] {
 }
 
 /**
- * Reinhard tone mapping: x / (1 + x)
+ * Reinhard tone mapping: x / (1 + x). Output: linear 0-1.
  * Uses max(0,x) to avoid discontinuity at zero for negative inputs.
  */
 function reinhard(r: number, g: number, b: number): [number, number, number] {
@@ -79,7 +90,7 @@ function reinhard(r: number, g: number, b: number): [number, number, number] {
 
 /**
  * Khronos Neutral tone mapping - https://modelviewer.dev/examples/tone-mapping
- * Preserves neutral greys and provides smooth shoulder compression.
+ * Preserves neutral greys and provides smooth shoulder compression. Output: linear 0-1.
  */
 function neutral(r: number, g: number, b: number): [number, number, number] {
   let r0 = r > 0 && Number.isFinite(r) ? r : 0;
@@ -129,7 +140,7 @@ function agxDefaultContrastApprox(x: number): number {
  * AgX tone mapping from Blender via Filament.
  * Uses rec 2020 primaries, log2 encoding, and sigmoid contrast.
  * https://github.com/google/filament/pull/7236
- * Inputs and outputs: Linear sRGB.
+ * Output: display-referred (gamma 2.2–like) 0-1; do not apply linearToSrgb again.
  */
 function agx(r: number, g: number, b: number): [number, number, number] {
   const r0 = r > 0 && Number.isFinite(r) ? r : 0;

@@ -49,6 +49,21 @@ export interface EncodingResult {
   metadata: GainMapMetadata;
 }
 
+/**
+ * Float encoding result (no quantization). For testing and incremental encode/decode.
+ * Decode does not need to know the tone mapper: the gain map stores the ratio
+ * (HDR_linear / SDR_linear) per pixel, so decode = linearize(SDR) * gain.
+ */
+export interface EncodingResultFloat {
+  /** SDR as sRGB in [0, 1], RGBA */
+  sdrFloat: Float32Array;
+  /** Gain map as [0, 1] (post-gamma encoded, same as gainMap/255), RGBA */
+  gainMapFloat: Float32Array;
+  width: number;
+  height: number;
+  metadata: GainMapMetadata;
+}
+
 export interface CompressedImage {
   data: Uint8Array;
   mimeType: 'image/jpeg';

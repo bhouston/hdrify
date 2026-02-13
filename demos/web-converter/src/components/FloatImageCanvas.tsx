@@ -18,7 +18,8 @@ export function FloatImageCanvas({ imageData, toneMapping, exposure, className }
     const { width, height } = data;
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d', { colorSpace: 'display-p3' }) ?? canvas.getContext('2d');
+    // LDR from applyToneMapping is sRGB; use srgb canvas so it displays correctly
+    const ctx = canvas.getContext('2d', { colorSpace: 'srgb' }) ?? canvas.getContext('2d');
 
     if (!ctx) return false;
     if (!ctx) return;

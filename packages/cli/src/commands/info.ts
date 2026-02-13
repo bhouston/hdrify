@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { addRangeMetadata, type FloatImageData, readExr, readHdr } from 'hdrify';
+import { addRangeMetadata, type FloatImageData, readExr, readHdr, readJpegGainMap } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
 function yamlStringNeedsEscape(s: string): boolean {
@@ -113,11 +113,11 @@ function buildInfoOutput(imageData: FloatImageData, ext: string): InfoOutput {
 
 export const command = defineCommand({
   command: 'info <file>',
-  describe: 'Display metadata about an EXR or HDR file',
+  describe: 'Display metadata about EXR, HDR, or JPEG gain map files',
   builder: (yargs) =>
     yargs
       .positional('file', {
-        describe: 'Input file path (.exr or .hdr)',
+        describe: 'Input file path (.exr, .hdr, or .jpg/.jpeg with gain map)',
         type: 'string',
         demandOption: true,
       })
@@ -137,8 +137,10 @@ export const command = defineCommand({
 
     const ext = path.extname(file).toLowerCase();
 
-    if (ext !== '.exr' && ext !== '.hdr') {
-      console.error(`Error: Unsupported file format: ${ext}. Supported formats: .exr, .hdr`);
+    if (ext !== '.exr' && ext !== '.hdr' && ext !== '.jpg' && ext !== '.jpeg') {
+      console.error(
+        `Error: Unsupported file format: ${ext}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`,
+      );
       process.exit(1);
     }
 
@@ -149,6 +151,8 @@ export const command = defineCommand({
       let imageData: FloatImageData;
       if (ext === '.exr') {
         imageData = readExr(fileBuffer);
+      } else if (ext === '.jpg' || ext === '.jpeg') {
+        imageData = readJpegGainMap(fileBuffer);
       } else {
         imageData = readHdr(fileBuffer);
       }
