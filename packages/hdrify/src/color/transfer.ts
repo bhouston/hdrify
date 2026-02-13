@@ -10,6 +10,13 @@ import { linearTosRGB, sRGBToLinear } from './srgb.js';
 /** sRGB linear segment threshold (≈0.04045 in sRGB space) */
 const LINEAR_SRGB_KNEELOW = 0.0031308;
 
+/** 1/2.4 — Rec. 2020 gamma exponent (avoid division in hot path) */
+const REC2020_GAMMA = 1 / 2.4;
+/** 1/12.92 — linear segment scale (avoid division in hot path) */
+const REC2020_LINEAR_SCALE = 1 / 12.92;
+/** 1/1.055 — display segment scale (avoid division in hot path) */
+const REC2020_DISPLAY_SCALE = 1 / 1.055;
+
 /**
  * Rec. 2020 / BT.1886 display: linear to 2.4 gamma.
  * EOTF^-1 for SDR Rec. 2020.
@@ -18,7 +25,7 @@ function linearToRec2020Display(x: number): number {
   if (x <= LINEAR_SRGB_KNEELOW) {
     return x * 12.92;
   }
-  return 1.055 * x ** (1 / 2.4) - 0.055;
+  return 1.055 * x ** REC2020_GAMMA - 0.055;
 }
 
 /**
@@ -27,9 +34,9 @@ function linearToRec2020Display(x: number): number {
  */
 function rec2020DisplayToLinear(x: number): number {
   if (x <= 0.04045) {
-    return x / 12.92;
+    return x * REC2020_LINEAR_SCALE;
   }
-  return ((x + 0.055) / 1.055) ** 2.4;
+  return ((x + 0.055) * REC2020_DISPLAY_SCALE) ** 2.4;
 }
 
 /**

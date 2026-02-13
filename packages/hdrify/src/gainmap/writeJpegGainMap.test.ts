@@ -11,14 +11,34 @@ const MARKER_PREFIX = 0xff;
 
 /** Parse MPF payload to get MPImage2 offset (relative to mpfBase) and size. MPF base = mpfSegmentStart + 8. */
 function parseMpfImage2Offset(mpfPayload: Uint8Array): { offset: number; size: number } | null {
-  const MP_ENTRY_OFFSET = 58;
-  const mpEntriesStart = 4 + MP_ENTRY_OFFSET;
-  if (mpfPayload.length < mpEntriesStart + 32) return null;
+  if (mpfPayload.length < 4 + 8 + 2) return null;
   const le = mpfPayload[4] === 0x49 && mpfPayload[5] === 0x49;
+  const b = (o: number) => mpfPayload[o] ?? 0;
   const getU32 = (o: number) =>
     le
-      ? mpfPayload[o]! | (mpfPayload[o + 1]! << 8) | (mpfPayload[o + 2]! << 16) | (mpfPayload[o + 3]! << 24)
-      : (mpfPayload[o]! << 24) | (mpfPayload[o + 1]! << 16) | (mpfPayload[o + 2]! << 8) | mpfPayload[o + 3]!;
+      ? b(o) | (b(o + 1) << 8) | (b(o + 2) << 16) | (b(o + 3) << 24)
+      : (b(o) << 24) | (b(o + 1) << 16) | (b(o + 2) << 8) | b(o + 3);
+
+  // B002 contains the MP entry list offset; parse it instead of hard-coding.
+  const tiffStart = 4;
+  const ifd0Offset = getU32(tiffStart + 4);
+  const ifd0Pos = tiffStart + ifd0Offset;
+  if (ifd0Pos + 2 > mpfPayload.length) return null;
+  const entryCount = le ? b(ifd0Pos) | (b(ifd0Pos + 1) << 8) : (b(ifd0Pos) << 8) | b(ifd0Pos + 1);
+  let mpEntryOffset = -1;
+  for (let i = 0; i < entryCount; i++) {
+    const entryPos = ifd0Pos + 2 + i * 12;
+    if (entryPos + 12 > mpfPayload.length) return null;
+    const tag = le ? b(entryPos) | (b(entryPos + 1) << 8) : (b(entryPos) << 8) | b(entryPos + 1);
+    if (tag === 0xb002) {
+      mpEntryOffset = getU32(entryPos + 8);
+      break;
+    }
+  }
+  if (mpEntryOffset < 0) return null;
+
+  const mpEntriesStart = tiffStart + mpEntryOffset;
+  if (mpfPayload.length < mpEntriesStart + 32) return null;
   const img2Size = getU32(mpEntriesStart + 16 + 4);
   const img2Offset = getU32(mpEntriesStart + 16 + 8);
   return { offset: img2Offset, size: img2Size };
@@ -44,7 +64,7 @@ function findApp2Segments(jpeg: Uint8Array): {
       continue;
     }
     const segStart = i;
-    const len = (jpeg[i + 2]! << 8) | jpeg[i + 3]!;
+    const len = ((jpeg[i + 2] ?? 0) << 8) | (jpeg[i + 3] ?? 0);
     const payloadStart = i + 4;
     const payload = jpeg.subarray(payloadStart, payloadStart + len - 2);
     if (payload.length >= MPF_SIG.length && MPF_SIG.every((b, j) => payload[j] === b)) {
@@ -210,7 +230,9 @@ describe('writeJpegGainMap', () => {
       const { parseJpegMetadataForTests } = await import('./jpegMetadataFromExifReader.js');
       const parsed = parseJpegMetadataForTests(jpegR);
       if (parsed.mpfImages && parsed.mpfImages.length >= 1) {
-        const primary = parsed.mpfImages[0]!;
+        const primary = parsed.mpfImages[0];
+        expect(primary).toBeDefined();
+        if (!primary) return;
         expect(
           primary.ImageType,
           'Primary image type must be Baseline MP Primary Image (0x030000) for Apple Preview',

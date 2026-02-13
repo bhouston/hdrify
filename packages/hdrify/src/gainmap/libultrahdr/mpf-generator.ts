@@ -119,8 +119,9 @@ export function generateMpf(
   view.setUint16(pos, MPF_CONSTANTS.TIFF_MAGIC, littleEndian);
   pos += 2;
 
-  // IFD (tag count + tags) starts at 12; offset at 8 points to it
-  const indexIfdOffset = 12;
+  // TIFF-relative offset to IFD0. In MPF, IFD0 starts immediately after:
+  //   endian(2) + magic(2) + ifdOffset(4) = 8 bytes.
+  const indexIfdOffset = 8;
   view.setUint32(pos, indexIfdOffset, littleEndian);
   pos += 4;
 
@@ -152,8 +153,9 @@ export function generateMpf(
   view.setUint32(pos, MPF_CONSTANTS.MP_ENTRY_SIZE * MPF_CONSTANTS.NUM_PICTURES, littleEndian);
   pos += 4;
 
-  // First MP entry starts at 58 (after next-IFD 4 bytes at 54)
-  const mpEntryOffset = 58;
+  // TIFF-relative offset to MP entries:
+  //   IFD0 at 8, tagCount(2), 3 tags * 12, nextIFD(4) => 50.
+  const mpEntryOffset = 50;
   view.setUint32(pos, mpEntryOffset, littleEndian);
   pos += 4;
 

@@ -126,7 +126,11 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   const xmpSecondaryBytes = new TextEncoder().encode(xmpSecondary);
 
   const namespaceBytes = new TextEncoder().encode(XMP_NAMESPACE);
-  const secondaryImageSize = 2 + 2 + 2 + namespaceBytes.length + xmpSecondaryBytes.length + (gainMap.data.length - 2);
+  const secondaryImageSize =
+    2 + // SOI
+    (2 + 2 + namespaceBytes.length + xmpSecondaryBytes.length) + // APP1 XMP
+    (icc ? 2 + 2 + icc.length : 0) + // Optional APP2 ICC
+    (gainMap.data.length - 2); // Rest of encoded gain map JPEG after SOI
 
   const xmpPrimary = generateXmpForPrimaryImage(secondaryImageSize, metadata);
   const xmpPrimaryBytes = new TextEncoder().encode(xmpPrimary);
@@ -180,6 +184,10 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   xmpSecondaryData.set(namespaceBytes, 0);
   xmpSecondaryData.set(xmpSecondaryBytes, namespaceBytes.length);
   pos = writeMarker(output, pos, MARKERS.APP1, xmpSecondaryData);
+
+  if (icc) {
+    pos = writeMarker(output, pos, MARKERS.APP2, icc);
+  }
 
   output.set(gainMap.data.subarray(2), pos);
 

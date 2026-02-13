@@ -8,8 +8,12 @@
 
 /** sRGB linear segment threshold (≈0.04045 in sRGB space) */
 const SRGB_LINEAR_KNEELOW = 0.04045;
-/** Reciprocal of 12.92 */
+/** Reciprocal of 12.92 (avoid division in hot path) */
 const SRGB_LINEAR_SCALE_LOW = 1 / 12.92;
+/** 1/1.055 — display segment scale (avoid division in hot path) */
+const SRGB_DISPLAY_SCALE = 1 / 1.055;
+/** 1/2.4 — gamma exponent (avoid division in hot path) */
+const SRGB_GAMMA = 1 / 2.4;
 /** Linear segment threshold for linear→sRGB (≈0.0031308 in linear space) */
 const LINEAR_SRGB_KNEELOW = 0.0031308;
 
@@ -24,7 +28,7 @@ export function sRGBToLinear(x: number): number {
   if (x <= SRGB_LINEAR_KNEELOW) {
     return x * SRGB_LINEAR_SCALE_LOW;
   }
-  return ((x + 0.055) / 1.055) ** 2.4;
+  return ((x + 0.055) * SRGB_DISPLAY_SCALE) ** 2.4;
 }
 
 /**
@@ -38,5 +42,5 @@ export function linearTosRGB(x: number): number {
   if (x <= LINEAR_SRGB_KNEELOW) {
     return x * 12.92;
   }
-  return 1.055 * x ** (1 / 2.4) - 0.055;
+  return 1.055 * x ** SRGB_GAMMA - 0.055;
 }
