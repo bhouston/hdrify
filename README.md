@@ -191,7 +191,7 @@ MIT
 
 ## Author
 
-Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
 
 ## Acknowledgements
 
