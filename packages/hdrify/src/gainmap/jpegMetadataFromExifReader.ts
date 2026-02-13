@@ -38,13 +38,22 @@ export function parseJpegMetadataForTests(jpeg: Uint8Array): JpegMetadataResult 
   });
 
   const tagKeys = Object.keys(tags);
-  const hasIcc = tagKeys.some((k) => k.length > 8 && (k.includes('rofile') || k.includes('Matrix') || k.includes('White')));
-  const rawTag = (tags as Record<string, unknown>)['_raw'];
-  const hasXmp = tags['Version'] !== undefined || (typeof rawTag === 'string' && rawTag.includes('hdrgm'));
+  const hasIcc = tagKeys.some(
+    (k) => k.length > 8 && (k.includes('rofile') || k.includes('Matrix') || k.includes('White')),
+  );
+  const rawTag = (tags as Record<string, unknown>)._raw;
+  const hasXmp = tags.Version !== undefined || (typeof rawTag === 'string' && rawTag.includes('hdrgm'));
 
   let mpfImages: ParsedMpfImage[] | null = null;
   const tagObj = tags as Record<string, unknown>;
-  const images = tagObj['Images'] as Array<{ ImageType?: { value: number }; ImageFormat?: { value: number }; ImageSize?: { value: number }; ImageOffset?: { value: number } }> | undefined;
+  const images = tagObj.Images as
+    | Array<{
+        ImageType?: { value: number };
+        ImageFormat?: { value: number };
+        ImageSize?: { value: number };
+        ImageOffset?: { value: number };
+      }>
+    | undefined;
   if (images && Array.isArray(images) && images.length >= 1) {
     mpfImages = images.map((img) => ({
       ImageType: img.ImageType?.value ?? 0,

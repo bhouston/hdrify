@@ -40,6 +40,12 @@ export type { DecodeGainMapOptions } from './gainmap/decodeGainMap.js';
 export { decodeGainMap, decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';
 export { encodeGainMap, encodeGainMapToFloat } from './gainmap/gainMapEncoder.js';
 export { encodeToJpeg } from './gainmap/jpegEncoder.js';
+export { DEFAULT_ICC_PROFILE } from './gainmap/libultrahdr/defaultIccProfile.js';
+export {
+  extractIccProfileFromJpeg,
+  getAdgcGuidFromIccProfile,
+  iccProfileHasAdgcTag,
+} from './gainmap/libultrahdr/iccFromJpeg.js';
 export type { GainMapFormat } from './gainmap/readJpegGainMap.js';
 export { readJpegGainMap } from './gainmap/readJpegGainMap.js';
 export type {
@@ -50,12 +56,6 @@ export type {
   GainMapMetadata,
   GainMapMetadataExtended,
 } from './gainmap/types.js';
-export {
-  extractIccProfileFromJpeg,
-  getAdgcGuidFromIccProfile,
-  iccProfileHasAdgcTag,
-} from './gainmap/libultrahdr/iccFromJpeg.js';
-export { DEFAULT_ICC_PROFILE } from './gainmap/libultrahdr/defaultIccProfile.js';
 export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
 export { writeGainMapAsSeparateFiles, writeJpegGainMap } from './gainmap/writeJpegGainMap.js';
 // HDR

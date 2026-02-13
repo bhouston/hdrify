@@ -65,9 +65,14 @@ export function getAdgcGuidFromIccProfile(profile: Uint8Array): Uint8Array | nul
     if (sig !== TAG_ADGC) continue;
     const offset = dv.getUint32(entryOff + 4, false);
     const size = dv.getUint32(entryOff + 8, false);
-    if (offset + ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE > profile.length || size < ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE)
+    if (
+      offset + ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE > profile.length ||
+      size < ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE
+    )
       return null;
-    return profile.subarray(offset + ADGC_GUID_OFFSET_IN_TAG, offset + ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE).slice();
+    return profile
+      .subarray(offset + ADGC_GUID_OFFSET_IN_TAG, offset + ADGC_GUID_OFFSET_IN_TAG + ADGC_GUID_SIZE)
+      .slice();
   }
   return null;
 }

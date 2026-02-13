@@ -50,7 +50,6 @@ describe('PXR24 block decoder (isolated, known-good inputs)', () => {
   it('decodes a single line, single channel with known deltas', () => {
     const width = 2;
     const lineCount = 1;
-    const numChannels = 1;
 
     // Expected output: two half values 1.0, 0.5 (0x3c00, 0x3800). Planar layout:
     // one line, one channel: [0x00,0x3c, 0x00,0x38]
@@ -99,7 +98,6 @@ describe('PXR24 block decoder (isolated, known-good inputs)', () => {
     setHalf(offsetAt(1, 0, 1), 0);
 
     const segments: Uint8Array[] = [];
-    const bytesPerSample = 2;
 
     for (let ly = 0; ly < lineCount; ly++) {
       for (let c = 0; c < numChannels; c++) {
@@ -163,7 +161,6 @@ describe('PXR24 block decoder (isolated, known-good inputs)', () => {
   it('decodes ramp (1,2,3,4) in one channel', () => {
     const width = 4;
     const lineCount = 1;
-    const numChannels = 1;
     const values = [1, 2, 3, 4];
     const expected = new Uint8Array(width * 2);
     for (let x = 0; x < width; x++) {

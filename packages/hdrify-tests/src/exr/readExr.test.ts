@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: file exists */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -95,7 +96,6 @@ describe('exrReader', () => {
     });
 
     it('should throw clear error for unsupported compression type', () => {
-
       // Create a copy and change compression from PIZ (4) to B44 (6) - unsupported
       const modified = new Uint8Array(exrBuffer!);
       const pattern = new TextEncoder().encode('compression\0compression\0');
@@ -211,7 +211,6 @@ describe('exrReader', () => {
     });
 
     it('header fix: example_piz.exr still parses correctly (regression)', () => {
-
       const result = readExr(exrBuffer!);
 
       expect(result.width).toBeGreaterThan(0);
@@ -288,6 +287,5 @@ describe('exrReader', () => {
       }
       expect(() => readExr(modified)).toThrow(/no valid scanline block offsets found/);
     });
-
   });
 });

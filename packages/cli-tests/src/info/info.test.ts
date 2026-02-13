@@ -1,4 +1,3 @@
-import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
 

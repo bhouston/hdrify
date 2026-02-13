@@ -1,8 +1,8 @@
+import { describe, expect, it } from 'vitest';
+import { encodeGainMap } from './gainMapEncoder.js';
 import { DEFAULT_ICC_PROFILE } from './libultrahdr/defaultIccProfile.js';
 import { extractIccProfileFromJpeg } from './libultrahdr/iccFromJpeg.js';
 import { MARKERS } from './libultrahdr/jpeg-markers.js';
-import { describe, expect, it } from 'vitest';
-import { encodeGainMap } from './gainMapEncoder.js';
 import { writeGainMapAsSeparateFiles, writeJpegGainMap } from './writeJpegGainMap.js';
 
 const SOI = 0xd8;
@@ -145,7 +145,6 @@ describe('writeJpegGainMap', () => {
     expect(str).not.toContain('Exif\x00\x00');
   });
 
-
   it('should accept quality option', () => {
     const encodingResult = encodeGainMap(smallImage);
     const jpegRDefault = writeJpegGainMap(encodingResult);
@@ -198,10 +197,9 @@ describe('writeJpegGainMap', () => {
       const segments = findApp2Segments(jpegR);
       expect(segments).not.toBeNull();
       if (!segments) return;
-      expect(
-        segments.mpfOffset,
-        'MPF APP2 must appear before ICC APP2 for Apple Preview',
-      ).toBeLessThan(segments.iccOffset);
+      expect(segments.mpfOffset, 'MPF APP2 must appear before ICC APP2 for Apple Preview').toBeLessThan(
+        segments.iccOffset,
+      );
     });
 
     it('should use Little Endian in MPF (II) for Apple Preview', () => {
@@ -238,8 +236,7 @@ describe('writeJpegGainMap', () => {
       if (!segments) return;
       const payload = segments.mpfPayload;
       const hasSequence = Array.from({ length: payload.length - 3 }).some(
-        (_, i) =>
-          payload[i] === 0x00 && payload[i + 1] === 0x00 && payload[i + 2] === 0x03 && payload[i + 3] === 0x00,
+        (_, i) => payload[i] === 0x00 && payload[i + 1] === 0x00 && payload[i + 2] === 0x03 && payload[i + 3] === 0x00,
       );
       expect(
         hasSequence,

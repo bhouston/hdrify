@@ -321,7 +321,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
       .join('; ');
     expect(
       result.failures.length,
-      slowGradientFailureMessage(result) + ` Worst columns by error: ${worstColsStr}`,
+      `${slowGradientFailureMessage(result)} Worst columns by error: ${worstColsStr}`,
     ).toBe(0);
   });
 });

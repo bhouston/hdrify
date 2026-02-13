@@ -144,6 +144,7 @@ describe('hdrReader', () => {
     it('should accept non-RADIANCE when headerStrict is false', () => {
       const files = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'));
       expect(files.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+      // biome-ignore lint/style/noNonNullAssertion: file exists
       const file = files[0]!;
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
       const radiance = new TextEncoder().encode('#?RADIANCE');
@@ -192,6 +193,7 @@ describe('hdrReader', () => {
     it('should apply physicalRadiance when output option is set', () => {
       const files = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'));
       expect(files.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+      // biome-ignore lint/style/noNonNullAssertion: file exists
       const file = files[0]!;
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
       const raw = readHdr(buffer, { output: 'raw' });
