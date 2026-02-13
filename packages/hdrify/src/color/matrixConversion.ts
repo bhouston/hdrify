@@ -100,6 +100,9 @@ export function mat3ToArray(m: Mat3): number[] {
   return [m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]];
 }
 
+/** Mutable array-like for output (number[] or Float32Array). */
+type WritableArray = number[] | Float32Array;
+
 /**
  * Apply 3×3 matrix to RGB vector. Writes result to output.
  * Matrix: 9 elements row-major. Input/output: 3 elements each (Float32Array or number[]), or use offsets for strided data.
@@ -107,18 +110,18 @@ export function mat3ToArray(m: Mat3): number[] {
 export function applyMatrix3(
   matrix: ArrayLike<number>,
   input: ArrayLike<number>,
-  output: ArrayLike<number>,
+  output: WritableArray,
   inputOffset = 0,
   outputOffset = 0,
 ): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: caller guarantees valid inputOffset
+  // biome-ignore-start lint/style/noNonNullAssertion: caller guarantees valid inputOffset and 9-element matrix
   const r = input[inputOffset]!;
   const g = input[inputOffset + 1]!;
   const b = input[inputOffset + 2]!;
-  // biome-ignore-end lint/style/noNonNullAssertion: caller guarantees valid inputOffset
-  output[outputOffset] = matrix[0] * r + matrix[1] * g + matrix[2] * b;
-  output[outputOffset + 1] = matrix[3] * r + matrix[4] * g + matrix[5] * b;
-  output[outputOffset + 2] = matrix[6] * r + matrix[7] * g + matrix[8] * b;
+  (output as number[])[outputOffset] = matrix[0]! * r + matrix[1]! * g + matrix[2]! * b;
+  (output as number[])[outputOffset + 1] = matrix[3]! * r + matrix[4]! * g + matrix[5]! * b;
+  (output as number[])[outputOffset + 2] = matrix[6]! * r + matrix[7]! * g + matrix[8]! * b;
+  // biome-ignore-end lint/style/noNonNullAssertion: caller guarantees valid inputOffset and 9-element matrix
 }
 
 /**
