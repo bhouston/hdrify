@@ -1,4 +1,4 @@
-# HDFify-cli
+# HDRify CLI
 
 <img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
 
@@ -41,12 +41,13 @@ hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
 
 # Create synthetic reference image
 hdrify reference output.exr
-hdrify reference output.hdr --compression zip
+hdrify reference output.exr --compression zip   # EXR only; --compression ignored for .hdr
+hdrify reference output.hdr
 ```
 
 ## Options
 
-Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). Run `hdrify --help` for full usage.
+Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`, `--compression` applies to EXR output only (rle, zip, piz, pxr24). Run `hdrify --help` for full usage.
 
 ## Library
 

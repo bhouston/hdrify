@@ -1,7 +1,7 @@
 {
   "name": "hdrify",
   "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

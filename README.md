@@ -1,4 +1,4 @@
-# HDFify
+# HDRify
 
 <img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
 
@@ -31,14 +31,6 @@ pnpm add hdrify
 
 ## Main Entry Points
 
-| Function | Description |
-| -------- | ----------- |
-| `readHdr(hdrBuffer: Uint8Array)` | Parse Radiance RGBE HDR file → `FloatImageData` |
-| `writeHdr(imageData: FloatImageData)` | Encode `FloatImageData` → HDR bytes |
-| `readExr(exrBuffer: Uint8Array)` | Parse OpenEXR file (PIZ, ZIP, RLE) → `FloatImageData` |
-| `writeExr(imageData, options?)` | Encode `FloatImageData` → EXR bytes |
-| `writeJpegGainMap(encodingResult, options?)` | Encode HDR as JPEG-R (JPEG with gain map) for highly compressible storage |
-
 All read functions return `FloatImageData`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
 
 ### FloatImageData
@@ -58,7 +50,6 @@ interface FloatImageData {
 
 ```ts
 import { readExr } from 'hdrify';
-import * as fs from 'node:fs';
 
 const buffer = fs.readFileSync('image.exr');
 const imageData = readExr(new Uint8Array(buffer));
@@ -71,7 +62,6 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 
 ```ts
 import { readHdr } from 'hdrify';
-import * as fs from 'node:fs';
 
 const buffer = fs.readFileSync('image.hdr');
 const imageData = readHdr(new Uint8Array(buffer));
@@ -79,11 +69,22 @@ const imageData = readHdr(new Uint8Array(buffer));
 console.log(`Image: ${imageData.width}x${imageData.height}`);
 ```
 
+### Reading a JPEG gain map file (JPEG-R / Ultra HDR)
+
+```ts
+import { readJpegGainMap } from 'hdrify';
+
+const buffer = fs.readFileSync('image.jpg');
+const imageData = readJpegGainMap(new Uint8Array(buffer));
+
+console.log(`Image: ${imageData.width}x${imageData.height}`);
+// imageData.data is linear HDR Float32Array RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
+```
+
 ### Converting between formats
 
 ```ts
 import { encodeGainMap, readExr, writeExr, readHdr, writeHdr, writeJpegGainMap } from 'hdrify';
-import * as fs from 'node:fs';
 
 // Convert EXR to HDR
 const exrBuffer = fs.readFileSync('input.exr');
@@ -120,7 +121,7 @@ fileInput.addEventListener('change', async (e) => {
 
 ## CLI Tool
 
-The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files:
+The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files. See **[packages/cli/README.md](packages/cli/README.md)** for full CLI documentation, or install from npm:
 
 ```sh
 pnpm add -g hdrify-cli
