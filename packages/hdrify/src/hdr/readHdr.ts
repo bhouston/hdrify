@@ -67,6 +67,7 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): F
     width: w,
     height: h,
     data: floatArray,
+    linearColorSpace: 'linear-rec709',
     metadata: header.metadata,
   };
 }

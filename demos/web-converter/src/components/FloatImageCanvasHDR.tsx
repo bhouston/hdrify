@@ -1,4 +1,4 @@
-import type { FloatImageData, ToneMappingType } from 'hdrify';
+import { convertFloat32ToLinearColorSpace, type FloatImageData, type ToneMappingType } from 'hdrify';
 import { useCallback, useEffect, useRef } from 'react';
 
 export interface FloatImageCanvasHDRProps {
@@ -25,12 +25,15 @@ export function FloatImageCanvasHDR({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const { width, height, data: srcData } = data;
+    const { width, height } = data;
     canvas.width = width;
     canvas.height = height;
 
     const ctx = canvas.getContext('2d', { colorSpace: 'display-p3' });
     if (!ctx) return;
+
+    // Convert to linear-p3 if needed (canvas display-p3 expects P3 primaries)
+    const srcData = convertFloat32ToLinearColorSpace(data.data, width, height, data.linearColorSpace, 'linear-p3');
 
     const pixelCount = width * height;
     const f16 = new Float16Array(pixelCount * 4);

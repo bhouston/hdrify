@@ -1,23 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import { CHROMATICITIES_REC709 } from '../color/chromaticities.js';
 import type { FloatImageData } from '../floatImage.js';
 import { validateToneMappingColorSpace, validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';
-
-const REC709_CHROMATICITIES = {
-  redX: 0.64,
-  redY: 0.33,
-  greenX: 0.3,
-  greenY: 0.6,
-  blueX: 0.15,
-  blueY: 0.06,
-  whiteX: 0.3127,
-  whiteY: 0.329,
-};
 
 function createImage(metadata?: Record<string, unknown>): FloatImageData {
   return {
     width: 1,
     height: 1,
     data: new Float32Array([1, 1, 1, 1]),
+    linearColorSpace: 'linear-rec709' as const,
     metadata,
   };
 }
@@ -29,7 +20,7 @@ describe('validateToneMappingColorSpace', () => {
   });
 
   it('allows images with Rec. 709 chromaticities', () => {
-    const image = createImage({ chromaticities: REC709_CHROMATICITIES });
+    const image = createImage({ chromaticities: CHROMATICITIES_REC709 });
     expect(() => validateToneMappingColorSpace(image)).not.toThrow();
   });
 
@@ -66,7 +57,7 @@ describe('validateToneMappingColorSpaceFromMetadata', () => {
   });
 
   it('allows Rec. 709 chromaticities', () => {
-    expect(() => validateToneMappingColorSpaceFromMetadata({ chromaticities: REC709_CHROMATICITIES })).not.toThrow();
+    expect(() => validateToneMappingColorSpaceFromMetadata({ chromaticities: CHROMATICITIES_REC709 })).not.toThrow();
   });
 
   it('throws for non-Rec. 709 chromaticities', () => {

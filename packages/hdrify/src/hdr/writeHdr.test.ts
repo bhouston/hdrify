@@ -9,6 +9,7 @@ describe('hdrWriter', () => {
       const floatImageData: FloatImageData = {
         width: 2,
         height: 2,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array([
           // RGBA format: [R, G, B, A, R, G, B, A, ...]
           1.0,
@@ -40,6 +41,7 @@ describe('hdrWriter', () => {
       const floatImageData: FloatImageData = {
         width: 10,
         height: 20,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(10 * 20 * 4).fill(0.5),
       };
 
@@ -73,6 +75,7 @@ describe('hdrWriter', () => {
         const floatImageData: FloatImageData = {
           width: size.width,
           height: size.height,
+          linearColorSpace: 'linear-rec709',
           data,
         };
 
@@ -85,6 +88,7 @@ describe('hdrWriter', () => {
       const originalData: FloatImageData = {
         width: 4,
         height: 4,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(4 * 4 * 4),
       };
 

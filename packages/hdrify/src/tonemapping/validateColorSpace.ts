@@ -1,39 +1,27 @@
 /**
  * Validate that EXR image chromaticities match Rec. 709 before tone mapping.
  * Tone mapping assumes Rec. 709 / sRGB primaries.
+ * When sourceColorSpace is passed to applyToneMapping, conversion is used instead of validation.
  */
 
+import { CHROMATICITIES_REC709, type Chromaticities } from '../color/chromaticities.js';
 import type { FloatImageData } from '../floatImage.js';
-
-/** Rec. 709 chromaticities (red, green, blue, white D65) */
-const REC709_RED = { x: 0.64, y: 0.33 };
-const REC709_GREEN = { x: 0.3, y: 0.6 };
-const REC709_BLUE = { x: 0.15, y: 0.06 };
-const REC709_WHITE = { x: 0.3127, y: 0.329 };
 
 const TOLERANCE = 0.01;
 
-export interface Chromaticities {
-  redX: number;
-  redY: number;
-  greenX: number;
-  greenY: number;
-  blueX: number;
-  blueY: number;
-  whiteX: number;
-  whiteY: number;
-}
+export type { Chromaticities };
 
 function isRec709(ch: Chromaticities): boolean {
+  const r = CHROMATICITIES_REC709;
   return (
-    Math.abs(ch.redX - REC709_RED.x) <= TOLERANCE &&
-    Math.abs(ch.redY - REC709_RED.y) <= TOLERANCE &&
-    Math.abs(ch.greenX - REC709_GREEN.x) <= TOLERANCE &&
-    Math.abs(ch.greenY - REC709_GREEN.y) <= TOLERANCE &&
-    Math.abs(ch.blueX - REC709_BLUE.x) <= TOLERANCE &&
-    Math.abs(ch.blueY - REC709_BLUE.y) <= TOLERANCE &&
-    Math.abs(ch.whiteX - REC709_WHITE.x) <= TOLERANCE &&
-    Math.abs(ch.whiteY - REC709_WHITE.y) <= TOLERANCE
+    Math.abs(ch.redX - r.redX) <= TOLERANCE &&
+    Math.abs(ch.redY - r.redY) <= TOLERANCE &&
+    Math.abs(ch.greenX - r.greenX) <= TOLERANCE &&
+    Math.abs(ch.greenY - r.greenY) <= TOLERANCE &&
+    Math.abs(ch.blueX - r.blueX) <= TOLERANCE &&
+    Math.abs(ch.blueY - r.blueY) <= TOLERANCE &&
+    Math.abs(ch.whiteX - r.whiteX) <= TOLERANCE &&
+    Math.abs(ch.whiteY - r.whiteY) <= TOLERANCE
   );
 }
 

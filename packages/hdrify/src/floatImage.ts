@@ -1,3 +1,5 @@
+import type { LinearColorSpace } from './color/colorSpaces.js';
+
 /**
  * Floating point image data structure used as an intermediate format
  * for converting between HDR and EXR formats.
@@ -12,6 +14,8 @@ export interface FloatImageData {
   height: number;
   /** RGBA pixel data as Float32Array: [R, G, B, A, R, G, B, A, ...] */
   data: Float32Array;
+  /** Linear color space (primaries) of the RGB data */
+  linearColorSpace: LinearColorSpace;
   /** Header metadata from source file (e.g. FORMAT, EXPOSURE, GAMMA for HDR; displayWindow, dataWindow, channels, compression for EXR) */
   metadata?: Record<string, unknown>;
 }

@@ -5,12 +5,12 @@ function makeImage(
   width: number,
   height: number,
   fill: (i: number) => number,
-): { width: number; height: number; data: Float32Array } {
+): { width: number; height: number; data: Float32Array; linearColorSpace: 'linear-rec709' } {
   const data = new Float32Array(width * height * 4);
   for (let i = 0; i < data.length; i++) {
     data[i] = fill(i);
   }
-  return { width, height, data };
+  return { width, height, data, linearColorSpace: 'linear-rec709' };
 }
 
 describe('compareFloatImages', () => {

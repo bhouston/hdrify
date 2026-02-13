@@ -1,3 +1,4 @@
+import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
 import { linearTosRGB } from '../color/srgb.js';
 import { ensureNonNegativeFinite } from '../floatImage.js';
 import { getToneMapping } from './mappers.js';
@@ -8,7 +9,7 @@ import { validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.
  * Apply full HDR-to-LDR tone mapping pipeline.
  *
  * Input: Float32Array RGBA. Output: Uint8Array RGB in sRGB (IEC 61966-2-1).
- * Pipeline: exposure → tone mapping (linear 0-1) → linearToSrgb → 0-255
+ * Pipeline: (optional color space conversion) → exposure → tone mapping (linear 0-1) → linearToSrgb → 0-255
  * Mutates hdrData in-place (sanitizes to non-negative finite) before processing.
  */
 export function applyToneMapping(
@@ -17,11 +18,16 @@ export function applyToneMapping(
   height: number,
   options: ApplyToneMappingOptions = {},
 ): Uint8Array {
-  if (options.metadata) {
+  const sourceColorSpace = options.sourceColorSpace ?? 'linear-rec709';
+  let dataToUse = hdrData;
+
+  if (sourceColorSpace !== 'linear-rec709') {
+    dataToUse = convertFloat32ToLinearColorSpace(hdrData, width, height, sourceColorSpace, 'linear-rec709');
+  } else if (options.metadata) {
     validateToneMappingColorSpaceFromMetadata(options.metadata);
   }
 
-  ensureNonNegativeFinite(hdrData);
+  ensureNonNegativeFinite(dataToUse);
 
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'reinhard';
   const exposure = options.exposure ?? 1.0;
@@ -31,11 +37,11 @@ export function applyToneMapping(
 
   for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
     const dataIndex = pixelIndex * 4;
-    if (dataIndex + 2 >= hdrData.length) break;
+    if (dataIndex + 2 >= dataToUse.length) break;
 
-    const rValue = hdrData[dataIndex];
-    const gValue = hdrData[dataIndex + 1];
-    const bValue = hdrData[dataIndex + 2];
+    const rValue = dataToUse[dataIndex];
+    const gValue = dataToUse[dataIndex + 1];
+    const bValue = dataToUse[dataIndex + 2];
 
     if (rValue === undefined || gValue === undefined || bValue === undefined) continue;
 

@@ -104,6 +104,7 @@ describe('encodeGainMap', () => {
     const result = encodeGainMap({
       width: 1,
       height: 2,
+      linearColorSpace: 'linear-rec709',
       data,
     });
 

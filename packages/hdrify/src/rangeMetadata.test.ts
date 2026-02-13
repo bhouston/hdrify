@@ -7,6 +7,7 @@ describe('addRangeMetadata', () => {
     const image: FloatImageData = {
       width: 2,
       height: 2,
+      linearColorSpace: 'linear-rec709',
       data: new Float32Array([
         1.0,
         0.0,
@@ -39,6 +40,7 @@ describe('addRangeMetadata', () => {
     const image: FloatImageData = {
       width: 1,
       height: 1,
+      linearColorSpace: 'linear-rec709',
       data: new Float32Array([2.5, 0.3, 1.7, 1.0]),
     };
 
@@ -54,6 +56,7 @@ describe('addRangeMetadata', () => {
     const image: FloatImageData = {
       width: 3,
       height: 2,
+      linearColorSpace: 'linear-rec709',
       data: new Float32Array(3 * 2 * 4).fill(0.5),
     };
 
@@ -69,6 +72,7 @@ describe('addRangeMetadata', () => {
     const image: FloatImageData = {
       width: 0,
       height: 0,
+      linearColorSpace: 'linear-rec709',
       data: new Float32Array(0),
     };
 

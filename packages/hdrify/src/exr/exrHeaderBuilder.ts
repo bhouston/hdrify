@@ -4,7 +4,8 @@
  * Builds header bytes from options. Output parses correctly via parseExrHeader.
  */
 
-import { EXR_MAGIC, FLOAT, INT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
+import type { Chromaticities } from '../color/chromaticities.js';
+import { EXR_MAGIC, FLOAT, FLOAT32_SIZE, INT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { concatUint8Arrays } from './exrUtils.js';
 
@@ -13,6 +14,8 @@ export interface WriteExrHeaderOptions {
   height?: number;
   compression?: number;
   channels?: Array<{ name: string; pixelType?: number; xSampling?: number; ySampling?: number }>;
+  /** Chromaticities to write (8 floats: redX, redY, greenX, greenY, blueX, blueY, whiteX, whiteY) */
+  chromaticities?: Chromaticities;
   /** Extra attributes to add before channels (e.g. for testing unknown attribute skip) */
   extraAttributes?: Array<{ name: string; type: string; value: Uint8Array }>;
   /** Attributes to omit (e.g. for testing required attributes) */
@@ -122,6 +125,30 @@ export function buildExrHeader(options: WriteExrHeaderOptions = {}): Uint8Array 
   addIfNotOmitted('compression', () => {
     addAttribute(parts, 'compression', 'compression', new Uint8Array([compression]));
   });
+
+  // chromaticities (optional)
+  const chromaticities = options.chromaticities;
+  if (chromaticities && !omitAttributes.includes('chromaticities')) {
+    const val = new Uint8Array(8 * FLOAT32_SIZE);
+    const dv = new DataView(val.buffer);
+    let o = 0;
+    dv.setFloat32(o, chromaticities.redX, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.redY, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.greenX, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.greenY, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.blueX, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.blueY, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.whiteX, true);
+    o += FLOAT32_SIZE;
+    dv.setFloat32(o, chromaticities.whiteY, true);
+    addAttribute(parts, 'chromaticities', 'chromaticities', val);
+  }
 
   // Extra attributes (e.g. for unknown skip, string attribute)
   for (const attr of extraAttributes) {

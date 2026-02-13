@@ -1,4 +1,5 @@
 import { applyToneMapping, type FloatImageData, type ToneMappingType } from 'hdrify';
+import type * as React from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 
 export interface FloatImageCanvasProps {
@@ -6,10 +7,28 @@ export interface FloatImageCanvasProps {
   toneMapping: ToneMappingType;
   exposure: number;
   className?: string;
+  /** Optional ref so parent can access the canvas (e.g. for toBlob). */
+  forwardedRef?: React.RefObject<HTMLCanvasElement | null>;
 }
 
-export function FloatImageCanvas({ imageData, toneMapping, exposure, className }: FloatImageCanvasProps) {
+export function FloatImageCanvas({
+  imageData,
+  toneMapping,
+  exposure,
+  className,
+  forwardedRef,
+}: FloatImageCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const setRef = useCallback(
+    (el: HTMLCanvasElement | null) => {
+      (canvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = el;
+      if (forwardedRef) {
+        (forwardedRef as React.MutableRefObject<HTMLCanvasElement | null>).current = el;
+      }
+    },
+    [forwardedRef],
+  );
 
   const renderToCanvas = useCallback((data: FloatImageData, exp: number, tone: ToneMappingType) => {
     const canvas = canvasRef.current;
@@ -27,6 +46,7 @@ export function FloatImageCanvas({ imageData, toneMapping, exposure, className }
     const ldrRgb = applyToneMapping(data.data, width, height, {
       toneMapping: tone,
       exposure: exp,
+      sourceColorSpace: data.linearColorSpace,
     });
 
     const canvasImageData = ctx.createImageData(width, height);
@@ -45,5 +65,5 @@ export function FloatImageCanvas({ imageData, toneMapping, exposure, className }
     renderToCanvas(imageData, exposure, toneMapping);
   }, [imageData, exposure, toneMapping, renderToCanvas]);
 
-  return <canvas className={className} ref={canvasRef} />;
+  return <canvas className={className} ref={setRef} />;
 }

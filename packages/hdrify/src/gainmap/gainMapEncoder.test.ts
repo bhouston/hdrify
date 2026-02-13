@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { encodeGainMap } from './gainMapEncoder.js';
+import type { FloatImageData } from '../floatImage.js';
 
 describe('encodeGainMap', () => {
   const smallImage = {
     width: 2,
     height: 2,
+    linearColorSpace: 'linear-rec709' as const,
     data: new Float32Array([2, 2, 2, 1, 1, 1, 1, 1, 0.5, 0.5, 0.5, 1, 0.25, 0.25, 0.25, 1]),
   };
 
@@ -53,8 +55,9 @@ describe('encodeGainMap', () => {
     const lowImage = {
       width: 1,
       height: 1,
+      linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array([0.001, 0.001, 0.001, 1]),
-    };
+    } satisfies FloatImageData;
     const result = encodeGainMap(lowImage);
 
     expect(result.sdr.length).toBe(4);

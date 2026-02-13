@@ -11,6 +11,7 @@ import { NO_COMPRESSION, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS
 import { parseExrHeader } from './exrHeader.js';
 import { buildExrHeaderForParsing } from './exrHeaderBuilder.js';
 import { writeExr } from './writeExr.js';
+import type { FloatImageData } from '../floatImage.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,8 +83,9 @@ describe('EXR header parsing - box2i (displayWindow, dataWindow)', () => {
     const img = {
       width: 5,
       height: 5,
+      linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array(5 * 5 * 4).fill(0.5),
-    };
+    } satisfies FloatImageData;
     const exr = writeExr(img);
     const { header } = parseExrHeader(exr);
     expect(header.dataWindow.xMax - header.dataWindow.xMin + 1).toBe(5);

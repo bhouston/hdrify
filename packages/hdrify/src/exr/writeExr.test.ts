@@ -16,6 +16,7 @@ describe('exrWriter', () => {
       const floatImageData: FloatImageData = {
         width: 2,
         height: 2,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array([
           // RGBA format: [R, G, B, A, R, G, B, A, ...]
           1.0,
@@ -47,6 +48,7 @@ describe('exrWriter', () => {
       const floatImageData: FloatImageData = {
         width: 1,
         height: 1,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array([1.0, 1.0, 1.0, 1.0]),
       };
 
@@ -78,6 +80,7 @@ describe('exrWriter', () => {
         const floatImageData: FloatImageData = {
           width: size.width,
           height: size.height,
+          linearColorSpace: 'linear-rec709',
           data,
         };
 
@@ -90,6 +93,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 4,
         height: 4,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(4 * 4 * 4),
       };
 
@@ -128,6 +132,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 4,
         height: 4,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(4 * 4 * 4),
       };
       for (let i = 0; i < originalData.data.length; i += 4) {
@@ -156,6 +161,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 16,
         height: 16,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(16 * 16 * 4),
       };
       for (let i = 0; i < originalData.data.length; i += 4) {
@@ -184,6 +190,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 32,
         height: 32,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(32 * 32 * 4),
       };
       for (let i = 0; i < originalData.data.length; i += 4) {
@@ -212,6 +219,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 16,
         height: 16,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(16 * 16 * 4),
       };
       for (let i = 0; i < originalData.data.length; i += 4) {
@@ -239,6 +247,7 @@ describe('exrWriter', () => {
       const originalData: FloatImageData = {
         width: 16,
         height: 16,
+        linearColorSpace: 'linear-rec709',
         data: new Float32Array(16 * 16 * 4),
       };
       for (let i = 0; i < originalData.data.length; i += 4) {

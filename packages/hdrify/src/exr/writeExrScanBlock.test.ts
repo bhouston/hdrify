@@ -16,7 +16,7 @@ function createTestImage(width: number, height: number): FloatImageData {
     data[i * 4 + 2] = 0.75; // B
     data[i * 4 + 3] = 1.0; // A
   }
-  return { width, height, data };
+  return { width, height, data, linearColorSpace: 'linear-rec709' as const };
 }
 
 describe('writeExrScanBlock', () => {

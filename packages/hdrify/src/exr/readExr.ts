@@ -5,6 +5,7 @@
  * Supports PIZ, ZIP, RLE, and uncompressed EXR files
  */
 
+import { chromaticitiesToLinearColorSpace } from '../color/colorSpaces.js';
 import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { decompressPiz } from './decompressPiz.js';
 import { decompressPxr24 } from './decompressPxr24.js';
@@ -300,10 +301,37 @@ export function readExr(exrBuffer: Uint8Array): FloatImageData {
   }
 
   ensureNonNegativeFinite(pixelData);
+
+  const chromaticities = header.chromaticities as
+    | {
+        redX: number;
+        redY: number;
+        greenX: number;
+        greenY: number;
+        blueX: number;
+        blueY: number;
+        whiteX: number;
+        whiteY: number;
+      }
+    | undefined;
+  const linearColorSpace =
+    chromaticities &&
+    typeof chromaticities.redX === 'number' &&
+    typeof chromaticities.redY === 'number' &&
+    typeof chromaticities.greenX === 'number' &&
+    typeof chromaticities.greenY === 'number' &&
+    typeof chromaticities.blueX === 'number' &&
+    typeof chromaticities.blueY === 'number' &&
+    typeof chromaticities.whiteX === 'number' &&
+    typeof chromaticities.whiteY === 'number'
+      ? (chromaticitiesToLinearColorSpace(chromaticities) ?? 'linear-rec709')
+      : 'linear-rec709';
+
   return {
     width,
     height,
     data: pixelData,
+    linearColorSpace,
     metadata: header,
   };
 }

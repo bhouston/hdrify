@@ -1,8 +1,8 @@
+import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
 import { linearTosRGB } from '../color/srgb.js';
 import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { getToneMapping } from '../tonemapping/mappers.js';
 import type { ToneMappingType } from '../tonemapping/types.js';
-import { validateToneMappingColorSpace } from '../tonemapping/validateColorSpace.js';
 import type { EncodingResult, EncodingResultFloat, GainMapEncodingOptions, GainMapMetadata } from './types.js';
 
 const defaultOffset = [1 / 64, 1 / 64, 1 / 64] as [number, number, number];
@@ -63,10 +63,16 @@ function findMaxContentBoostFromGains(
  * Encode HDR image to SDR + gain map (pure TypeScript, no WebGL).
  */
 export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOptions = {}): EncodingResult {
-  validateToneMappingColorSpace(image);
   ensureNonNegativeFinite(image.data);
+  const data = convertFloat32ToLinearColorSpace(
+    image.data,
+    image.width,
+    image.height,
+    image.linearColorSpace,
+    'linear-rec709',
+  );
 
-  const { width, height, data } = image;
+  const { width, height } = image;
   const totalPixels = width * height;
 
   const offsetSdr = options.offsetSdr ?? defaultOffset;
@@ -76,9 +82,10 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMapping = getToneMapping(toneMappingType);
 
+  const imageForGains = { ...image, data };
   let maxContentBoost = options.maxContentBoost;
   if (maxContentBoost === undefined || maxContentBoost <= 0) {
-    const fromGains = findMaxContentBoostFromGains(image, toneMapping, offsetSdr, offsetHdr, exposure);
+    const fromGains = findMaxContentBoostFromGains(imageForGains, toneMapping, offsetSdr, offsetHdr, exposure);
     maxContentBoost = Math.max(fromGains, findMaxHdrValue(data), 1.0001);
   }
   maxContentBoost = Math.max(maxContentBoost, 1.0001);
@@ -171,10 +178,16 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
  * Decode is tone-map-agnostic: the gain map stores the ratio HDR_linear/SDR_linear.
  */
 export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEncodingOptions = {}): EncodingResultFloat {
-  validateToneMappingColorSpace(image);
   ensureNonNegativeFinite(image.data);
+  const data = convertFloat32ToLinearColorSpace(
+    image.data,
+    image.width,
+    image.height,
+    image.linearColorSpace,
+    'linear-rec709',
+  );
 
-  const { width, height, data } = image;
+  const { width, height } = image;
   const totalPixels = width * height;
 
   const offsetSdr = options.offsetSdr ?? defaultOffset;
@@ -184,9 +197,16 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
   const toneMappingTypeFloat: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMappingFloat = getToneMapping(toneMappingTypeFloat);
 
+  const imageForGainsFloat = { ...image, data };
   let maxContentBoostFloat = options.maxContentBoost;
   if (maxContentBoostFloat === undefined || maxContentBoostFloat <= 0) {
-    const fromGains = findMaxContentBoostFromGains(image, toneMappingFloat, offsetSdr, offsetHdr, exposure);
+    const fromGains = findMaxContentBoostFromGains(
+      imageForGainsFloat,
+      toneMappingFloat,
+      offsetSdr,
+      offsetHdr,
+      exposure,
+    );
     maxContentBoostFloat = Math.max(fromGains, findMaxHdrValue(data), 1.0001);
   }
   maxContentBoostFloat = Math.max(maxContentBoostFloat, 1.0001);

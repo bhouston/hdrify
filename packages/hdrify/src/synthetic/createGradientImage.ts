@@ -62,5 +62,6 @@ export function createGradientImage(options: CreateGradientImageOptions): FloatI
     width,
     height,
     data,
+    linearColorSpace: 'linear-rec709',
   };
 }

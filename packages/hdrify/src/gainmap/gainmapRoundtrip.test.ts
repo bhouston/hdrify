@@ -137,8 +137,9 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const original = {
       width: 1,
       height: 1,
+      linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array([2, 2, 2, 1]),
-    };
+    } satisfies FloatImageData;
     const encoding = encodeGainMapToFloat(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMapFromFloatEncoding(encoding);
     expect(decoded.data[0]).toBeCloseTo(2, 5);

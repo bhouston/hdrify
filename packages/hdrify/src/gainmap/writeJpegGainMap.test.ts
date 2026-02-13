@@ -5,6 +5,7 @@ import { writeGainMapAsSeparateFiles, writeJpegGainMap } from './writeJpegGainMa
 const smallImage = {
   width: 4,
   height: 4,
+  linearColorSpace: 'linear-rec709' as const,
   data: new Float32Array(4 * 4 * 4).fill(1),
 };
 // Set some variation for proper encoding

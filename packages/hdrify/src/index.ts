@@ -1,5 +1,33 @@
 // FloatImageData - shared type
 
+export {
+  CANVAS_DISPLAY_COLOR_SPACES,
+  type CanvasPredefinedColorSpace,
+  getCanvasColorSpaceForDisplay,
+} from './color/canvasColorSpace.js';
+// Color space and conversion
+export {
+  CHROMATICITIES_P3,
+  CHROMATICITIES_REC709,
+  CHROMATICITIES_REC2020,
+} from './color/chromaticities.js';
+export {
+  chromaticitiesToLinearColorSpace,
+  DISPLAY_COLOR_SPACES,
+  type DisplayColorSpace,
+  getChromaticitiesForDisplay,
+  getChromaticitiesForLinear,
+  getDisplayColorSpaceForLinear,
+  getLinearColorSpaceForDisplay,
+  LINEAR_COLOR_SPACES,
+  type LinearColorSpace,
+} from './color/colorSpaces.js';
+export {
+  convertDisplayToLinear,
+  convertFloat32ToLinearColorSpace,
+  convertLinearColorSpace,
+  convertLinearToDisplay,
+} from './color/convert.js';
 // Color (sRGB ↔ linear, IEC 61966-2-1; use on float [0,1] after bytes→float)
 export { linearTosRGB, sRGBToLinear } from './color/srgb.js';
 // EXR

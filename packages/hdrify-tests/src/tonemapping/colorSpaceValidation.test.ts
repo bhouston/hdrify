@@ -22,8 +22,8 @@ const WIDE_GAMUT_CHROMATICITIES = {
   whiteY: 0.329,
 };
 
-describe('color space validation with example_wideColorSpace.exr', () => {
-  it('rejects example_wideColorSpace.exr because chromaticities do not match Rec. 709 and tone mapping assumes Rec. 709 / sRGB primaries', () => {
+describe('color space handling with example_wideColorSpace.exr', () => {
+  it('accepts wide gamut EXR and converts to linear-rec709 before encoding (no throw)', () => {
     if (!fs.existsSync(exampleWideColorSpacePath)) {
       throw new Error(
         `Test asset not found: ${exampleWideColorSpacePath}. Copy WideColorGamut.exr from openexr-images to assets/example_wideColorSpace.exr`,
@@ -34,13 +34,17 @@ describe('color space validation with example_wideColorSpace.exr', () => {
     const exrBuffer = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
     const imageData = readExr(exrBuffer);
 
-    // example_wideColorSpace.exr may not have chromaticities in header; inject wide gamut
-    // to validate we reject images with non-Rec. 709 color space
-    const imageWithWideGamutMetadata = {
+    // Wide gamut image: encodeGainMap converts to linear-rec709 internally, no throw
+    const imageWithWideGamut = {
       ...imageData,
+      linearColorSpace: 'linear-p3' as const,
       metadata: { ...imageData.metadata, chromaticities: WIDE_GAMUT_CHROMATICITIES },
     };
 
-    expect(() => encodeGainMap(imageWithWideGamutMetadata)).toThrow(/Rec\. 709|chromaticities|wide color space/i);
+    const result = encodeGainMap(imageWithWideGamut);
+    expect(result.sdr).toBeDefined();
+    expect(result.gainMap).toBeDefined();
+    expect(result.width).toBe(imageData.width);
+    expect(result.height).toBe(imageData.height);
   });
 });

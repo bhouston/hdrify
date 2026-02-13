@@ -97,5 +97,6 @@ export function createHsvRainbowImage(options: CreateHsvRainbowImageOptions): Fl
     width,
     height,
     data,
+    linearColorSpace: 'linear-rec709',
   };
 }

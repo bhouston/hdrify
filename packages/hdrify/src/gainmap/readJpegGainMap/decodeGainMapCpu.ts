@@ -83,6 +83,7 @@ export function decodeGainMapCpu(
     width,
     height,
     data: out,
+    linearColorSpace: 'linear-rec709',
   };
 }
 
@@ -145,5 +146,6 @@ export function decodeGainMapFromFloat(
     width,
     height,
     data: out,
+    linearColorSpace: 'linear-rec709',
   };
 }
