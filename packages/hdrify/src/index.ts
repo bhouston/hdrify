@@ -56,7 +56,6 @@ export {
   iccProfileHasAdgcTag,
 } from './gainmap/libultrahdr/iccFromJpeg.js';
 export { DEFAULT_ICC_PROFILE } from './gainmap/libultrahdr/defaultIccProfile.js';
-export { buildMinimalExifHdr, getMinimalExifHdr } from './gainmap/libultrahdr/minimalExifHdr.js';
 export type { GainMapWriterOptions, SeparateFilesResult } from './gainmap/writeJpegGainMap.js';
 export { writeGainMapAsSeparateFiles, writeJpegGainMap } from './gainmap/writeJpegGainMap.js';
 // HDR

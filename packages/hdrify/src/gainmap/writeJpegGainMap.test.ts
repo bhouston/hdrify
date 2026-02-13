@@ -1,6 +1,5 @@
 import { DEFAULT_ICC_PROFILE } from './libultrahdr/defaultIccProfile.js';
 import { extractIccProfileFromJpeg } from './libultrahdr/iccFromJpeg.js';
-import { getMinimalExifHdr } from './libultrahdr/minimalExifHdr.js';
 import { MARKERS } from './libultrahdr/jpeg-markers.js';
 import { describe, expect, it } from 'vitest';
 import { encodeGainMap } from './gainMapEncoder.js';
@@ -146,12 +145,6 @@ describe('writeJpegGainMap', () => {
     expect(str).not.toContain('Exif\x00\x00');
   });
 
-  it('should embed EXIF when exif option is passed', () => {
-    const encodingResult = encodeGainMap(smallImage);
-    const jpegR = writeJpegGainMap(encodingResult, { exif: getMinimalExifHdr() });
-    const hasExif = new TextDecoder('latin1').decode(jpegR).includes('Exif');
-    expect(hasExif).toBe(true);
-  });
 
   it('should accept quality option', () => {
     const encodingResult = encodeGainMap(smallImage);
