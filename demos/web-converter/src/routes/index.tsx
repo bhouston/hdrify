@@ -12,7 +12,7 @@ import {
   writeHdr,
   writeJpegGainMap,
 } from 'hdrify';
-import { Download, Eye, X } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -20,12 +20,9 @@ import { z } from 'zod';
 /** Display mode: 'none' = Direct HDR (no tone mapping), or a real tone mapping type */
 type DisplayMode = ToneMappingType | 'none';
 
-type PreviewType = 'jpeg' | 'webp';
-
 import { FloatImageCanvas } from '@/components/FloatImageCanvas';
 import { FloatImageCanvasHDR } from '@/components/FloatImageCanvasHDR';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
@@ -93,7 +90,6 @@ function Index() {
   const [selectedExampleUrl, setSelectedExampleUrl] = useState<string>('');
   const [loadingExample, setLoadingExample] = useState(false);
   const [sourceFileName, setSourceFileName] = useState<string | null>(null);
-  const [preview, setPreview] = useState<{ type: PreviewType; url: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ldrCanvasRef = useRef<HTMLCanvasElement>(null);
   const prevHdrSupportedRef = useRef(false);
@@ -242,20 +238,6 @@ function Index() {
     }
   }, [imageData, displayMode]);
 
-  const handlePreviewUltraHdr = useCallback(() => {
-    if (!imageData) return;
-    try {
-      if (preview) URL.revokeObjectURL(preview.url);
-      const toneMappingForEncode = displayMode === 'none' ? 'neutral' : displayMode;
-      const encoding = encodeGainMap(imageData, { toneMapping: toneMappingForEncode });
-      const bytes = writeJpegGainMap(encoding, { quality: 90 });
-      const blob = new Blob([bytes], { type: 'image/jpeg' });
-      setPreview({ type: 'jpeg', url: URL.createObjectURL(blob) });
-    } catch (err) {
-      toast.error(`Failed to create Ultra HDR JPEG: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, [imageData, displayMode, preview]);
-
   const handleDownloadWebP = useCallback(() => {
     const canvas = ldrCanvasRef.current;
     if (!canvas) {
@@ -270,34 +252,6 @@ function Index() {
       0.92,
     );
   }, []);
-
-  const handlePreviewWebP = useCallback(() => {
-    const canvas = ldrCanvasRef.current;
-    if (!canvas) {
-      toast.error('WebP preview is only available for tone-mapped view. Switch out of Direct HDR.');
-      return;
-    }
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          if (preview) URL.revokeObjectURL(preview.url);
-          setPreview({ type: 'webp', url: URL.createObjectURL(blob) });
-        }
-      },
-      'image/webp',
-      0.92,
-    );
-  }, [preview]);
-
-  const handlePreviewOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open && preview) {
-        URL.revokeObjectURL(preview.url);
-        setPreview(null);
-      }
-    },
-    [preview],
-  );
 
   const handleAreaClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -351,7 +305,7 @@ function Index() {
                 {hdrSupported && <SelectItem value="none">Direct HDR</SelectItem>}
                 <SelectItem value="aces">ACES</SelectItem>
                 <SelectItem value="reinhard">Reinhard</SelectItem>
-                <SelectItem value="neutral">Khronos Neutral</SelectItem>
+                <SelectItem value="neutral">Neutral</SelectItem>
                 <SelectItem value="agx">AgX</SelectItem>
               </SelectContent>
             </Select>
@@ -413,7 +367,7 @@ function Index() {
                 )}
               </div>
               <p className="shrink-0 text-center text-xs text-muted-foreground">
-                Drag another file here or click to load a different image
+                Drag another file here (HDR, EXR, or UltraHDR JPG) or click to load a different image
               </p>
             </div>
           ) : (
@@ -506,7 +460,7 @@ function Index() {
                 variant="outline"
               >
                 <Download className="size-4" />
-                EXR
+                EXR (HDR)
               </Button>
               <Button
                 className="justify-start gap-2"
@@ -518,7 +472,7 @@ function Index() {
                 variant="outline"
               >
                 <Download className="size-4" />
-                HDR
+                Radiance HDR (HDR)
               </Button>
               <Button
                 className="justify-start gap-2"
@@ -530,19 +484,7 @@ function Index() {
                 variant="outline"
               >
                 <Download className="size-4" />
-                UltraHDR JPEG
-              </Button>
-              <Button
-                className="justify-start gap-2"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePreviewUltraHdr();
-                }}
-                size="sm"
-                variant="outline"
-              >
-                <Eye className="size-4" />
-                Preview UltraHDR
+                UltraHDR JPEG (HDR)
               </Button>
               <Button
                 aria-label={!isLdrView ? 'Available for tone-mapped view only' : undefined}
@@ -557,46 +499,12 @@ function Index() {
                 variant="outline"
               >
                 <Download className="size-4" />
-                WebP
-              </Button>
-              <Button
-                aria-label={!isLdrView ? 'Available for tone-mapped view only' : undefined}
-                className="justify-start gap-2"
-                disabled={!isLdrView}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePreviewWebP();
-                }}
-                size="sm"
-                title={!isLdrView ? 'Available for tone-mapped view only' : undefined}
-                variant="outline"
-              >
-                <Eye className="size-4" />
-                Preview WebP
+                WebP (SDR)
               </Button>
             </div>
           </div>
         )}
       </div>
-
-      <Dialog onOpenChange={handlePreviewOpenChange} open={preview !== null}>
-        <DialogContent className="flex max-h-[90vh] flex-col gap-2">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>{preview?.type === 'jpeg' ? 'Ultra HDR preview' : 'WebP preview'}</DialogTitle>
-          </DialogHeader>
-          <DialogClose className="right-4 top-4 rounded-md p-1">
-            <X className="size-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-          {preview && (
-            <img
-              alt={preview.type === 'jpeg' ? 'Ultra HDR preview' : 'WebP preview'}
-              className="max-h-full max-w-full shrink object-contain"
-              src={preview.url}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       <section aria-labelledby="features-heading" className="mt-8 min-w-0 border-t border-border pt-6">
         <h2 className="mb-3 text-sm font-semibold text-foreground" id="features-heading">
