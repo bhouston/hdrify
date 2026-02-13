@@ -13,14 +13,12 @@ function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
-const hdrFiles = fs.existsSync(assetsDir) ? fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr')) : [];
+const hdrFiles = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'));
 
 describe('hdrWriter round-trip', () => {
   it('should round-trip actual HDR file', () => {
-    if (hdrFiles.length === 0) return;
-
-    const file = hdrFiles[0];
-    if (!file) return;
+    expect(hdrFiles.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+    const file = hdrFiles[0]!;
     const filepath = path.join(assetsDir, file);
     const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
 

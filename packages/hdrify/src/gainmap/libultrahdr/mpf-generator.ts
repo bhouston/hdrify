@@ -66,8 +66,8 @@ const MP_ENTRY_ATTRIBUTES = {
   /** JPEG format */
   FORMAT_JPEG: 0x00000000,
 
-  /** Primary image type */
-  TYPE_PRIMARY: 0x20000000,
+  /** Primary image type (Baseline MP Primary Image) */
+  TYPE_PRIMARY: 0x00030000,
 } as const;
 
 /**
@@ -106,76 +106,82 @@ export function generateMpf(
   const uint8View = new Uint8Array(buffer);
 
   let pos = 0;
-  const bigEndian = false;
+  // Use Little Endian to match reference file
+  const littleEndian = true;
 
   uint8View.set(MPF_CONSTANTS.SIGNATURE, pos);
   pos += MPF_CONSTANTS.SIGNATURE.length;
 
-  uint8View.set(MPF_CONSTANTS.BIG_ENDIAN, pos);
+  // Set Little Endian marker 'II'
+  uint8View.set(MPF_CONSTANTS.LITTLE_ENDIAN, pos);
   pos += 2;
 
-  view.setUint16(pos, MPF_CONSTANTS.TIFF_MAGIC, bigEndian);
+  view.setUint16(pos, MPF_CONSTANTS.TIFF_MAGIC, littleEndian);
   pos += 2;
 
-  const indexIfdOffset = 8;
-  view.setUint32(pos, indexIfdOffset, bigEndian);
+  // IFD (tag count + tags) starts at 12; offset at 8 points to it
+  const indexIfdOffset = 12;
+  view.setUint32(pos, indexIfdOffset, littleEndian);
   pos += 4;
 
-  view.setUint16(pos, MPF_CONSTANTS.TAG_COUNT, bigEndian);
+  view.setUint16(pos, MPF_CONSTANTS.TAG_COUNT, littleEndian);
   pos += 2;
 
-  view.setUint16(pos, MPF_TAGS.VERSION, bigEndian);
+  view.setUint16(pos, MPF_TAGS.VERSION, littleEndian);
   pos += 2;
-  view.setUint16(pos, MPF_TAG_TYPES.UNDEFINED, bigEndian);
+  view.setUint16(pos, MPF_TAG_TYPES.UNDEFINED, littleEndian);
   pos += 2;
-  view.setUint32(pos, MPF_VERSION.length, bigEndian);
+  view.setUint32(pos, MPF_VERSION.length, littleEndian);
   pos += 4;
   uint8View.set(MPF_VERSION, pos);
   pos += 4;
 
-  view.setUint16(pos, MPF_TAGS.NUMBER_OF_IMAGES, bigEndian);
+  view.setUint16(pos, MPF_TAGS.NUMBER_OF_IMAGES, littleEndian);
   pos += 2;
-  view.setUint16(pos, MPF_TAG_TYPES.ULONG, bigEndian);
+  view.setUint16(pos, MPF_TAG_TYPES.ULONG, littleEndian);
   pos += 2;
-  view.setUint32(pos, 1, bigEndian);
+  view.setUint32(pos, 1, littleEndian);
   pos += 4;
-  view.setUint32(pos, MPF_CONSTANTS.NUM_PICTURES, bigEndian);
+  view.setUint32(pos, MPF_CONSTANTS.NUM_PICTURES, littleEndian);
   pos += 4;
 
-  view.setUint16(pos, MPF_TAGS.MP_ENTRY, bigEndian);
+  view.setUint16(pos, MPF_TAGS.MP_ENTRY, littleEndian);
   pos += 2;
-  view.setUint16(pos, MPF_TAG_TYPES.UNDEFINED, bigEndian);
+  view.setUint16(pos, MPF_TAG_TYPES.UNDEFINED, littleEndian);
   pos += 2;
-  view.setUint32(pos, MPF_CONSTANTS.MP_ENTRY_SIZE * MPF_CONSTANTS.NUM_PICTURES, bigEndian);
+  view.setUint32(pos, MPF_CONSTANTS.MP_ENTRY_SIZE * MPF_CONSTANTS.NUM_PICTURES, littleEndian);
   pos += 4;
 
-  const mpEntryOffset = pos - MPF_CONSTANTS.SIGNATURE.length + 4 + 4;
-  view.setUint32(pos, mpEntryOffset, bigEndian);
+  // First MP entry starts at 58 (after next-IFD 4 bytes at 54)
+  const mpEntryOffset = 58;
+  view.setUint32(pos, mpEntryOffset, littleEndian);
   pos += 4;
 
-  view.setUint32(pos, 0, bigEndian);
+  view.setUint32(pos, 0, littleEndian);
   pos += 4;
 
-  view.setUint32(pos, MP_ENTRY_ATTRIBUTES.FORMAT_JPEG | MP_ENTRY_ATTRIBUTES.TYPE_PRIMARY, bigEndian);
+  // Primary image entry
+  view.setUint32(pos, MP_ENTRY_ATTRIBUTES.FORMAT_JPEG | MP_ENTRY_ATTRIBUTES.TYPE_PRIMARY, littleEndian);
   pos += 4;
-  view.setUint32(pos, primaryImageSize, bigEndian);
+  view.setUint32(pos, primaryImageSize, littleEndian);
   pos += 4;
-  view.setUint32(pos, primaryImageOffset, bigEndian);
+  view.setUint32(pos, primaryImageOffset, littleEndian);
   pos += 4;
-  view.setUint16(pos, 0, bigEndian);
+  view.setUint16(pos, 0, littleEndian);
   pos += 2;
-  view.setUint16(pos, 0, bigEndian);
+  view.setUint16(pos, 0, littleEndian);
   pos += 2;
 
-  view.setUint32(pos, MP_ENTRY_ATTRIBUTES.FORMAT_JPEG, bigEndian);
+  // Secondary image entry
+  view.setUint32(pos, MP_ENTRY_ATTRIBUTES.FORMAT_JPEG, littleEndian);
   pos += 4;
-  view.setUint32(pos, secondaryImageSize, bigEndian);
+  view.setUint32(pos, secondaryImageSize, littleEndian);
   pos += 4;
-  view.setUint32(pos, secondaryImageOffset, bigEndian);
+  view.setUint32(pos, secondaryImageOffset, littleEndian);
   pos += 4;
-  view.setUint16(pos, 0, bigEndian);
+  view.setUint16(pos, 0, littleEndian);
   pos += 2;
-  view.setUint16(pos, 0, bigEndian);
+  view.setUint16(pos, 0, littleEndian);
 
   return uint8View;
 }

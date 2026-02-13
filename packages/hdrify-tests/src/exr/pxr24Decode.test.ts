@@ -69,10 +69,6 @@ function formatDiagnostics(
 
 describe('PXR24 decode vs ground truth (example_zip.exr)', () => {
   it('decoding example_pxr24.exr matches example_zip.exr (same image, different compression)', () => {
-    if (!fs.existsSync(pxr24Path) || !fs.existsSync(exampleZipPath)) {
-      return;
-    }
-
     const reference = readExr(new Uint8Array(fs.readFileSync(exampleZipPath)));
     const decodedPxr24 = readExr(new Uint8Array(fs.readFileSync(pxr24Path)));
 

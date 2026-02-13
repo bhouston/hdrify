@@ -36,6 +36,8 @@
     "jpeg-js": "^0.4.4"
   },
   "devDependencies": {
+    "@xmldom/xmldom": "^0.8.10",
+    "exifreader": "^4.36.0",
     "vitest": "^2.1.9"
   },
   "publishConfig": {

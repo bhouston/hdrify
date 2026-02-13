@@ -6,8 +6,10 @@ import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
 export interface EncodeJPEGMetadataOptions {
   format?: GainMapFormat;
-  /** ICC profile (APP2 payload). For ultrahdr, default is the memorial.jpg profile so Apple Preview shows 10-bit. Pass null to omit. */
+  /** ICC profile (APP2 payload). For ultrahdr, default is sRGB matching reference memorial.jpg. Pass null to omit. */
   icc?: Uint8Array | null;
+  /** EXIF (APP1 payload). For ultrahdr, default is null (no EXIF, matches reference). Pass Uint8Array to add. */
+  exif?: Uint8Array | null;
 }
 
 export function encodeJPEGMetadata(
@@ -48,10 +50,12 @@ export function encodeJPEGMetadata(
   }
 
   const icc = options.icc !== undefined ? options.icc : DEFAULT_ICC_PROFILE;
+  const exif = options.exif ?? null;
   return assembleJpegWithGainMap({
     sdr: encodingResult.sdr,
     gainMap: encodingResult.gainMap,
     metadata,
+    ...(exif && exif.length > 0 && { exif }),
     ...(icc && icc.length > 0 && { icc }),
   });
 }

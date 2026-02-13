@@ -15,7 +15,7 @@ import { writeExr } from './writeExr.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const workspaceRoot = path.resolve(__dirname, '../../../../..');
+const workspaceRoot = path.resolve(__dirname, '../../../../');
 const pizExrPath = path.join(workspaceRoot, 'assets', 'example_piz.exr');
 const rainbowExrPath = path.join(workspaceRoot, 'assets', 'example_zip.exr');
 
@@ -239,7 +239,6 @@ describe('EXR header parsing - unknown attribute skip', () => {
 
 describe('EXR header parsing - offset position', () => {
   it('returns correct offset after header for example_piz.exr', () => {
-    if (!fs.existsSync(pizExrPath)) return;
     const buf = fs.readFileSync(pizExrPath);
     const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -255,7 +254,6 @@ describe('EXR header parsing - offset position', () => {
   });
 
   it('parses example_zip.exr and returns valid offset', () => {
-    if (!fs.existsSync(rainbowExrPath)) return;
     const buf = fs.readFileSync(rainbowExrPath);
     const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 

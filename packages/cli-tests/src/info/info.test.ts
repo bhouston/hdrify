@@ -42,7 +42,6 @@ describe('CLI info command', () => {
   });
 
   it('displays info for JPEG gain map file', () => {
-    if (!fs.existsSync(jpgGainMapFilePath)) return;
     const result = runCli(['info', jpgGainMapFilePath]);
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('format:');

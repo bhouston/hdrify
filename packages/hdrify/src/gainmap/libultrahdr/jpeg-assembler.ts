@@ -139,23 +139,14 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   let totalSize = 2;
   if (exifData) totalSize += 2 + 2 + exifData.length;
   totalSize += 2 + 2 + xmpPrimaryData.length;
-  if (icc) totalSize += 2 + 2 + icc.length;
+  // MPF before ICC to match reference
   totalSize += 2 + 2 + mpfLength;
+  if (icc) totalSize += 2 + 2 + icc.length;
+
   totalSize += primaryJpegData.length - 2;
   totalSize += secondaryImageSize;
 
   const primaryImageSize = totalSize - secondaryImageSize;
-  const secondaryImageOffset =
-    primaryImageSize -
-    (2 +
-      (exifData ? 2 + 2 + exifData.length : 0) +
-      2 +
-      2 +
-      xmpPrimaryData.length +
-      (icc ? 2 + 2 + icc.length : 0) +
-      2 +
-      2 +
-      4);
 
   const output = new Uint8Array(totalSize);
   let pos = 0;
@@ -168,15 +159,17 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
 
   pos = writeMarker(output, pos, MARKERS.APP1, xmpPrimaryData);
 
+  // Write MPF first (before ICC) to match reference structure
+  const mpfSegmentStart = pos;
+  // MPImage2 offset per CIPA DC-007: relative to (APP2 marker + 4) + 4 = mpfSegmentStart + 8
+  // (4 bytes "MPF\0" + 2 endian + 2 TIFF magic before IFD). Reference memorial.jpg uses this base.
+  const gainmapOffsetInMpf = primaryImageSize - (mpfSegmentStart + 8);
+  const mpfDataActual = generateMpf(primaryImageSize, 0, secondaryImageSize, gainmapOffsetInMpf);
+  pos = writeMarker(output, pos, MARKERS.APP2, mpfDataActual);
+
   if (icc) {
     pos = writeMarker(output, pos, MARKERS.APP2, icc);
   }
-
-  const mpfSegmentStart = pos;
-  const gainmapOffsetInMpf = secondaryImageOffset - mpfSegmentStart - 6;
-  const mpfDataActual = generateMpf(primaryImageSize, 0, secondaryImageSize, gainmapOffsetInMpf);
-
-  pos = writeMarker(output, pos, MARKERS.APP2, mpfDataActual);
 
   output.set(primaryJpegData.subarray(2), pos);
   pos += primaryJpegData.length - 2;

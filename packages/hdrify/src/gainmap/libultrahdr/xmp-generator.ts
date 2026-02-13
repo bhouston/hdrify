@@ -1,6 +1,8 @@
 /**
- * XMP metadata generator for gain map images
- * Based on libultrahdr jpegrutils.cpp implementation
+ * XMP metadata generator for gain map images.
+ * Structure matches gainmap-js (https://github.com/MONOGRID/gainmap-js) and libultrahdr jpegrutils.cpp:
+ * primary XMP = Container:Directory + hdrgm:Version; secondary XMP = full hdrgm params (GainMapMin/Max, Gamma, etc.).
+ * Viewers like Apple Preview use this XMP to recognize Ultra HDR and apply HDR display.
  */
 
 import type { GainMapMetadataExtended } from '../types.js';
@@ -26,8 +28,7 @@ export function generateXmpForPrimaryImage(secondaryImageLength: number, metadat
   const ITEM_SEMANTIC_PRIMARY = 'Primary';
   const ITEM_SEMANTIC_GAIN_MAP = 'GainMap';
 
-  // biome-ignore lint/security/noSecrets: XMP packet ID from Adobe spec
-  lines.push('<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
+  // No xpacket wrapper — match reference file (e.g. Google encoder) so Apple Preview recognizes HDR
   lines.push('<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.1.2">');
   lines.push('  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">');
   lines.push('    <rdf:Description');
@@ -60,7 +61,6 @@ export function generateXmpForPrimaryImage(secondaryImageLength: number, metadat
   lines.push('    </rdf:Description>');
   lines.push('  </rdf:RDF>');
   lines.push('</x:xmpmeta>');
-  lines.push('<?xpacket end="w"?>');
 
   return lines.join('\n');
 }
@@ -86,8 +86,7 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   const offsetSdrAvg = getAverage(metadata.offsetSdr);
   const offsetHdrAvg = getAverage(metadata.offsetHdr);
 
-  // biome-ignore lint/security/noSecrets: XMP packet ID from Adobe spec
-  lines.push('<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>');
+  // No xpacket wrapper — match reference file so Apple Preview recognizes HDR
   lines.push('<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.1.2">');
   lines.push('  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">');
   lines.push('    <rdf:Description');
@@ -105,7 +104,6 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   lines.push('      rdf:about=""/>');
   lines.push('  </rdf:RDF>');
   lines.push('</x:xmpmeta>');
-  lines.push('<?xpacket end="w"?>');
 
   return lines.join('\n');
 }

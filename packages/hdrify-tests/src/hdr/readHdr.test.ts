@@ -22,14 +22,14 @@ function uint8ArrayCompare(a: Uint8Array, b: Uint8Array): number {
   return a.length - b.length;
 }
 
-const hdrFiles = fs.existsSync(assetsDir)
-  ? fs
-      .readdirSync(assetsDir)
-      .filter((f) => f.endsWith('.hdr'))
-      .map((f) => [f, path.join(assetsDir, f)] as [string, string])
-  : [];
+const hdrFiles = fs
+  .readdirSync(assetsDir)
+  .filter((f) => f.endsWith('.hdr'))
+  .map((f) => [f, path.join(assetsDir, f)] as [string, string]);
 
 describe('hdrReader', () => {
+  expect(hdrFiles.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+
   describe.each(hdrFiles)('readHdr (%s)', (_filename, filepath) => {
     it('should parse a valid HDR file', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));
@@ -142,10 +142,9 @@ describe('hdrReader', () => {
     });
 
     it('should accept non-RADIANCE when headerStrict is false', () => {
-      if (!fs.existsSync(assetsDir)) return;
       const files = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'));
-      const file = files[0];
-      if (!file) return;
+      expect(files.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+      const file = files[0]!;
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
       const radiance = new TextEncoder().encode('#?RADIANCE');
       const other = new TextEncoder().encode('#?OTHER');
@@ -191,10 +190,9 @@ describe('hdrReader', () => {
     });
 
     it('should apply physicalRadiance when output option is set', () => {
-      if (!fs.existsSync(assetsDir)) return;
       const files = fs.readdirSync(assetsDir).filter((f) => f.endsWith('.hdr'));
-      const file = files[0];
-      if (!file) return;
+      expect(files.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+      const file = files[0]!;
       const buffer = toUint8Array(fs.readFileSync(path.join(assetsDir, file)));
       const raw = readHdr(buffer, { output: 'raw' });
       const physical = readHdr(buffer, { output: 'physicalRadiance' });

@@ -14,7 +14,7 @@
     "cloc": "npx cloc * --exclude-dir=node_modules,dist,.nx,.next,build",
     "make-release:hdrify": "node scripts/make-release.ts packages/hdrify",
     "make-release:hdrify-cli": "node scripts/make-release.ts packages/cli",
-    "hdrify": "pnpm --filter hdrify-cli start"
+    "hdrify": "pnpm tsgo && node ./packages/cli/dist/index.js"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.4",

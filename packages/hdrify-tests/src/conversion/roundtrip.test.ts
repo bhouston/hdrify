@@ -98,8 +98,6 @@ describe('reference asset comparison', () => {
   const refHdrPath = path.join(assetsDir, 'rainbow.hdr');
 
   it('generated synthetic image matches reference rainbow.hdr', () => {
-    if (!fs.existsSync(refHdrPath)) return;
-
     const generated = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
     const refBuffer = new Uint8Array(fs.readFileSync(refHdrPath));
     const reference = readHdr(refBuffer);

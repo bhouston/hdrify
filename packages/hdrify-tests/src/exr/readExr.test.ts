@@ -24,10 +24,8 @@ describe('exrReader', () => {
   let exrBuffer: Uint8Array | null = null;
 
   beforeEach(() => {
-    if (fs.existsSync(testExrPath)) {
-      const buf = fs.readFileSync(testExrPath);
-      exrBuffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-    }
+    const buf = fs.readFileSync(testExrPath);
+    exrBuffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   });
 
   afterEach(() => {
@@ -36,9 +34,7 @@ describe('exrReader', () => {
 
   describe('readExr', () => {
     it('should parse a valid EXR file', () => {
-      if (!exrBuffer) return;
-
-      const result = readExr(exrBuffer);
+      const result = readExr(exrBuffer!);
 
       expect(result).toBeDefined();
       expect(result.width).toBeGreaterThan(0);
@@ -48,9 +44,7 @@ describe('exrReader', () => {
     });
 
     it('should return FloatImageData with correct structure', () => {
-      if (!exrBuffer) return;
-
-      const result = readExr(exrBuffer);
+      const result = readExr(exrBuffer!);
 
       expect(result).toHaveProperty('width');
       expect(result).toHaveProperty('height');
@@ -61,18 +55,14 @@ describe('exrReader', () => {
     });
 
     it('should handle EXR data with valid dimensions', () => {
-      if (!exrBuffer) return;
-
-      const result = readExr(exrBuffer);
+      const result = readExr(exrBuffer!);
 
       const expectedDataLength = result.width * result.height * 4;
       expect(result.data.length).toBe(expectedDataLength);
     });
 
     it('should parse pixel data correctly', () => {
-      if (!exrBuffer) return;
-
-      const result = readExr(exrBuffer);
+      const result = readExr(exrBuffer!);
 
       for (let i = 0; i < Math.min(100, result.data.length); i += 4) {
         const r = result.data[i];
@@ -105,10 +95,9 @@ describe('exrReader', () => {
     });
 
     it('should throw clear error for unsupported compression type', () => {
-      if (!exrBuffer) return;
 
       // Create a copy and change compression from PIZ (4) to B44 (6) - unsupported
-      const modified = new Uint8Array(exrBuffer);
+      const modified = new Uint8Array(exrBuffer!);
       const pattern = new TextEncoder().encode('compression\0compression\0');
       let idx = -1;
       for (let i = 0; i <= modified.length - pattern.length; i++) {
@@ -128,8 +117,6 @@ describe('exrReader', () => {
     });
 
     it('should read PXR24-compressed EXR file (example_pxr24.exr) with sane pixel values', () => {
-      if (!fs.existsSync(gammaChartPath)) return;
-
       const buf = fs.readFileSync(gammaChartPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -158,8 +145,6 @@ describe('exrReader', () => {
     });
 
     it('should read half-float EXR file (example_halfs.exr)', () => {
-      if (!fs.existsSync(exampleHalfsPath)) return;
-
       const buf = fs.readFileSync(exampleHalfsPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -172,8 +157,6 @@ describe('exrReader', () => {
     });
 
     it('should throw for tiled EXR (example_tiles.exr - tiled format not supported)', () => {
-      if (!fs.existsSync(exampleTilesPath)) return;
-
       const buf = fs.readFileSync(exampleTilesPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -182,8 +165,6 @@ describe('exrReader', () => {
     });
 
     it('should throw for B44-compressed EXR (example_b44.exr - compression not supported)', () => {
-      if (!fs.existsSync(exampleB44Path)) return;
-
       const buf = fs.readFileSync(exampleB44Path);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -192,8 +173,6 @@ describe('exrReader', () => {
     });
 
     it('should throw for non-RGB EXR (example_nonRGB.exr has grayscale only)', () => {
-      if (!fs.existsSync(exampleNonRgbPath)) return;
-
       const buf = fs.readFileSync(exampleNonRgbPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -202,8 +181,6 @@ describe('exrReader', () => {
     });
 
     it('should read ZIP-compressed EXR file (example_zip.exr)', () => {
-      if (!fs.existsSync(exampleZipPath)) return;
-
       const buf = fs.readFileSync(exampleZipPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -217,8 +194,6 @@ describe('exrReader', () => {
     });
 
     it('should read RLE-compressed EXR file (example_rle.exr)', () => {
-      if (!fs.existsSync(exampleRlePath)) return;
-
       const buf = fs.readFileSync(exampleRlePath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
@@ -236,9 +211,8 @@ describe('exrReader', () => {
     });
 
     it('header fix: example_piz.exr still parses correctly (regression)', () => {
-      if (!exrBuffer) return;
 
-      const result = readExr(exrBuffer);
+      const result = readExr(exrBuffer!);
 
       expect(result.width).toBeGreaterThan(0);
       expect(result.height).toBeGreaterThan(0);
@@ -315,20 +289,5 @@ describe('exrReader', () => {
       expect(() => readExr(modified)).toThrow(/no valid scanline block offsets found/);
     });
 
-    it('should read ZIP-compressed EXR from openexr-images (Blobbies.exr) when available', () => {
-      const blobbiesPath = path.join(workspaceRoot, '../OpenSource/openexr-images/ScanLines/Blobbies.exr');
-      if (!fs.existsSync(blobbiesPath)) return;
-
-      const buf = fs.readFileSync(blobbiesPath);
-      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-
-      const result = readExr(buffer);
-      expect(result).toBeDefined();
-      expect(result.width).toBeGreaterThan(0);
-      expect(result.height).toBeGreaterThan(0);
-      expect(result.data).toBeInstanceOf(Float32Array);
-      expect(result.data.length).toBe(result.width * result.height * 4);
-      expect(result.metadata?.compression).toBe(3); // ZIP
-    });
   });
 });

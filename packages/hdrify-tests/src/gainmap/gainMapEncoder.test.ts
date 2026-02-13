@@ -13,23 +13,22 @@ function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
-const hdrFiles = fs.existsSync(assetsDir)
-  ? fs
-      .readdirSync(assetsDir)
-      .filter((f) => f.endsWith('.hdr'))
-      .map((f) => [f, path.join(assetsDir, f)] as [string, string])
-  : [];
+const hdrFiles = fs
+  .readdirSync(assetsDir)
+  .filter((f) => f.endsWith('.hdr'))
+  .map((f) => [f, path.join(assetsDir, f)] as [string, string]);
 
 const nonRgbExrFiles = ['example_nonRGB.exr', 'GrayRampsHorizontal.exr'];
 const unsupportedFormatExrFiles = ['example_b44.exr', 'example_tiles.exr'];
-const exrFiles = fs.existsSync(assetsDir)
-  ? fs
-      .readdirSync(assetsDir)
-      .filter((f) => f.endsWith('.exr') && !nonRgbExrFiles.includes(f) && !unsupportedFormatExrFiles.includes(f))
-      .map((f) => [f, path.join(assetsDir, f)] as [string, string])
-  : [];
+const exrFiles = fs
+  .readdirSync(assetsDir)
+  .filter((f) => f.endsWith('.exr') && !nonRgbExrFiles.includes(f) && !unsupportedFormatExrFiles.includes(f))
+  .map((f) => [f, path.join(assetsDir, f)] as [string, string]);
 
 describe('encodeGainMap', () => {
+  expect(hdrFiles.length, 'assets dir must contain .hdr files').toBeGreaterThan(0);
+  expect(exrFiles.length, 'assets dir must contain .exr files').toBeGreaterThan(0);
+
   describe.each(hdrFiles)('from HDR (%s)', (_filename, filepath) => {
     it('should encode HDR to SDR and gain map', () => {
       const hdrBuffer = toUint8Array(fs.readFileSync(filepath));

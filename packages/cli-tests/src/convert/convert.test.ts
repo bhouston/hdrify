@@ -205,7 +205,6 @@ describe('CLI convert command', () => {
     });
 
     it('converts JPEG gain map to EXR when JPEG is input', async () => {
-      if (!fs.existsSync(jpgGainMapFilePath)) return;
       const input = jpgGainMapFilePath;
       const output = path.join(tempDir, 'output.exr');
 
