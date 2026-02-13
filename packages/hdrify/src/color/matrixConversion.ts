@@ -95,15 +95,30 @@ function invert3(m: Mat3): Mat3 {
   ];
 }
 
+/** Flatten 3×3 row-major matrix to number[] [m00,m01,m02,m10,m11,m12,m20,m21,m22]. */
+export function mat3ToArray(m: Mat3): number[] {
+  return [m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]];
+}
+
 /**
- * Apply 3×3 matrix to RGB vector. Returns new [r, g, b].
+ * Apply 3×3 matrix to RGB vector. Writes result to output.
+ * Matrix: 9 elements row-major. Input/output: 3 elements each (Float32Array or number[]), or use offsets for strided data.
  */
-export function applyMatrix3(r: number, g: number, b: number, m: Mat3): [number, number, number] {
-  return [
-    m[0][0] * r + m[0][1] * g + m[0][2] * b,
-    m[1][0] * r + m[1][1] * g + m[1][2] * b,
-    m[2][0] * r + m[2][1] * g + m[2][2] * b,
-  ];
+export function applyMatrix3(
+  matrix: ArrayLike<number>,
+  input: ArrayLike<number>,
+  output: ArrayLike<number>,
+  inputOffset = 0,
+  outputOffset = 0,
+): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: caller guarantees valid inputOffset
+  const r = input[inputOffset]!;
+  const g = input[inputOffset + 1]!;
+  const b = input[inputOffset + 2]!;
+  // biome-ignore-end lint/style/noNonNullAssertion: caller guarantees valid inputOffset
+  output[outputOffset] = matrix[0] * r + matrix[1] * g + matrix[2] * b;
+  output[outputOffset + 1] = matrix[3] * r + matrix[4] * g + matrix[5] * b;
+  output[outputOffset + 2] = matrix[6] * r + matrix[7] * g + matrix[8] * b;
 }
 
 /**
@@ -111,16 +126,9 @@ export function applyMatrix3(r: number, g: number, b: number, m: Mat3): [number,
  * Mutates the buffer; does not create a copy.
  */
 export function applyMatrix3ToFloat32Array(data: Float32Array, matrix: Mat3): void {
+  const m = mat3ToArray(matrix);
   for (let i = 0; i < data.length; i += 4) {
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
-    const r = data[i]!;
-    const g = data[i + 1]!;
-    const b = data[i + 2]!;
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
-    const [r2, g2, b2] = applyMatrix3(r, g, b, matrix);
-    data[i] = r2;
-    data[i + 1] = g2;
-    data[i + 2] = b2;
+    applyMatrix3(m, data, data, i, i);
   }
 }
 

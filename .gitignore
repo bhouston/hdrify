@@ -4,3 +4,4 @@ tsconfig.tsbuildinfo
 .DS_Store
 .nx
 coverage
+profile-output

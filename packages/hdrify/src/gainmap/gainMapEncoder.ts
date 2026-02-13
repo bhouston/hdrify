@@ -2,7 +2,7 @@ import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
 import { linearTosRGB } from '../color/srgb.js';
 import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { getToneMapping } from '../tonemapping/mappers.js';
-import type { ToneMappingType } from '../tonemapping/types.js';
+import type { ToneMappingBatchFn, ToneMappingType } from '../tonemapping/types.js';
 import type { EncodingResult, EncodingResultFloat, GainMapEncodingOptions, GainMapMetadata } from './types.js';
 
 const defaultOffset = [1 / 64, 1 / 64, 1 / 64] as [number, number, number];
@@ -27,22 +27,36 @@ function findMaxHdrValue(data: Float32Array): number {
 
 /**
  * Compute max content boost from actual gains (HDR_linear / SDR_linear) so we don't clamp logRecovery.
+ * Uses batch tone mapping with shared linearRgbBuffer.
  */
 function findMaxContentBoostFromGains(
-  image: FloatImageData,
-  toneMapping: (r: number, g: number, b: number) => [number, number, number],
+  data: Float32Array,
+  totalPixels: number,
+  toneMapping: ToneMappingBatchFn,
+  linearRgbBuffer: Float32Array,
   offsetSdr: [number, number, number],
   offsetHdr: [number, number, number],
   exposure: number,
 ): number {
-  const { data } = image;
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
+  for (let i = 0; i < totalPixels; i++) {
+    const srcIdx = i * 4;
+    const dstIdx = i * 3;
+    linearRgbBuffer[dstIdx] = data[srcIdx]! * exposure;
+    linearRgbBuffer[dstIdx + 1] = data[srcIdx + 1]! * exposure;
+    linearRgbBuffer[dstIdx + 2] = data[srcIdx + 2]! * exposure;
+  }
+  toneMapping(linearRgbBuffer, linearRgbBuffer, totalPixels);
+
   let maxGain = 1;
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i]! * exposure;
-    const g = data[i + 1]! * exposure;
-    const b = data[i + 2]! * exposure;
-    const [sr, sg, sb] = toneMapping(r, g, b);
+  for (let i = 0; i < totalPixels; i++) {
+    const idx = i * 3;
+    const sr = linearRgbBuffer[idx]!;
+    const sg = linearRgbBuffer[idx + 1]!;
+    const sb = linearRgbBuffer[idx + 2]!;
+    const r = data[i * 4]! * exposure;
+    const g = data[i * 4 + 1]! * exposure;
+    const b = data[i * 4 + 2]! * exposure;
     const sdrLinR = sr + offsetSdr[0];
     const sdrLinG = sg + offsetSdr[1];
     const sdrLinB = sb + offsetSdr[2];
@@ -55,7 +69,7 @@ function findMaxContentBoostFromGains(
     const m = Math.max(gainR, gainG, gainB);
     if (m > maxGain) maxGain = m;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   return maxGain;
 }
 
@@ -82,10 +96,18 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMapping = getToneMapping(toneMappingType);
 
-  const imageForGains = { ...image, data };
+  const linearRgbBuffer = new Float32Array(totalPixels * 3);
   let maxContentBoost = options.maxContentBoost;
   if (maxContentBoost === undefined || maxContentBoost <= 0) {
-    const fromGains = findMaxContentBoostFromGains(imageForGains, toneMapping, offsetSdr, offsetHdr, exposure);
+    const fromGains = findMaxContentBoostFromGains(
+      data,
+      totalPixels,
+      toneMapping,
+      linearRgbBuffer,
+      offsetSdr,
+      offsetHdr,
+      exposure,
+    );
     maxContentBoost = Math.max(fromGains, findMaxHdrValue(data), 1.0001);
   }
   maxContentBoost = Math.max(maxContentBoost, 1.0001);
@@ -96,16 +118,27 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const sdr = new Uint8ClampedArray(totalPixels * 4);
   const gainMap = new Uint8ClampedArray(totalPixels * 4);
 
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
+  for (let i = 0; i < totalPixels; i++) {
+    const srcIdx = i * 4;
+    const dstIdx = i * 3;
+    linearRgbBuffer[dstIdx] = data[srcIdx]! * exposure;
+    linearRgbBuffer[dstIdx + 1] = data[srcIdx + 1]! * exposure;
+    linearRgbBuffer[dstIdx + 2] = data[srcIdx + 2]! * exposure;
+  }
+  toneMapping(linearRgbBuffer, linearRgbBuffer, totalPixels);
+
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
+    const si = i * 3;
+    const sr = linearRgbBuffer[si]!;
+    const sg = linearRgbBuffer[si + 1]!;
+    const sb = linearRgbBuffer[si + 2]!;
     const r = data[idx]! * exposure;
     const g = data[idx + 1]! * exposure;
     const b = data[idx + 2]! * exposure;
 
-    const [sr, sg, sb] = toneMapping(r, g, b);
     // Adobe/Ultra HDR spec: SDR base must be sRGB for display compatibility (standard JPEG).
-    // Gain computation uses linear; decode linearizes stored SDR before applying gain.
     sdr[idx] = Math.round(linearTosRGB(sr) * 255);
     sdr[idx + 1] = Math.round(linearTosRGB(sg) * 255);
     sdr[idx + 2] = Math.round(linearTosRGB(sb) * 255);
@@ -130,13 +163,9 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
     const clampedG = Math.max(0, Math.min(1, logRecoveryG));
     const clampedB = Math.max(0, Math.min(1, logRecoveryB));
 
-    const outR = Math.round(255 * clampedR ** gamma[0]);
-    const outG = Math.round(255 * clampedG ** gamma[1]);
-    const outB = Math.round(255 * clampedB ** gamma[2]);
-
-    gainMap[idx] = outR;
-    gainMap[idx + 1] = outG;
-    gainMap[idx + 2] = outB;
+    gainMap[idx] = Math.round(255 * clampedR ** gamma[0]);
+    gainMap[idx + 1] = Math.round(255 * clampedG ** gamma[1]);
+    gainMap[idx + 2] = Math.round(255 * clampedB ** gamma[2]);
     gainMap[idx + 3] = 255;
   }
   // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
@@ -197,12 +226,14 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
   const toneMappingTypeFloat: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMappingFloat = getToneMapping(toneMappingTypeFloat);
 
-  const imageForGainsFloat = { ...image, data };
+  const linearRgbBuffer = new Float32Array(totalPixels * 3);
   let maxContentBoostFloat = options.maxContentBoost;
   if (maxContentBoostFloat === undefined || maxContentBoostFloat <= 0) {
     const fromGains = findMaxContentBoostFromGains(
-      imageForGainsFloat,
+      data,
+      totalPixels,
       toneMappingFloat,
+      linearRgbBuffer,
       offsetSdr,
       offsetHdr,
       exposure,
@@ -217,16 +248,25 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
   const sdrFloat = new Float32Array(totalPixels * 4);
   const gainMapFloat = new Float32Array(totalPixels * 4);
 
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
+  for (let i = 0; i < totalPixels; i++) {
+    const srcIdx = i * 4;
+    const dstIdx = i * 3;
+    linearRgbBuffer[dstIdx] = data[srcIdx]! * exposure;
+    linearRgbBuffer[dstIdx + 1] = data[srcIdx + 1]! * exposure;
+    linearRgbBuffer[dstIdx + 2] = data[srcIdx + 2]! * exposure;
+  }
+  toneMappingFloat(linearRgbBuffer, linearRgbBuffer, totalPixels);
   for (let i = 0; i < totalPixels; i++) {
     const idx = i * 4;
+    const si = i * 3;
+    const sr = linearRgbBuffer[si]!;
+    const sg = linearRgbBuffer[si + 1]!;
+    const sb = linearRgbBuffer[si + 2]!;
     const r = data[idx]! * exposure;
     const g = data[idx + 1]! * exposure;
     const b = data[idx + 2]! * exposure;
 
-    const [sr, sg, sb] = toneMappingFloat(r, g, b);
-    // Per Adobe/Ultra HDR spec: SDR base is sRGB (matches file format). sdrFloat mirrors
-    // the stored SDR so quantize(sdrFloat) produces spec-compliant sRGB bytes.
     sdrFloat[idx] = linearTosRGB(sr);
     sdrFloat[idx + 1] = linearTosRGB(sg);
     sdrFloat[idx + 2] = linearTosRGB(sb);

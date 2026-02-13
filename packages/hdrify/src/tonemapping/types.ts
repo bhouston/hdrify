@@ -1,6 +1,10 @@
 export type ToneMappingType = 'aces' | 'reinhard' | 'neutral' | 'agx';
 
-export type ToneMappingFn = (r: number, g: number, b: number) => [number, number, number];
+/**
+ * Batch tone mapping: reads RGB from input (stride 3), writes linear 0-1 to output (stride 3).
+ * Input and output may be the same array for in-place mapping.
+ */
+export type ToneMappingBatchFn = (input: Float32Array, output: Float32Array, pixelCount: number) => void;
 
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 

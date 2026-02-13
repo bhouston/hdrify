@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
+const isProfiling = Boolean(process.env.PROFILE);
+
 export default defineConfig({
   test: {
     include: [
@@ -10,6 +12,15 @@ export default defineConfig({
     environment: 'node',
     watch: false,
     isolate: false,
+    ...(isProfiling && {
+      fileParallelism: false,
+      execArgv: [
+        '--cpu-prof',
+        '--cpu-prof-dir=./profile-output',
+        '--heap-prof',
+        '--heap-prof-dir=./profile-output',
+      ],
+    }),
     coverage: {
       provider: 'v8',
       include: ['packages/hdrify/src/**/*.ts'],

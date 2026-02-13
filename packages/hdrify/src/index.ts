@@ -76,7 +76,7 @@ export type { CreateHsvRainbowImageOptions } from './synthetic/createHsvRainbowI
 export { createHsvRainbowImage } from './synthetic/createHsvRainbowImage.js';
 export { applyToneMapping } from './tonemapping/applyToneMapping.js';
 export { getToneMapping } from './tonemapping/mappers.js';
-export type { ApplyToneMappingOptions, ToneMappingFn, ToneMappingType } from './tonemapping/types.js';
+export type { ApplyToneMappingOptions, ToneMappingBatchFn, ToneMappingType } from './tonemapping/types.js';
 export type { Chromaticities, ValidateToneMappingColorSpaceOptions } from './tonemapping/validateColorSpace.js';
 export {
   validateToneMappingColorSpace,

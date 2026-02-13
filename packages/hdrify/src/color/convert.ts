@@ -6,7 +6,7 @@
 import type { FloatImageData } from '../floatImage.js';
 import type { DisplayColorSpace, LinearColorSpace } from './colorSpaces.js';
 import { DISPLAY_TO_LINEAR } from './colorSpaces.js';
-import { applyMatrix3, getLinearToLinearMatrix } from './matrixConversion.js';
+import { applyMatrix3, getLinearToLinearMatrix, mat3ToArray } from './matrixConversion.js';
 import { displayToLinear, linearToDisplay } from './transfer.js';
 
 /**
@@ -35,17 +35,9 @@ export function convertFloat32ToLinearColorSpace(
 
   const out = new Float32Array(data.length);
   out.set(data);
-
+  const m = mat3ToArray(matrix);
   for (let i = 0; i < data.length; i += 4) {
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
-    const r = data[i]!;
-    const g = data[i + 1]!;
-    const b = data[i + 2]!;
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
-    const [r2, g2, b2] = applyMatrix3(r, g, b, matrix);
-    out[i] = r2;
-    out[i + 1] = g2;
-    out[i + 2] = b2;
+    applyMatrix3(m, data, out, i, i);
   }
 
   return out;
@@ -126,6 +118,7 @@ export function convertDisplayToLinear(
   const linearData = new Float32Array(data.length);
   const pixelCount = width * height;
 
+  const m = matrix !== null ? mat3ToArray(matrix) : null;
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 4;
     // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
@@ -136,13 +129,13 @@ export function convertDisplayToLinear(
     // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
 
     const [rLinear, gLinear, bLinear] = displayToLinear(r, g, b, from);
-    const [r2, g2, b2] =
-      matrix !== null ? applyMatrix3(rLinear, gLinear, bLinear, matrix) : [rLinear, gLinear, bLinear];
-
-    linearData[si] = r2;
-    linearData[si + 1] = g2;
-    linearData[si + 2] = b2;
+    linearData[si] = rLinear;
+    linearData[si + 1] = gLinear;
+    linearData[si + 2] = bLinear;
     linearData[si + 3] = a;
+    if (m !== null) {
+      applyMatrix3(m, linearData, linearData, si, si);
+    }
   }
 
   return {

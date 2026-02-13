@@ -3,190 +3,226 @@
  * Ported from gainmap-js SDRMaterial GLSL.
  *
  * All mappers output linear 0-1. Callers apply linearToSrgb for display (matches Three.js).
+ * Batch API: input/output Float32Array with stride 3 per pixel.
  */
 
 import {
   applyMatrix3,
   LINEAR_REC709_TO_LINEAR_REC2020,
   LINEAR_REC2020_TO_LINEAR_REC709,
+  mat3ToArray,
 } from '../color/matrixConversion.js';
-import type { ToneMappingFn, ToneMappingType } from './types.js';
+import type { ToneMappingBatchFn, ToneMappingType } from './types.js';
 
 /** Color space of tone mapper output: 'linear' or 'srgb'. */
 export type ColorSpace = 'linear' | 'srgb';
 
-function saturate(x: number): number {
-  if (!Number.isFinite(x)) return 0;
-  return Math.max(0, Math.min(1, x));
-}
-
-function saturate3(r: number, g: number, b: number): [number, number, number] {
-  return [saturate(r), saturate(g), saturate(b)];
+/** RRTAndODTFit for ACES */
+function RRTAndODTFit(v: number): number {
+  const a = v * (v + 0.0245786) - 0.000090537;
+  const bVal = v * (0.983729 * v + 0.432951) + 0.238081;
+  return a / bVal;
 }
 
 /**
  * ACES Filmic tone mapping - matches gainmap-js default.
- * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1 (callers apply linearToSrgb for display).
+ * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1.
  */
-function acesFilmic(r: number, g: number, b: number): [number, number, number] {
-  // ACESInputMat (sRGB => AP1) - row-major, from Stephen Hill's BakingLab
-  const m00 = 0.59719;
-  const m01 = 0.35458;
-  const m02 = 0.04823;
-  const m10 = 0.076;
-  const m11 = 0.90834;
-  const m12 = 0.01566;
-  const m20 = 0.0284;
-  const m21 = 0.13383;
-  const m22 = 0.83777;
-  const r1 = m00 * r + m01 * g + m02 * b;
-  const g1 = m10 * r + m11 * g + m12 * b;
-  const b1 = m20 * r + m21 * g + m22 * b;
+function acesFilmicBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
+  const m00 = 0.59719,
+    m01 = 0.35458,
+    m02 = 0.04823;
+  const m10 = 0.076,
+    m11 = 0.90834,
+    m12 = 0.01566;
+  const m20 = 0.0284,
+    m21 = 0.13383,
+    m22 = 0.83777;
+  const o00 = 1.60475,
+    o01 = -0.53108,
+    o02 = -0.07367;
+  const o10 = -0.10208,
+    o11 = 1.10813,
+    o12 = -0.00605;
+  const o20 = -0.00327,
+    o21 = -0.07276,
+    o22 = 1.07602;
 
-  // RRTAndODTFit
-  const RRTAndODTFit = (v: number) => {
-    const a = v * (v + 0.0245786) - 0.000090537;
-    const bVal = v * (0.983729 * v + 0.432951) + 0.238081;
-    return a / bVal;
-  };
-  const r2 = RRTAndODTFit(r1);
-  const g2 = RRTAndODTFit(g1);
-  const b2 = RRTAndODTFit(b1);
+  for (let i = 0; i < pixelCount; i++) {
+    const si = i * 3;
+    const r = input[si]!;
+    const g = input[si + 1]!;
+    const b = input[si + 2]!;
 
-  // ACESOutputMat (AP1 => sRGB) - row-major, from Stephen Hill's BakingLab
-  const o00 = 1.60475;
-  const o01 = -0.53108;
-  const o02 = -0.07367;
-  const o10 = -0.10208;
-  const o11 = 1.10813;
-  const o12 = -0.00605;
-  const o20 = -0.00327;
-  const o21 = -0.07276;
-  const o22 = 1.07602;
-  const r3 = o00 * r2 + o01 * g2 + o02 * b2;
-  const g3 = o10 * r2 + o11 * g2 + o12 * b2;
-  const b3 = o20 * r2 + o21 * g2 + o22 * b2;
+    const r1 = m00 * r + m01 * g + m02 * b;
+    const g1 = m10 * r + m11 * g + m12 * b;
+    const b1 = m20 * r + m21 * g + m22 * b;
 
-  return saturate3(r3, g3, b3);
+    const r2 = RRTAndODTFit(r1);
+    const g2 = RRTAndODTFit(g1);
+    const b2 = RRTAndODTFit(b1);
+
+    output[si] = o00 * r2 + o01 * g2 + o02 * b2;
+    output[si + 1] = o10 * r2 + o11 * g2 + o12 * b2;
+    output[si + 2] = o20 * r2 + o21 * g2 + o22 * b2;
+  }
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 /**
  * Reinhard tone mapping: x / (1 + x). Output: linear 0-1.
- * Callers ensure non-negative finite input.
  */
-function reinhard(r: number, g: number, b: number): [number, number, number] {
-  return saturate3(r / (1 + r), g / (1 + g), b / (1 + b));
+function reinhardBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
+  for (let i = 0; i < pixelCount; i++) {
+    const si = i * 3;
+    const r = input[si]!;
+    const g = input[si + 1]!;
+    const b = input[si + 2]!;
+    output[si] = r / (1 + r);
+    output[si + 1] = g / (1 + g);
+    output[si + 2] = b / (1 + b);
+  }
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 /**
  * Khronos Neutral tone mapping - https://modelviewer.dev/examples/tone-mapping
- * Preserves neutral greys and provides smooth shoulder compression. Output: linear 0-1.
- * Callers ensure non-negative finite input.
  */
-function neutral(r: number, g: number, b: number): [number, number, number] {
-  let r0 = r;
-  let g0 = g;
-  let b0 = b;
-
+function neutralBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
   const StartCompression = 0.8 - 0.04;
   const Desaturation = 0.15;
 
-  const x = Math.min(r0, Math.min(g0, b0));
-  const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
+  for (let i = 0; i < pixelCount; i++) {
+    const si = i * 3;
+    let r0 = input[si]!;
+    let g0 = input[si + 1]!;
+    let b0 = input[si + 2]!;
 
-  r0 -= offset;
-  g0 -= offset;
-  b0 -= offset;
+    const x = Math.min(r0, Math.min(g0, b0));
+    const offset = x < 0.08 ? x - 6.25 * x * x : 0.04;
 
-  const peak = Math.max(r0, Math.max(g0, b0));
+    r0 -= offset;
+    g0 -= offset;
+    b0 -= offset;
 
-  if (peak < StartCompression) {
-    return saturate3(r0, g0, b0);
+    const peak = Math.max(r0, Math.max(g0, b0));
+
+    if (peak < StartCompression) {
+      output[si] = r0;
+      output[si + 1] = g0;
+      output[si + 2] = b0;
+      continue;
+    }
+
+    const d = 1.0 - StartCompression;
+    const newPeak = 1.0 - (d * d) / (peak + d - StartCompression);
+
+    r0 *= newPeak / peak;
+    g0 *= newPeak / peak;
+    b0 *= newPeak / peak;
+
+    const gMix = 1.0 - 1.0 / (Desaturation * (peak - newPeak) + 1.0);
+
+    output[si] = r0 * (1 - gMix) + newPeak * gMix;
+    output[si + 1] = g0 * (1 - gMix) + newPeak * gMix;
+    output[si + 2] = b0 * (1 - gMix) + newPeak * gMix;
   }
-
-  const d = 1.0 - StartCompression;
-  const newPeak = 1.0 - (d * d) / (peak + d - StartCompression);
-
-  r0 *= newPeak / peak;
-  g0 *= newPeak / peak;
-  b0 *= newPeak / peak;
-
-  const gMix = 1.0 - 1.0 / (Desaturation * (peak - newPeak) + 1.0);
-
-  const rOut = r0 * (1 - gMix) + newPeak * gMix;
-  const gOut = g0 * (1 - gMix) + newPeak * gMix;
-  const bOut = b0 * (1 - gMix) + newPeak * gMix;
-
-  return saturate3(rOut, gOut, bOut);
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
-/** AgX default contrast sigmoid approximation - https://iolite-engine.com/blog_posts/minimal_agx_implementation */
 function agxDefaultContrastApprox(x: number): number {
   const x2 = x * x;
   const x4 = x2 * x2;
   return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
 }
 
+const LINEAR_REC709_TO_REC2020 = mat3ToArray(LINEAR_REC709_TO_LINEAR_REC2020);
+const LINEAR_REC2020_TO_REC709 = mat3ToArray(LINEAR_REC2020_TO_LINEAR_REC709);
+
+const AgXInsetMatrix: [number, number, number, number, number, number, number, number, number] = [
+  0.856627153315983, 0.0951212405381588, 0.0482516061458583, 0.137318972929847, 0.761241990602591, 0.101439036467562,
+  0.11189821299995, 0.0767994186031903, 0.811302368396859,
+];
+
+const AgXOutsetMatrix: [number, number, number, number, number, number, number, number, number] = [
+  1.1271005818144368, -0.11060664309660323, -0.016493938717834573, -0.1413297634984383, 1.157823702216272,
+  -0.016493938717834257, -0.14132976349843826, -0.11060664309660294, 1.2519364065950405,
+];
+
+const AgxMinEv = -12.47393;
+const AgxMaxEv = 4.026069;
+
 /**
  * AgX tone mapping from Blender via Filament.
- * Uses rec 2020 primaries, log2 encoding, and sigmoid contrast.
- * https://github.com/google/filament/pull/7236
- * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1 (callers apply linearToSrgb for display).
  */
-function agx(r: number, g: number, b: number): [number, number, number] {
-  type Mat3 = [[number, number, number], [number, number, number], [number, number, number]];
-  const mvm = (m: Mat3, v: [number, number, number]): [number, number, number] => applyMatrix3(v[0], v[1], v[2], m);
+const agxVecIn: [number, number, number] = [0, 0, 0];
+const agxVecOut: [number, number, number] = [0, 0, 0];
 
-  // AgX inset matrix (row-major; rows = columns of GLSL mat3 so neutral stays neutral)
-  const AgXInsetMatrix: Mat3 = [
-    [0.856627153315983, 0.0951212405381588, 0.0482516061458583],
-    [0.137318972929847, 0.761241990602591, 0.101439036467562],
-    [0.11189821299995, 0.0767994186031903, 0.811302368396859],
-  ];
+function agxBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
+  for (let i = 0; i < pixelCount; i++) {
+    const si = i * 3;
+    agxVecIn[0] = input[si]!;
+    agxVecIn[1] = input[si + 1]!;
+    agxVecIn[2] = input[si + 2]!;
 
-  // AgX outset matrix (row-major; rows = columns of GLSL mat3 so neutral stays neutral)
-  const AgXOutsetMatrix: Mat3 = [
-    [1.1271005818144368, -0.11060664309660323, -0.016493938717834573],
-    [-0.1413297634984383, 1.157823702216272, -0.016493938717834257],
-    [-0.14132976349843826, -0.11060664309660294, 1.2519364065950405],
-  ];
+    applyMatrix3(LINEAR_REC709_TO_REC2020, agxVecIn, agxVecOut);
+    let r = agxVecOut[0]!;
+    let g = agxVecOut[1]!;
+    let b = agxVecOut[2]!;
 
-  const AgxMinEv = -12.47393;
-  const AgxMaxEv = 4.026069;
+    applyMatrix3(AgXInsetMatrix, agxVecOut, agxVecIn);
+    r = agxVecIn[0]!;
+    g = agxVecIn[1]!;
+    b = agxVecIn[2]!;
 
-  let [r1, g1, b1] = applyMatrix3(r, g, b, LINEAR_REC709_TO_LINEAR_REC2020);
-  [r1, g1, b1] = mvm(AgXInsetMatrix, [r1, g1, b1]);
+    r = Math.max(r, 1e-10);
+    g = Math.max(g, 1e-10);
+    b = Math.max(b, 1e-10);
 
-  r1 = Math.max(r1, 1e-10);
-  g1 = Math.max(g1, 1e-10);
-  b1 = Math.max(b1, 1e-10);
+    const divisor = 1 / (AgxMaxEv - AgxMinEv);
+    r = Math.max(0, Math.min(1, (Math.log2(r) - AgxMinEv) * divisor));
+    g = Math.max(0, Math.min(1, (Math.log2(g) - AgxMinEv) * divisor));
+    b = Math.max(0, Math.min(1, (Math.log2(b) - AgxMinEv) * divisor));
 
-  r1 = Math.max(0, Math.min(1, (Math.log2(r1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
-  g1 = Math.max(0, Math.min(1, (Math.log2(g1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
-  b1 = Math.max(0, Math.min(1, (Math.log2(b1) - AgxMinEv) / (AgxMaxEv - AgxMinEv)));
+    r = agxDefaultContrastApprox(r);
+    g = agxDefaultContrastApprox(g);
+    b = agxDefaultContrastApprox(b);
 
-  r1 = agxDefaultContrastApprox(r1);
-  g1 = agxDefaultContrastApprox(g1);
-  b1 = agxDefaultContrastApprox(b1);
+    agxVecIn[0] = r;
+    agxVecIn[1] = g;
+    agxVecIn[2] = b;
+    applyMatrix3(AgXOutsetMatrix, agxVecIn, agxVecOut);
+    r = agxVecOut[0]!;
+    g = agxVecOut[1]!;
+    b = agxVecOut[2]!;
 
-  [r1, g1, b1] = mvm(AgXOutsetMatrix, [r1, g1, b1]);
+    r = Math.max(0, r) ** 2.2;
+    g = Math.max(0, g) ** 2.2;
+    b = Math.max(0, b) ** 2.2;
 
-  r1 = Math.max(0, r1) ** 2.2;
-  g1 = Math.max(0, g1) ** 2.2;
-  b1 = Math.max(0, b1) ** 2.2;
+    agxVecIn[0] = r;
+    agxVecIn[1] = g;
+    agxVecIn[2] = b;
+    applyMatrix3(LINEAR_REC2020_TO_REC709, agxVecIn, agxVecOut);
 
-  [r1, g1, b1] = applyMatrix3(r1, g1, b1, LINEAR_REC2020_TO_LINEAR_REC709);
-
-  return saturate3(r1, g1, b1);
+    output[si] = agxVecOut[0]!;
+    output[si + 1] = agxVecOut[1]!;
+    output[si + 2] = agxVecOut[2]!;
+  }
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
-const TONE_MAPPING_MAP: Record<ToneMappingType, ToneMappingFn> = {
-  aces: acesFilmic,
-  reinhard,
-  neutral,
-  agx,
+const TONE_MAPPING_MAP: Record<ToneMappingType, ToneMappingBatchFn> = {
+  aces: acesFilmicBatch,
+  reinhard: reinhardBatch,
+  neutral: neutralBatch,
+  agx: agxBatch,
 };
 
-export function getToneMapping(type: ToneMappingType): ToneMappingFn {
+export function getToneMapping(type: ToneMappingType): ToneMappingBatchFn {
   return TONE_MAPPING_MAP[type];
 }
