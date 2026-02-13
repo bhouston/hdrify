@@ -53,14 +53,15 @@ const EXR_COMPRESSION_NAMES: Record<number, string> = {
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/blouberg_sunrise_2_1k.hdr', label: 'Blouberg Sunrise 1k (HDR)' },
+  { value: '/examples/blouberg_sunrise_2_1k.jpg', label: 'Blouberg Sunrise 1k (Ultra HDR)' },
   { value: '/examples/moonless_golf_1k.hdr', label: 'Moonless Golf 1k (HDR)' },
-  { value: '/examples/moonless_golf_1k.ultrahdr.jpg', label: 'Moonless Golf 1k (Ultra HDR)' },
-  { value: '/examples/moonless_golf_1k.gainmap.jpg', label: 'Moonless Golf 1k (Adobe gain map)' },
+  { value: '/examples/moonless_golf_1k.jpg', label: 'Moonless Golf 1k (Ultra HDR)' },
   { value: '/examples/pedestrian_overpass_1k.hdr', label: 'Pedestrian Overpass 1k (HDR)' },
+  { value: '/examples/pedestrian_overpass_1k.jpg', label: 'Pedestrian Overpass 1k (Ultra HDR)' },
   { value: '/examples/rainbow.hdr', label: 'Rainbow (HDR)' },
   { value: '/examples/memorial.hdr', label: 'Memorial (HDR)' },
   { value: '/examples/memorial.exr', label: 'Memorial (EXR)' },
-  { value: '/examples/memorial.jpg', label: 'Memorial (JPEG gain map)' },
+  { value: '/examples/memorial.jpg', label: 'Memorial (Ultra HDR)' },
   { value: '/examples/example_halfs.exr', label: 'Example half float (EXR)' },
   { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
   { value: '/examples/example_pxr24.exr', label: 'Example PXR24 (EXR)' },
@@ -540,7 +541,7 @@ function Index() {
         <ul className="grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
           <li>
             <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and Ultra
-            HDR / Ultra JPG (JPEG with gain maps).
+            HDR (JPEG with gain maps).
           </li>
           <li>
             <strong className="text-foreground">True HDR display:</strong> On compatible browsers (mainly Chrome at this
