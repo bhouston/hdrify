@@ -17,15 +17,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-/** Display mode: 'none' = Direct HDR (no tone mapping), or a real tone mapping type */
-type DisplayMode = ToneMappingType | 'none';
-
 import { FloatImageCanvas } from '@/components/FloatImageCanvas';
-import { FloatImageCanvasHDR } from '@/components/FloatImageCanvasHDR';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { useHdrCanvasSupport } from '@/hooks/useHdrCanvasSupport';
 import { cn } from '@/lib/utils';
 
 const indexSearchSchema = z.object({
@@ -83,27 +78,15 @@ function downloadBlob(blob: Blob, filename: string) {
 function Index() {
   const navigate = useNavigate();
   const { image: imageParam } = Route.useSearch();
-  const hdrSupported = useHdrCanvasSupport();
   const [imageData, setImageData] = useState<FloatImageData | null>(null);
   const [exposure, setExposure] = useState(1.0);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('neutral');
+  const [displayMode, setDisplayMode] = useState<ToneMappingType>('neutral');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedExampleUrl, setSelectedExampleUrl] = useState<string>('');
   const [loadingExample, setLoadingExample] = useState(false);
   const [sourceFileName, setSourceFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ldrCanvasRef = useRef<HTMLCanvasElement>(null);
-  const prevHdrSupportedRef = useRef(false);
-
-  const isLdrView = !(hdrSupported && displayMode === 'none');
-
-  // Default to Direct HDR when HDR support is first detected
-  useEffect(() => {
-    if (hdrSupported && !prevHdrSupportedRef.current) {
-      setDisplayMode('none');
-    }
-    prevHdrSupportedRef.current = hdrSupported;
-  }, [hdrSupported]);
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -229,8 +212,7 @@ function Index() {
   const handleDownloadJpegR = useCallback(() => {
     if (!imageData) return;
     try {
-      const toneMappingForEncode = displayMode === 'none' ? 'neutral' : displayMode;
-      const encoding = encodeGainMap(imageData, { toneMapping: toneMappingForEncode });
+      const encoding = encodeGainMap(imageData, { toneMapping: displayMode });
       const bytes = writeJpegGainMap(encoding, { quality: 90 });
       const blob = new Blob([bytes], { type: 'image/jpeg' });
       downloadBlob(blob, 'image.jpg');
@@ -241,10 +223,7 @@ function Index() {
 
   const handleDownloadWebP = useCallback(() => {
     const canvas = ldrCanvasRef.current;
-    if (!canvas) {
-      toast.error('WebP is only available for tone-mapped view. Switch out of Direct HDR.');
-      return;
-    }
+    if (!canvas) return;
     canvas.toBlob(
       (blob) => {
         if (blob) downloadBlob(blob, 'image.webp');
@@ -325,12 +304,11 @@ function Index() {
           <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
             <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
             <span className="text-xs font-medium text-muted-foreground">Exposure</span>
-            <Select onValueChange={(v) => setDisplayMode(v as DisplayMode)} value={displayMode}>
+            <Select onValueChange={(v) => setDisplayMode(v as ToneMappingType)} value={displayMode}>
               <SelectTrigger className="w-full min-w-[140px]" size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {hdrSupported && <SelectItem value="none">Direct HDR</SelectItem>}
                 <SelectItem value="aces">ACES</SelectItem>
                 <SelectItem value="reinhard">Reinhard</SelectItem>
                 <SelectItem value="neutral">Neutral</SelectItem>
@@ -377,22 +355,13 @@ function Index() {
           {imageData ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
               <div className="flex min-h-0 flex-1 items-center justify-center">
-                {hdrSupported && displayMode === 'none' ? (
-                  <FloatImageCanvasHDR
-                    className="max-h-full max-w-full rounded object-contain"
-                    exposure={exposure}
-                    imageData={imageData}
-                    toneMapping="neutral"
-                  />
-                ) : (
-                  <FloatImageCanvas
-                    className="max-h-full max-w-full rounded object-contain"
-                    exposure={exposure}
-                    forwardedRef={ldrCanvasRef}
-                    imageData={imageData}
-                    toneMapping={displayMode === 'none' ? 'neutral' : displayMode}
-                  />
-                )}
+                <FloatImageCanvas
+                  className="max-h-full max-w-full rounded object-contain"
+                  exposure={exposure}
+                  forwardedRef={ldrCanvasRef}
+                  imageData={imageData}
+                  toneMapping={displayMode}
+                />
               </div>
               <p className="shrink-0 text-center text-xs text-muted-foreground">
                 Drag another file here (HDR, EXR, or UltraHDR JPG) or click to load a different image
@@ -515,15 +484,12 @@ function Index() {
                 UltraHDR JPEG (HDR)
               </Button>
               <Button
-                aria-label={!isLdrView ? 'Available for tone-mapped view only' : undefined}
                 className="justify-start gap-2"
-                disabled={!isLdrView}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDownloadWebP();
                 }}
                 size="sm"
-                title={!isLdrView ? 'Available for tone-mapped view only' : undefined}
                 variant="outline"
               >
                 <Download className="size-4" />
@@ -542,10 +508,6 @@ function Index() {
           <li>
             <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and Ultra
             HDR (JPEG with gain maps).
-          </li>
-          <li>
-            <strong className="text-foreground">True HDR display:</strong> On compatible browsers (mainly Chrome at this
-            time), the viewer can display images in true HDR when you choose “Direct HDR” in the tone mapping dropdown.
           </li>
           <li>
             <strong className="text-foreground">Pure JavaScript:</strong> Read and write these formats in pure
