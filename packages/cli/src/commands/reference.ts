@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { createHsvRainbowImage, writeExr, writeHdr } from 'hdrify';
+import { convertLinearColorSpace, createCieColorWedgeImage, createHsvRainbowImage, writeExr, writeHdr } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
 const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz', 'pxr24'] as const;
@@ -24,18 +24,18 @@ export const command = defineCommand({
       .option('type', {
         describe: 'Type of reference image',
         type: 'string',
-        choices: ['rainbow'] as const,
+        choices: ['rainbow', 'cie-wedge'] as const,
         default: 'rainbow',
       })
       .option('width', {
         describe: 'Image width',
         type: 'number',
-        default: 16,
+        default: 512,
       })
       .option('height', {
         describe: 'Image height',
         type: 'number',
-        default: 16,
+        default: 512,
       })
       .option('value', {
         describe: 'HSV value (0-1)',
@@ -53,7 +53,7 @@ export const command = defineCommand({
         choices: REFERENCE_COMPRESSION_CHOICES,
       }),
   handler: async (argv) => {
-    const { output, width, height, value, intensity, compression } = argv;
+    const { output, type, width, height, value, intensity, compression } = argv;
 
     const ext = path.extname(output).toLowerCase();
 
@@ -68,7 +68,14 @@ export const command = defineCommand({
     }
 
     try {
-      const imageData = createHsvRainbowImage({ width, height, value, intensity });
+      let imageData =
+        type === 'cie-wedge'
+          ? createCieColorWedgeImage({ width, height })
+          : createHsvRainbowImage({ width, height, value, intensity });
+
+      if (type === 'cie-wedge' && ext === '.hdr') {
+        imageData = convertLinearColorSpace(imageData, 'linear-rec709');
+      }
 
       let buffer: Uint8Array;
       if (ext === '.exr') {

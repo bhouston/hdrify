@@ -1,8 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { readExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTempDir, runCli } from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput } from '../test-utils/validateOutput.js';
+
+function toUint8Array(buf: Buffer): Uint8Array {
+  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+}
 
 describe('CLI reference command', () => {
   let tempDir: string;
@@ -112,5 +117,43 @@ describe('CLI reference command', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toContain('--compression is only valid for EXR output');
+  });
+
+  describe('cie-wedge type', () => {
+    it('creates valid EXR with Rec 2020 chromaticities', async () => {
+      const output = path.join(tempDir, 'cie.exr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+
+      const data = readExr(toUint8Array(fs.readFileSync(output)));
+      expect(data.linearColorSpace).toBe('linear-rec2020');
+    });
+
+    it('creates valid HDR (linear sRGB)', async () => {
+      const output = path.join(tempDir, 'cie.hdr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateHdrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+
+    it('respects --width and --height override', async () => {
+      const output = path.join(tempDir, 'cie.exr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge', '--width', '64', '--height', '32']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBe(64);
+      expect(meta.height).toBe(32);
+    });
   });
 });

@@ -46,6 +46,14 @@ export function chromaticitiesToRgbXyzMatrix(ch: Chromaticities): Mat3 {
 }
 
 /**
+ * Build XYZ → RGB matrix from chromaticities.
+ * Inverse of chromaticitiesToRgbXyzMatrix; converts CIE XYZ to linear RGB.
+ */
+export function chromaticitiesToXyzRgbMatrix(ch: Chromaticities): Mat3 {
+  return invert3(chromaticitiesToRgbXyzMatrix(ch));
+}
+
+/**
  * Build matrix to convert linear RGB from space A to space B.
  * RGB_B = M * RGB_A (apply as matrix-vector multiply).
  */

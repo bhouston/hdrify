@@ -53,7 +53,7 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/moonless_golf_1k.jpg', label: 'Moonless Golf 1k (Ultra HDR)' },
   { value: '/examples/pedestrian_overpass_1k.hdr', label: 'Pedestrian Overpass 1k (HDR)' },
   { value: '/examples/pedestrian_overpass_1k.jpg', label: 'Pedestrian Overpass 1k (Ultra HDR)' },
-  { value: '/examples/rainbow.hdr', label: 'Rainbow (HDR)' },
+  { value: '/examples/example_cie.exr', label: 'CIE Color Wedge (EXR)' },
   { value: '/examples/memorial.hdr', label: 'Memorial (HDR)' },
   { value: '/examples/memorial.exr', label: 'Memorial (EXR)' },
   { value: '/examples/memorial.jpg', label: 'Memorial (Ultra HDR)' },
@@ -310,7 +310,6 @@ function Index() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="aces">ACES</SelectItem>
-                <SelectItem value="reinhard">Reinhard</SelectItem>
                 <SelectItem value="neutral">Neutral</SelectItem>
                 <SelectItem value="agx">AgX</SelectItem>
               </SelectContent>
@@ -526,7 +525,7 @@ function Index() {
             UltraHDR (Android compatible) JPEGs.
           </li>
           <li>
-            <strong className="text-foreground">Tone mapping:</strong> ACES, Reinhard, Khronos Neutral, and AgX.
+            <strong className="text-foreground">Tone mapping:</strong> ACES, Khronos Neutral, and AgX.
           </li>
           <li className="md:col-span-2">
             <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion and

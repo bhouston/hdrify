@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   applyToneMapping,
+  convertLinearColorSpace,
   encodeGainMap,
   type FloatImageData,
   readExr,
@@ -135,14 +136,19 @@ export const command = defineCommand({
       console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
 
       if (isHdrExtension(outputExt)) {
-        // HDR output: direct write
+        // HDR output: convert Rec 2020 to linear sRGB for HDR (Radiance assumes sRGB)
+        let dataToWrite = imageData;
+        if (outputExt === '.hdr' && imageData.linearColorSpace !== 'linear-rec709') {
+          dataToWrite = convertLinearColorSpace(imageData, 'linear-rec709');
+        }
+
         let outputBuffer: Uint8Array;
         if (outputExt === '.exr') {
           const compressionOption =
             compression !== undefined ? { compression: COMPRESSION_MAP[compression] } : undefined;
-          outputBuffer = writeExr(imageData, compressionOption);
+          outputBuffer = writeExr(dataToWrite, compressionOption);
         } else {
-          outputBuffer = writeHdr(imageData);
+          outputBuffer = writeHdr(dataToWrite);
         }
         fs.writeFileSync(output, outputBuffer);
       } else {
@@ -167,6 +173,7 @@ export const command = defineCommand({
             toneMapping: tonemapping as 'aces' | 'reinhard' | 'neutral' | 'agx',
             exposure,
             metadata: imageData.metadata,
+            sourceColorSpace: imageData.linearColorSpace,
           });
           const pipeline = sharp(ldrRgb, {
             raw: { width: imageData.width, height: imageData.height, channels: 3 },
