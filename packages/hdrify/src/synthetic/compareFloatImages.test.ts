@@ -24,14 +24,14 @@ describe('compareFloatImages', () => {
   it('images within 1% match', () => {
     const a = makeImage(4, 4, () => 1.0);
     const b = makeImage(4, 4, (i) => (i % 4 === 3 ? 1.0 : 1.005)); // 0.5% diff
-    const result = compareFloatImages(a, b, { tolerancePercent: 0.01 });
+    const result = compareFloatImages(a, b, { toleranceRelative: 0.01 });
     expect(result.match).toBe(true);
   });
 
   it('images outside tolerance fail', () => {
     const a = makeImage(4, 4, () => 1.0);
     const b = makeImage(4, 4, (i) => (i % 4 === 3 ? 1.0 : 1.02)); // 2% diff
-    const result = compareFloatImages(a, b, { tolerancePercent: 0.01 });
+    const result = compareFloatImages(a, b, { toleranceRelative: 0.01 });
     expect(result.match).toBe(false);
     expect(result.mismatchedPixels).toBeGreaterThan(0);
   });
@@ -46,7 +46,7 @@ describe('compareFloatImages', () => {
   it('near-zero values use absolute tolerance', () => {
     const a = makeImage(2, 2, () => 0.001);
     const b = makeImage(2, 2, () => 0.0011); // 10% relative diff but small absolute
-    const result = compareFloatImages(a, b, { tolerancePercent: 0.01, toleranceAbsolute: 0.0002 });
+    const result = compareFloatImages(a, b, { toleranceRelative: 0.01, toleranceAbsolute: 0.0002 });
     expect(result.match).toBe(true);
   });
 
@@ -57,19 +57,21 @@ describe('compareFloatImages', () => {
     expect(result.match).toBe(false);
   });
 
-  it('returns maxDiff and mismatchedPixels for debugging', () => {
+  it('returns maxAbsoluteDelta, maxRelativeDelta, rootMeanSquaredError and mismatchedPixels for debugging', () => {
     const a = makeImage(2, 2, () => 1.0);
     const b = makeImage(2, 2, (i) => (i === 0 ? 1.5 : 1.0));
-    const result = compareFloatImages(a, b, { tolerancePercent: 0.01 });
+    const result = compareFloatImages(a, b, { toleranceRelative: 0.01 });
     expect(result.match).toBe(false);
-    expect(result.maxDiff).toBe(0.5);
+    expect(result.maxAbsoluteDelta).toBe(0.5);
+    expect(result.maxRelativeDelta).toBeCloseTo(0.5 / 1.5); // ref = max(1, 1.5) = 1.5, so rel = 0.5/1.5
+    expect(result.rootMeanSquaredError).toBeGreaterThan(0);
     expect(result.mismatchedPixels).toBeGreaterThan(0);
   });
 
   it('returns mismatchSamples when includeMismatchSamples is set', () => {
     const a = makeImage(4, 4, () => 1.0);
     const b = makeImage(4, 4, (i) => (i === 0 ? 1.5 : 1.0));
-    const result = compareFloatImages(a, b, { tolerancePercent: 0.01, includeMismatchSamples: 5 });
+    const result = compareFloatImages(a, b, { toleranceRelative: 0.01, includeMismatchSamples: 5 });
     expect(result.match).toBe(false);
     expect(result.mismatchSamples).toBeDefined();
     expect(result.mismatchSamples).toHaveLength(1);

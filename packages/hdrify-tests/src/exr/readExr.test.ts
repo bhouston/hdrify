@@ -19,7 +19,7 @@ const exampleB44Path = path.join(assetsDir, 'example_b44.exr');
 const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
 const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
 
-const TOLERANCE = { tolerancePercent: 0.01 };
+const TOLERANCE = { toleranceRelative: 0.01 };
 
 describe('exrReader', () => {
   let exrBuffer: Uint8Array | null = null;

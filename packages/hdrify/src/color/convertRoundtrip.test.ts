@@ -10,12 +10,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { compareFloatImages } from '../synthetic/compareFloatImages.js';
+import type { GradientChannel } from '../synthetic/createGradientImage.js';
+import { createGradientImage } from '../synthetic/createGradientImage.js';
 import type { LinearColorSpace } from './colorSpaces.js';
 import { LINEAR_TO_DISPLAY } from './colorSpaces.js';
 import { convertDisplayToLinear, convertLinearColorSpace, convertLinearToDisplay } from './convert.js';
-import { compareFloatImages } from '../synthetic/compareFloatImages.js';
-import { createGradientImage } from '../synthetic/createGradientImage.js';
-import type { GradientChannel } from '../synthetic/createGradientImage.js';
 
 const LINEAR_ROUNDTRIP_TOLERANCE = 0.01; // 1% - every pixel must match
 const DISPLAY_ROUNDTRIP_TOLERANCE = 0.01; // 1% - for linear → display → linear
@@ -50,15 +50,13 @@ describe('linear color space round-trip', () => {
         it(`${channel}-to-black gradient round-trips within 1%`, () => {
           const original = makeGradient(channel);
           const inFromSpace =
-            original.linearColorSpace === fromSpace
-              ? original
-              : convertLinearColorSpace(original, fromSpace);
+            original.linearColorSpace === fromSpace ? original : convertLinearColorSpace(original, fromSpace);
 
           const toOther = convertLinearColorSpace(inFromSpace, toSpace);
           const back = convertLinearColorSpace(toOther, fromSpace);
 
           const result = compareFloatImages(inFromSpace, back, {
-            tolerancePercent: LINEAR_ROUNDTRIP_TOLERANCE,
+            toleranceRelative: LINEAR_ROUNDTRIP_TOLERANCE,
             toleranceAbsolute: 1e-6,
             includeMismatchSamples: 5,
           });
@@ -78,9 +76,7 @@ describe('linear → display → linear round-trip', () => {
         it(`${channel}-to-black gradient round-trips within 1%`, () => {
           const original = makeGradient(channel);
           const inLinearSpace =
-            original.linearColorSpace === linearSpace
-              ? original
-              : convertLinearColorSpace(original, linearSpace);
+            original.linearColorSpace === linearSpace ? original : convertLinearColorSpace(original, linearSpace);
 
           const displayImage = convertLinearToDisplay(inLinearSpace, displaySpace);
           const back = convertDisplayToLinear(
@@ -92,14 +88,12 @@ describe('linear → display → linear round-trip', () => {
           );
 
           const result = compareFloatImages(inLinearSpace, back, {
-            tolerancePercent: DISPLAY_ROUNDTRIP_TOLERANCE,
+            toleranceRelative: DISPLAY_ROUNDTRIP_TOLERANCE,
             toleranceAbsolute: 1e-6,
             includeMismatchSamples: 5,
           });
 
-          expect(result.match, roundtripMessage(result, channel, linearSpace, displaySpace)).toBe(
-            true,
-          );
+          expect(result.match, roundtripMessage(result, channel, linearSpace, displaySpace)).toBe(true);
         });
       }
     });
@@ -109,7 +103,7 @@ describe('linear → display → linear round-trip', () => {
 function roundtripMessage(
   result: {
     match: boolean;
-    maxDiff?: number;
+    maxAbsoluteDelta?: number;
     mismatchedPixels?: number;
     mismatchSamples?: Array<{ expected: [number, number, number, number]; actual: [number, number, number, number] }>;
   },
@@ -120,7 +114,7 @@ function roundtripMessage(
   if (result.match) return '';
   const parts = [
     `Round-trip ${from} → ${to} → ${from} for ${channel}-to-black gradient failed.`,
-    `Mismatched pixels: ${result.mismatchedPixels ?? '?'}, max diff: ${result.maxDiff ?? '?'}.`,
+    `Mismatched pixels: ${result.mismatchedPixels ?? '?'}, max absolute delta: ${result.maxAbsoluteDelta ?? '?'}.`,
   ];
   const sample = result.mismatchSamples?.[0];
   if (sample) {

@@ -65,7 +65,7 @@ function validateSlowGradientLineByLine(
   height: number,
   min: number,
   max: number,
-  tolerancePercent: number,
+  toleranceRelative: number,
   toleranceAbsolute: number,
 ): SlowGradientValidationResult {
   const refThreshold = 0.01;
@@ -81,7 +81,7 @@ function validateSlowGradientLineByLine(
       const error = Math.abs(actualR - expectedR);
       if (error > maxError) maxError = error;
       const ref = Math.max(Math.abs(expectedR), Math.abs(actualR));
-      const allowed = ref < refThreshold ? toleranceAbsolute : ref * tolerancePercent;
+      const allowed = ref < refThreshold ? toleranceAbsolute : ref * toleranceRelative;
       const t = width > 1 ? x / (width - 1) : 0;
       const intensity = min + t * (max - min);
       if (error > allowed) {
@@ -125,13 +125,13 @@ function slowGradientFailureMessage(result: SlowGradientValidationResult): strin
 
 describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
   /** Tight tolerance for float-only round-trip (no quantization). logRecovery is clamped to [0,1] so extremes can have error. */
-  const TOLERANCE_FLOAT_ONLY = { tolerancePercent: 0.005, toleranceAbsolute: 0.003 };
+  const TOLERANCE_FLOAT_ONLY = { toleranceRelative: 0.005, toleranceAbsolute: 0.003 };
 
   /** After quantizing SDR only: error dominated by 0.5/255 in sRGB then linearized. */
-  const TOLERANCE_SDR_QUANTIZED = { tolerancePercent: 0.01, toleranceAbsolute: 0.003 };
+  const TOLERANCE_SDR_QUANTIZED = { toleranceRelative: 0.01, toleranceAbsolute: 0.003 };
 
   /** Full pipeline (SDR + gain map quantized): both 8-bit steps. */
-  const TOLERANCE_FULL = { tolerancePercent: 0.005, toleranceAbsolute: 0.002 };
+  const TOLERANCE_FULL = { toleranceRelative: 0.005, toleranceAbsolute: 0.002 };
 
   it('single pixel float round-trip: exact recovery (no clamping)', () => {
     const original = {
@@ -161,7 +161,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const result = compareFloatImages(original, decoded, TOLERANCE_FLOAT_ONLY);
     expect(
       result.match,
-      `Float-only round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+      `Float-only round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
     ).toBe(true);
   });
 
@@ -179,7 +179,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const result = compareFloatImages(original, decoded, TOLERANCE_FLOAT_ONLY);
     expect(
       result.match,
-      `Float-only gradient: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+      `Float-only gradient: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
     ).toBe(true);
   });
 
@@ -217,7 +217,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const result = compareFloatImages(original, decoded, TOLERANCE_SDR_QUANTIZED);
     expect(
       result.match,
-      `SDR quantized round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+      `SDR quantized round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
     ).toBe(true);
   });
 
@@ -232,9 +232,10 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const decoded = decodeGainMap(encoding);
 
     const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
-    expect(result.match, `Full round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(
-      true,
-    );
+    expect(
+      result.match,
+      `Full round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('full encode → decode: gradient (HDR range) within 0.5%', () => {
@@ -249,9 +250,10 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const decoded = decodeGainMap(encoding);
 
     const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
-    expect(result.match, `Full gradient: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(
-      true,
-    );
+    expect(
+      result.match,
+      `Full gradient: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('full encode → decode: low DR (intensity 1) within 0.5%', () => {
@@ -267,7 +269,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
     expect(
       result.match,
-      `Low-DR round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+      `Low-DR round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
     ).toBe(true);
   });
 

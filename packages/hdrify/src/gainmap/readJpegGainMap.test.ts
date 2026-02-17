@@ -26,12 +26,13 @@ describe('readJpegGainMap', () => {
     expect(decoded.metadata?.format).toBeDefined();
 
     const result = compareFloatImages(original, decoded, {
-      tolerancePercent: 0.005,
+      toleranceRelative: 0.005,
       toleranceAbsolute: 0.005,
     });
-    expect(result.match, `Round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(
-      true,
-    );
+    expect(
+      result.match,
+      `Round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
+    ).toBe(true);
   });
 
   it('throws when given a plain JPEG without gain map metadata', () => {

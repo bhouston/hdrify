@@ -11,13 +11,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  compareFloatImages,
-  createCieColorWedgeImage,
-  convertLinearColorSpace,
-  readHdr,
-  writeHdr,
-} from 'hdrify';
+import { compareFloatImages, convertLinearColorSpace, createCieColorWedgeImage, readHdr, writeHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,17 +24,12 @@ function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
 
-const TOLERANCE = { tolerancePercent: 0.01, toleranceAbsolute: 0.01 };
+const TOLERANCE = { toleranceRelative: 0.01, toleranceAbsolute: 0.01 };
 
 /**
  * Decode RGBE bytes to float using floor restoration (current reader formula).
  */
-function decodeRGBEFloor(
-  source: Uint8Array,
-  dest: Float32Array,
-  sourceOffset: number,
-  destOffset: number,
-): void {
+function decodeRGBEFloor(source: Uint8Array, dest: Float32Array, sourceOffset: number, destOffset: number): void {
   const e = source[sourceOffset + 3]!;
   const scale = 2.0 ** (e - 128.0) / 255.0;
   dest[destOffset] = source[sourceOffset]! * scale;
@@ -53,12 +42,7 @@ function decodeRGBEFloor(
  * Decode RGBE bytes to float using midpoint restoration (Radiance reference).
  * Reduces error by ~2x vs floor (C. Bloom).
  */
-function decodeRGBEMidpoint(
-  source: Uint8Array,
-  dest: Float32Array,
-  sourceOffset: number,
-  destOffset: number,
-): void {
+function decodeRGBEMidpoint(source: Uint8Array, dest: Float32Array, sourceOffset: number, destOffset: number): void {
   const e = source[sourceOffset + 3]!;
   if (e === 0) {
     dest[destOffset] = 0;
@@ -133,13 +117,11 @@ describe('HDR banding diagnostic (writer vs reader)', () => {
     );
 
     // Report findings: floor decode matches what readHdr uses. Midpoint (Radiance ref) may improve
-    // maxDiff on random RGB (C. Bloom), but CIE wedge gradients can go either way on pixel count.
+    // maxAbsoluteDelta on random RGB (C. Bloom), but CIE wedge gradients can go either way on pixel count.
     expect(floorResult.mismatchedPixels).toBeGreaterThan(0);
     expect(midpointResult.mismatchedPixels).toBeGreaterThan(0);
     // At least one decode has significant error → banding confirmed from round-trip
-    expect(
-      Math.min(floorResult.maxDiff ?? 0, midpointResult.maxDiff ?? 0),
-    ).toBeGreaterThan(0.01);
+    expect(Math.min(floorResult.maxAbsoluteDelta ?? 0, midpointResult.maxAbsoluteDelta ?? 0)).toBeGreaterThan(0.01);
   });
 
   it('readHdr output matches midpoint decode (reader uses midpoint restoration)', () => {
@@ -152,11 +134,10 @@ describe('HDR banding diagnostic (writer vs reader)', () => {
     const result = compareFloatImages(
       fromReadHdr,
       { width, height, data: decodedMidpoint, linearColorSpace: 'linear-rec709' },
-      { tolerancePercent: 0.0001, toleranceAbsolute: 1e-9 },
+      { toleranceRelative: 0.0001, toleranceAbsolute: 1e-9 },
     );
-    expect(
-      result.match,
-      `readHdr should match midpoint decode. maxDiff=${result.maxDiff}`,
-    ).toBe(true);
+    expect(result.match, `readHdr should match midpoint decode. maxAbsoluteDelta=${result.maxAbsoluteDelta}`).toBe(
+      true,
+    );
   });
 });

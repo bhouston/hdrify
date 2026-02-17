@@ -172,12 +172,12 @@ describe('writeJpegGainMap', () => {
     expect(decoded.metadata?.format).toBeDefined();
 
     const result = compareFloatImages(smallImage, decoded, {
-      tolerancePercent: 0.005,
+      toleranceRelative: 0.005,
       toleranceAbsolute: 0.005,
     });
     expect(
       result.match,
-      `Adobe round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+      `Adobe round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
     ).toBe(true);
   });
 

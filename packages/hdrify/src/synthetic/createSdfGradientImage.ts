@@ -23,10 +23,7 @@ export function createSdfGradientImage(options: CreateSdfGradientImageOptions): 
 
   const data = new Float32Array(width * height * 4);
 
-  const maxDist =
-    width > 1 || height > 1
-      ? Math.sqrt((width - 1) ** 2 + (height - 1) ** 2)
-      : 1;
+  const maxDist = width > 1 || height > 1 ? Math.sqrt((width - 1) ** 2 + (height - 1) ** 2) : 1;
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {

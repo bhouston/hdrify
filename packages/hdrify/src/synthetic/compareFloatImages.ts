@@ -5,8 +5,8 @@
 import type { FloatImageData } from '../floatImage.js';
 
 export interface CompareFloatImagesOptions {
-  /** Relative tolerance as decimal (e.g. 0.01 = 1%) */
-  tolerancePercent?: number;
+  /** Relative tolerance as decimal (e.g. 0.01 = 1% of reference value) */
+  toleranceRelative?: number;
   /** Absolute tolerance for near-zero values */
   toleranceAbsolute?: number;
   /** When set, return structured samples for the first N mismatched pixels */
@@ -23,13 +23,18 @@ export interface MismatchSample {
 
 export interface CompareFloatImagesResult {
   match: boolean;
-  maxDiff?: number;
+  /** Maximum absolute difference over all channels */
+  maxAbsoluteDelta?: number;
+  /** Maximum relative difference (delta / ref) over all channels where ref > 0 */
+  maxRelativeDelta?: number;
+  /** Root mean squared error over all channel values */
+  rootMeanSquaredError?: number;
   mismatchedPixels?: number;
   /** Present when includeMismatchSamples is set and there are mismatches */
   mismatchSamples?: MismatchSample[];
 }
 
-const DEFAULT_TOLERANCE_PERCENT = 0.01;
+const DEFAULT_TOLERANCE_RELATIVE = 0.01;
 const DEFAULT_TOLERANCE_ABSOLUTE = 1e-6;
 const SMALL_VALUE_THRESHOLD = 0.01;
 
@@ -41,7 +46,7 @@ export function compareFloatImages(
   b: FloatImageData,
   options?: CompareFloatImagesOptions,
 ): CompareFloatImagesResult {
-  const tolerancePercent = options?.tolerancePercent ?? DEFAULT_TOLERANCE_PERCENT;
+  const toleranceRelative = options?.toleranceRelative ?? DEFAULT_TOLERANCE_RELATIVE;
   const toleranceAbsolute = options?.toleranceAbsolute ?? DEFAULT_TOLERANCE_ABSOLUTE;
   const maxSamples = options?.includeMismatchSamples ?? 0;
 
@@ -50,10 +55,13 @@ export function compareFloatImages(
   }
 
   const pixelCount = a.width * a.height;
+  const totalValues = pixelCount * 4;
   const width = a.width;
 
   let mismatchedPixels = 0;
-  let maxDiff = 0;
+  let maxAbsoluteDelta = 0;
+  let maxRelativeDelta = 0;
+  let sumSquaredDiff = 0;
   const mismatchSamples: MismatchSample[] = [];
 
   for (let p = 0; p < pixelCount; p++) {
@@ -66,18 +74,26 @@ export function compareFloatImages(
       const vb = b.data[i]!;
       // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
       const diff = Math.abs(va - vb);
+      const delta = va - vb;
 
-      if (diff > maxDiff) {
-        maxDiff = diff;
+      sumSquaredDiff += delta * delta;
+      if (diff > maxAbsoluteDelta) {
+        maxAbsoluteDelta = diff;
       }
 
       const ref = Math.max(Math.abs(va), Math.abs(vb));
+      if (ref > 0) {
+        const rel = diff / ref;
+        if (rel > maxRelativeDelta) {
+          maxRelativeDelta = rel;
+        }
+      }
 
       let withinTolerance: boolean;
       if (ref < SMALL_VALUE_THRESHOLD) {
         withinTolerance = diff <= toleranceAbsolute;
       } else {
-        withinTolerance = diff <= ref * tolerancePercent;
+        withinTolerance = diff <= ref * toleranceRelative;
       }
 
       if (!withinTolerance) {
@@ -104,9 +120,13 @@ export function compareFloatImages(
     }
   }
 
+  const rootMeanSquaredError = Math.sqrt(sumSquaredDiff / totalValues);
+
   const result: CompareFloatImagesResult = {
     match: mismatchedPixels === 0,
-    maxDiff,
+    maxAbsoluteDelta,
+    maxRelativeDelta,
+    rootMeanSquaredError,
     mismatchedPixels,
   };
   if (mismatchedPixels > 0 && maxSamples > 0) {

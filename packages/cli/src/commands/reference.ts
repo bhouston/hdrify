@@ -77,20 +77,9 @@ export const command = defineCommand({
 
     try {
       let imageData: FloatImageData;
-      if (
-        type === 'cie-wedge' ||
-        type === 'cie-wedge-r' ||
-        type === 'cie-wedge-g' ||
-        type === 'cie-wedge-b'
-      ) {
+      if (type === 'cie-wedge' || type === 'cie-wedge-r' || type === 'cie-wedge-g' || type === 'cie-wedge-b') {
         const channel =
-          type === 'cie-wedge-r'
-            ? 'r'
-            : type === 'cie-wedge-g'
-              ? 'g'
-              : type === 'cie-wedge-b'
-                ? 'b'
-                : undefined;
+          type === 'cie-wedge-r' ? 'r' : type === 'cie-wedge-g' ? 'g' : type === 'cie-wedge-b' ? 'b' : undefined;
         imageData = createCieColorWedgeImage({ width, height, channel });
       } else if (type === 'gradient') {
         imageData = createSdfGradientImage({ width, height });
@@ -99,10 +88,7 @@ export const command = defineCommand({
       }
 
       const isCieWedge =
-        type === 'cie-wedge' ||
-        type === 'cie-wedge-r' ||
-        type === 'cie-wedge-g' ||
-        type === 'cie-wedge-b';
+        type === 'cie-wedge' || type === 'cie-wedge-r' || type === 'cie-wedge-g' || type === 'cie-wedge-b';
       if (isCieWedge && ext === '.hdr') {
         imageData = convertLinearColorSpace(imageData, 'linear-rec709');
       }

@@ -129,7 +129,10 @@ describe('hdrWriter', () => {
       return { width: steps, height: 1, linearColorSpace: 'linear-rec709' as const, data };
     }
 
-    function roundTripErrors(original: FloatImageData, buffer: Uint8Array): { value: number; decoded: number; relErr: number }[] {
+    function roundTripErrors(
+      original: FloatImageData,
+      buffer: Uint8Array,
+    ): { value: number; decoded: number; relErr: number }[] {
       const decoded = readHdr(buffer);
       const steps = original.width * original.height;
       const toleranceAbsolute = 1e-6;
@@ -148,13 +151,15 @@ describe('hdrWriter', () => {
       const original = buildGradient010();
       const buffer = writeHdr(original);
       const errors = roundTripErrors(original, buffer);
-      const tolerancePercent = 0.08;
-      const failures = errors.filter((e) => e.relErr > tolerancePercent);
+      const toleranceRelative = 0.08;
+      const failures = errors.filter((e) => e.relErr > toleranceRelative);
       expect(
         failures,
-        `RGBE round-trip should be within 8% for 0..10. Failures: ${failures.slice(0, 20).map((f) => `value=${f.value.toFixed(3)} relErr=${(f.relErr * 100).toFixed(2)}%`).join('; ')}${failures.length > 20 ? ` ... and ${failures.length - 20} more` : ''}`,
+        `RGBE round-trip should be within 8% for 0..10. Failures: ${failures
+          .slice(0, 20)
+          .map((f) => `value=${f.value.toFixed(3)} relErr=${(f.relErr * 100).toFixed(2)}%`)
+          .join('; ')}${failures.length > 20 ? ` ... and ${failures.length - 20} more` : ''}`,
       ).toHaveLength(0);
     });
-
   });
 });

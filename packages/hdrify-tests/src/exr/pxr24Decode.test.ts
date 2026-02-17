@@ -18,7 +18,7 @@ const pxr24Path = path.join(assetsDir, 'example_pxr24.exr');
 const exampleZipPath = path.join(assetsDir, 'example_zip.exr');
 
 // Half-float decode can differ slightly from float reference; allow small absolute tolerance.
-const TOLERANCE = { tolerancePercent: 0.01, toleranceAbsolute: 0.0001, includeMismatchSamples: 15 };
+const TOLERANCE = { toleranceRelative: 0.01, toleranceAbsolute: 0.0001, includeMismatchSamples: 15 };
 
 function formatPixel(x: number, y: number, img: FloatImageData): string {
   const i = (y * img.width + x) * 4;
@@ -38,7 +38,7 @@ function formatDiagnostics(
   const h = reference.height;
   const lines: string[] = [
     `Dimensions: reference=${w}x${h}, parsed=${parsed.width}x${parsed.height}`,
-    `maxDiff=${result.maxDiff}, mismatchedPixels=${result.mismatchedPixels}`,
+    `maxAbsoluteDelta=${result.maxAbsoluteDelta}, mismatchedPixels=${result.mismatchedPixels}`,
     '',
     'Sample pixels by row (ref=example_zip.exr, actual=example_pxr24.exr decoded):',
   ];
