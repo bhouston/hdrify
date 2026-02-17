@@ -157,6 +157,36 @@ describe('CLI reference command', () => {
     });
   });
 
+  describe('cie-wedge-r, cie-wedge-g, cie-wedge-b types', () => {
+    it('creates valid HDR for cie-wedge-r', async () => {
+      const output = path.join(tempDir, 'cie-r.hdr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge-r']);
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateHdrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+    it('creates valid EXR for cie-wedge-g', async () => {
+      const output = path.join(tempDir, 'cie-g.exr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge-g']);
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+    it('creates valid HDR for cie-wedge-b', async () => {
+      const output = path.join(tempDir, 'cie-b.hdr');
+      const result = runCli(['reference', output, '--type', 'cie-wedge-b']);
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateHdrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+  });
+
   describe('gradient type', () => {
     it('creates valid EXR with default 512x512', async () => {
       const output = path.join(tempDir, 'grad.exr');

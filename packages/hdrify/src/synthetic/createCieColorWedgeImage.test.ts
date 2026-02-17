@@ -40,4 +40,41 @@ describe('createCieColorWedgeImage', () => {
       expect(img.data[i] ?? 0).toBe(1);
     }
   });
+
+  it('channel r: only R has wedge data, G and B are 0', () => {
+    const img = createCieColorWedgeImage({ width: 32, height: 32, channel: 'r' });
+    for (let i = 0; i < img.data.length; i += 4) {
+      expect(img.data[i + 1]).toBe(0);
+      expect(img.data[i + 2]).toBe(0);
+      expect(img.data[i + 3]).toBe(1);
+    }
+    // At least one pixel should have R > 0
+    let maxR = 0;
+    for (let i = 0; i < img.data.length; i += 4) maxR = Math.max(maxR, img.data[i] ?? 0);
+    expect(maxR).toBeGreaterThan(0);
+  });
+
+  it('channel g: only G has wedge data, R and B are 0', () => {
+    const img = createCieColorWedgeImage({ width: 32, height: 32, channel: 'g' });
+    for (let i = 0; i < img.data.length; i += 4) {
+      expect(img.data[i]).toBe(0);
+      expect(img.data[i + 2]).toBe(0);
+      expect(img.data[i + 3]).toBe(1);
+    }
+    let maxG = 0;
+    for (let i = 1; i < img.data.length; i += 4) maxG = Math.max(maxG, img.data[i] ?? 0);
+    expect(maxG).toBeGreaterThan(0);
+  });
+
+  it('channel b: only B has wedge data, R and G are 0', () => {
+    const img = createCieColorWedgeImage({ width: 32, height: 32, channel: 'b' });
+    for (let i = 0; i < img.data.length; i += 4) {
+      expect(img.data[i]).toBe(0);
+      expect(img.data[i + 1]).toBe(0);
+      expect(img.data[i + 3]).toBe(1);
+    }
+    let maxB = 0;
+    for (let i = 2; i < img.data.length; i += 4) maxB = Math.max(maxB, img.data[i] ?? 0);
+    expect(maxB).toBeGreaterThan(0);
+  });
 });

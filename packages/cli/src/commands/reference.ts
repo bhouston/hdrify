@@ -32,7 +32,7 @@ export const command = defineCommand({
       .option('type', {
         describe: 'Type of reference image',
         type: 'string',
-        choices: ['rainbow', 'cie-wedge', 'gradient'] as const,
+        choices: ['rainbow', 'cie-wedge', 'cie-wedge-r', 'cie-wedge-g', 'cie-wedge-b', 'gradient'] as const,
         default: 'rainbow',
       })
       .option('width', {
@@ -77,15 +77,33 @@ export const command = defineCommand({
 
     try {
       let imageData: FloatImageData;
-      if (type === 'cie-wedge') {
-        imageData = createCieColorWedgeImage({ width, height });
+      if (
+        type === 'cie-wedge' ||
+        type === 'cie-wedge-r' ||
+        type === 'cie-wedge-g' ||
+        type === 'cie-wedge-b'
+      ) {
+        const channel =
+          type === 'cie-wedge-r'
+            ? 'r'
+            : type === 'cie-wedge-g'
+              ? 'g'
+              : type === 'cie-wedge-b'
+                ? 'b'
+                : undefined;
+        imageData = createCieColorWedgeImage({ width, height, channel });
       } else if (type === 'gradient') {
         imageData = createSdfGradientImage({ width, height });
       } else {
         imageData = createHsvRainbowImage({ width, height, value, intensity });
       }
 
-      if (type === 'cie-wedge' && ext === '.hdr') {
+      const isCieWedge =
+        type === 'cie-wedge' ||
+        type === 'cie-wedge-r' ||
+        type === 'cie-wedge-g' ||
+        type === 'cie-wedge-b';
+      if (isCieWedge && ext === '.hdr') {
         imageData = convertLinearColorSpace(imageData, 'linear-rec709');
       }
 

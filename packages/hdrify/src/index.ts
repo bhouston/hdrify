@@ -70,7 +70,10 @@ export type {
 } from './synthetic/compareFloatImages.js';
 // Synthetic test images
 export { compareFloatImages } from './synthetic/compareFloatImages.js';
-export type { CreateCieColorWedgeImageOptions } from './synthetic/createCieColorWedgeImage.js';
+export type {
+  CieWedgeChannel,
+  CreateCieColorWedgeImageOptions,
+} from './synthetic/createCieColorWedgeImage.js';
 export { createCieColorWedgeImage } from './synthetic/createCieColorWedgeImage.js';
 export type { CreateGradientImageOptions, GradientChannel, GradientMode } from './synthetic/createGradientImage.js';
 export { createGradientImage } from './synthetic/createGradientImage.js';

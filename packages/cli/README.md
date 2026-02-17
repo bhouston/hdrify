@@ -44,12 +44,15 @@ hdrify reference output.exr
 hdrify reference output.exr --compression zip   # EXR only; --compression ignored for .hdr
 hdrify reference output.hdr
 hdrify reference output.exr --type cie-wedge    # CIE chromaticity wedge (default: rainbow)
+hdrify reference output.hdr --type cie-wedge-r # CIE wedge, R channel only (G,B black)
+hdrify reference output.hdr --type cie-wedge-g # CIE wedge, G channel only
+hdrify reference output.hdr --type cie-wedge-b # CIE wedge, B channel only
 hdrify reference output.hdr --type gradient     # SDF gradient
 ```
 
 ## Options
 
-Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`: `--type` (rainbow, cie-wedge, gradient; default: rainbow), `--compression` (EXR output only: rle, zip, piz, pxr24), `--width`, `--height`. Run `hdrify --help` for full usage.
+Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`: `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient; default: rainbow), `--compression` (EXR output only: rle, zip, piz, pxr24), `--width`, `--height`. Run `hdrify --help` for full usage.
 
 ## Library
 
