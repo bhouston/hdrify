@@ -26,8 +26,8 @@ describe('readJpegGainMap', () => {
     expect(decoded.metadata?.format).toBeDefined();
 
     const result = compareFloatImages(original, decoded, {
-      tolerancePercent: 0.05,
-      toleranceAbsolute: 0.05,
+      tolerancePercent: 0.005,
+      toleranceAbsolute: 0.005,
     });
     expect(result.match, `Round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(
       true,

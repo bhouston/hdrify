@@ -43,11 +43,13 @@ hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
 hdrify reference output.exr
 hdrify reference output.exr --compression zip   # EXR only; --compression ignored for .hdr
 hdrify reference output.hdr
+hdrify reference output.exr --type cie-wedge    # CIE chromaticity wedge (default: rainbow)
+hdrify reference output.hdr --type gradient     # SDF gradient
 ```
 
 ## Options
 
-Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`, `--compression` applies to EXR output only (rle, zip, piz, pxr24). Run `hdrify --help` for full usage.
+Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`: `--type` (rainbow, cie-wedge, gradient; default: rainbow), `--compression` (EXR output only: rle, zip, piz, pxr24), `--width`, `--height`. Run `hdrify --help` for full usage.
 
 ## Library
 

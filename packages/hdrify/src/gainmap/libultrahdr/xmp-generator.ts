@@ -73,18 +73,19 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   const hdrCapacityMin = metadata.hdrCapacityMin;
   const hdrCapacityMax = metadata.hdrCapacityMax;
 
-  const getAverage = (val: number | [number, number, number]): number => {
+  const toScalar = (val: number | [number, number, number]): number => {
     if (Array.isArray(val)) {
-      return val.reduce((sum, v) => sum + v, 0) / val.length;
+      const [a, b, c] = val;
+      return a === b && b === c ? a : (a + b + c) / 3;
     }
     return val;
   };
 
-  const gainMapMinAvg = getAverage(metadata.gainMapMin);
-  const gainMapMaxAvg = getAverage(metadata.gainMapMax);
-  const gammaAvg = getAverage(metadata.gamma);
-  const offsetSdrAvg = getAverage(metadata.offsetSdr);
-  const offsetHdrAvg = getAverage(metadata.offsetHdr);
+  const gainMapMinScalar = toScalar(metadata.gainMapMin);
+  const gainMapMaxScalar = toScalar(metadata.gainMapMax);
+  const gammaScalar = toScalar(metadata.gamma);
+  const offsetSdrScalar = toScalar(metadata.offsetSdr);
+  const offsetHdrScalar = toScalar(metadata.offsetHdr);
 
   // No xpacket wrapper — match reference file so Apple Preview recognizes HDR
   lines.push('<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 5.1.2">');
@@ -92,11 +93,11 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   lines.push('    <rdf:Description');
   lines.push('      xmlns:hdrgm="http://ns.adobe.com/hdr-gain-map/1.0/"');
   lines.push(`      hdrgm:Version="${escapeXml(metadata.version)}"`);
-  lines.push(`      hdrgm:GainMapMin="${escapeXml(gainMapMinAvg)}"`);
-  lines.push(`      hdrgm:GainMapMax="${escapeXml(gainMapMaxAvg)}"`);
-  lines.push(`      hdrgm:Gamma="${escapeXml(gammaAvg)}"`);
-  lines.push(`      hdrgm:OffsetSDR="${escapeXml(offsetSdrAvg)}"`);
-  lines.push(`      hdrgm:OffsetHDR="${escapeXml(offsetHdrAvg)}"`);
+  lines.push(`      hdrgm:GainMapMin="${escapeXml(gainMapMinScalar)}"`);
+  lines.push(`      hdrgm:GainMapMax="${escapeXml(gainMapMaxScalar)}"`);
+  lines.push(`      hdrgm:Gamma="${escapeXml(gammaScalar)}"`);
+  lines.push(`      hdrgm:OffsetSDR="${escapeXml(offsetSdrScalar)}"`);
+  lines.push(`      hdrgm:OffsetHDR="${escapeXml(offsetHdrScalar)}"`);
   lines.push(`      hdrgm:HDRCapacityMin="${escapeXml(hdrCapacityMin)}"`);
   lines.push(`      hdrgm:HDRCapacityMax="${escapeXml(hdrCapacityMax)}"`);
   // biome-ignore lint/security/noSecrets: XMP attribute name from Adobe spec

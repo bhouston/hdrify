@@ -125,13 +125,13 @@ function slowGradientFailureMessage(result: SlowGradientValidationResult): strin
 
 describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
   /** Tight tolerance for float-only round-trip (no quantization). logRecovery is clamped to [0,1] so extremes can have error. */
-  const TOLERANCE_FLOAT_ONLY = { tolerancePercent: 0.02, toleranceAbsolute: 0.01 };
+  const TOLERANCE_FLOAT_ONLY = { tolerancePercent: 0.005, toleranceAbsolute: 0.003 };
 
   /** After quantizing SDR only: error dominated by 0.5/255 in sRGB then linearized. */
-  const TOLERANCE_SDR_QUANTIZED = { tolerancePercent: 0.02, toleranceAbsolute: 0.005 };
+  const TOLERANCE_SDR_QUANTIZED = { tolerancePercent: 0.01, toleranceAbsolute: 0.003 };
 
   /** Full pipeline (SDR + gain map quantized): both 8-bit steps. */
-  const TOLERANCE_FULL = { tolerancePercent: 0.05, toleranceAbsolute: 0.01 };
+  const TOLERANCE_FULL = { tolerancePercent: 0.005, toleranceAbsolute: 0.002 };
 
   it('single pixel float round-trip: exact recovery (no clamping)', () => {
     const original = {
@@ -148,7 +148,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     expect(decoded.data[3]).toBeCloseTo(1, 5);
   });
 
-  it('float-only encode → decode matches original within 2% (no quantization)', () => {
+  it('float-only encode → decode matches original within 0.5% (no quantization)', () => {
     const original = createHsvRainbowImage({
       width: 16,
       height: 16,
@@ -165,7 +165,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     ).toBe(true);
   });
 
-  it('float-only gradient (HDR range) matches within 1%', () => {
+  it('float-only gradient (HDR range) matches within 0.5%', () => {
     const original = createGradientImage({
       width: 8,
       height: 8,
@@ -203,7 +203,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     expect(resA.match).toBe(true);
   });
 
-  it('SDR quantized only (gain map float): round-trip within 2%', () => {
+  it('SDR quantized only (gain map float): round-trip within 1%', () => {
     const original = createHsvRainbowImage({
       width: 16,
       height: 16,
@@ -221,7 +221,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     ).toBe(true);
   });
 
-  it('full encode (quantized) → decode: rainbow within 5%', () => {
+  it('full encode (quantized) → decode: rainbow within 0.5%', () => {
     const original = createHsvRainbowImage({
       width: 32,
       height: 32,
@@ -237,7 +237,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     );
   });
 
-  it('full encode → decode: gradient (HDR range) within 5%', () => {
+  it('full encode → decode: gradient (HDR range) within 0.5%', () => {
     const original = createGradientImage({
       width: 16,
       height: 16,
@@ -254,7 +254,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     );
   });
 
-  it('full encode → decode: low DR (intensity 1) within 5%', () => {
+  it('full encode → decode: low DR (intensity 1) within 0.5%', () => {
     const original = createHsvRainbowImage({
       width: 24,
       height: 24,

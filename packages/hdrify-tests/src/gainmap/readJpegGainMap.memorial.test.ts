@@ -9,6 +9,7 @@ import {
   readExr,
   readJpegGainMap,
   writeJpegGainMap,
+  type GainMapMetadata,
 } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
@@ -137,7 +138,10 @@ describe('readJpegGainMap', () => {
       const jpegBuffer = writeJpegGainMap(encoding, { quality: 100 });
 
       const firstRead = readJpegGainMap(jpegBuffer);
-      const reEncode = encodeGainMap(firstRead, { toneMapping: 'reinhard' });
+      const reEncode = encodeGainMap(firstRead, {
+        toneMapping: 'reinhard',
+        reuseMetadata: firstRead.metadata as unknown as GainMapMetadata,
+      });
       const jpegBuffer2 = writeJpegGainMap(reEncode, { quality: 100 });
       const secondRead = readJpegGainMap(jpegBuffer2);
 

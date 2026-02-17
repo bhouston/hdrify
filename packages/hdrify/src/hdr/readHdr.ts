@@ -74,7 +74,9 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): F
 }
 
 /**
- * Convert RGBE byte data to RGB float values
+ * Convert RGBE byte data to RGB float values.
+ * Uses midpoint restoration (byte + 0.5) per Radiance reference / C. Bloom:
+ * restores to center of quantization bucket, halving reconstruction error vs floor.
  */
 function RGBEByteToRGBFloat(
   sourceArray: Uint8Array,
@@ -84,13 +86,18 @@ function RGBEByteToRGBFloat(
 ): void {
   // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
   const e = sourceArray[sourceOffset + 3]!;
-  const scale = 2.0 ** (e - 128.0) / 255.0;
-
-  destArray[destOffset + 0] = sourceArray[sourceOffset + 0]! * scale;
-  destArray[destOffset + 1] = sourceArray[sourceOffset + 1]! * scale;
-  destArray[destOffset + 2] = sourceArray[sourceOffset + 2]! * scale;
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
+  if (e === 0) {
+    destArray[destOffset + 0] = 0;
+    destArray[destOffset + 1] = 0;
+    destArray[destOffset + 2] = 0;
+  } else {
+    const scale = 2.0 ** (e - 128.0) / 255.0;
+    destArray[destOffset + 0] = (sourceArray[sourceOffset + 0]! + 0.5) * scale;
+    destArray[destOffset + 1] = (sourceArray[sourceOffset + 1]! + 0.5) * scale;
+    destArray[destOffset + 2] = (sourceArray[sourceOffset + 2]! + 0.5) * scale;
+  }
   destArray[destOffset + 3] = 1;
+  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
 }
 
 const magic_token_re = /^#\?(\S+)/;

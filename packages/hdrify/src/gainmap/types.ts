@@ -35,6 +35,8 @@ export interface GainMapEncodingOptions {
   exposure?: number;
   /** Tone mapping: 'aces' (default) or 'reinhard' */
   toneMapping?: ToneMappingType;
+  /** When re-encoding a decoded gain-map image, pass its metadata so the same gain range is used and round-trip drift is minimized. */
+  reuseMetadata?: GainMapMetadata;
 }
 
 export interface EncodingResult {

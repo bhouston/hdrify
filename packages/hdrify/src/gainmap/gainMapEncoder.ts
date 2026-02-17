@@ -1,5 +1,5 @@
 import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
-import { linearTosRGB } from '../color/srgb.js';
+import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
 import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
 import { getToneMapping } from '../tonemapping/mappers.js';
 import type { ToneMappingBatchFn, ToneMappingType } from '../tonemapping/types.js';
@@ -89,15 +89,21 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const { width, height } = image;
   const totalPixels = width * height;
 
-  const offsetSdr = options.offsetSdr ?? defaultOffset;
-  const offsetHdr = options.offsetHdr ?? defaultOffset;
-  const gamma = options.gamma ?? defaultGamma;
+  const reuse = options.reuseMetadata;
+  const offsetSdr = reuse?.offsetSdr ?? options.offsetSdr ?? defaultOffset;
+  const offsetHdr = reuse?.offsetHdr ?? options.offsetHdr ?? defaultOffset;
+  const gamma = reuse?.gamma ?? options.gamma ?? defaultGamma;
   const exposure = options.exposure ?? 1;
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMapping = getToneMapping(toneMappingType);
 
   const linearRgbBuffer = new Float32Array(totalPixels * 3);
   let maxContentBoost = options.maxContentBoost;
+  let minContentBoost = options.minContentBoost;
+  if (reuse) {
+    minContentBoost = 2 ** reuse.gainMapMin[0];
+    maxContentBoost = 2 ** reuse.gainMapMax[0];
+  }
   if (maxContentBoost === undefined || maxContentBoost <= 0) {
     const fromGains = findMaxContentBoostFromGains(
       data,
@@ -111,7 +117,7 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
     maxContentBoost = Math.max(fromGains, findMaxHdrValue(data), 1.0001);
   }
   maxContentBoost = Math.max(maxContentBoost, 1.0001);
-  const minContentBoost = options.minContentBoost ?? 1;
+  minContentBoost ??= 1;
   const minLog2 = Math.log2(minContentBoost);
   let maxLog2 = Math.log2(maxContentBoost);
   const logRange = maxLog2 - minLog2;
@@ -149,16 +155,18 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
     sdr[idx + 2] = Math.round(linearTosRGB(sb) * 255);
     sdr[idx + 3] = 255;
 
-    const sdrLinR = sr + offsetSdr[0];
-    const sdrLinG = sg + offsetSdr[1];
-    const sdrLinB = sb + offsetSdr[2];
+    // Use the quantized SDR values (what the decoder will see) when computing the gain map,
+    // so the stored ratio best recovers HDR from the actual 8-bit SDR.
+    const sdrLinQuantizedR = sRGBToLinear(sdr[idx]! / 255) + offsetSdr[0];
+    const sdrLinQuantizedG = sRGBToLinear(sdr[idx + 1]! / 255) + offsetSdr[1];
+    const sdrLinQuantizedB = sRGBToLinear(sdr[idx + 2]! / 255) + offsetSdr[2];
     const hdrR = r + offsetHdr[0];
     const hdrG = g + offsetHdr[1];
     const hdrB = b + offsetHdr[2];
 
-    const pixelGainR = hdrR / sdrLinR;
-    const pixelGainG = hdrG / sdrLinG;
-    const pixelGainB = hdrB / sdrLinB;
+    const pixelGainR = sdrLinQuantizedR > 0 ? hdrR / sdrLinQuantizedR : 1;
+    const pixelGainG = sdrLinQuantizedG > 0 ? hdrG / sdrLinQuantizedG : 1;
+    const pixelGainB = sdrLinQuantizedB > 0 ? hdrB / sdrLinQuantizedB : 1;
 
     const logRecoveryR = (Math.log2(pixelGainR) - minLog2) * invLogRange;
     const logRecoveryG = (Math.log2(pixelGainG) - minLog2) * invLogRange;

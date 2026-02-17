@@ -54,7 +54,7 @@ export function readJpegGainMap(buffer: Uint8Array): FloatImageData {
   const result = decodeGainMapCpu(sdrData, gainData, width, height, metadata);
 
   result.metadata = {
-    ...result.metadata,
+    ...metadata,
     format,
   };
 
