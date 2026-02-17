@@ -6,7 +6,7 @@
   "scripts": {
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
-    "clean": "rimraf dist packages/**/dist demos/**/dist .nx node_modules packages/**/node_modules demos/**/node_modules",
+    "clean": "rimraf dist packages/**/dist .nx node_modules packages/**/node_modules",
     "check": "biome check --write",
     "tsgo": "pnpm -r tsgo",
     "test": "pnpm vitest",

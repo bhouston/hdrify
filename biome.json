@@ -76,7 +76,7 @@
       }
     },
     {
-      "includes": ["**/demos/**/*"],
+      "includes": ["**/packages/website/**/*"],
       "linter": {
         "rules": {
           "performance": {

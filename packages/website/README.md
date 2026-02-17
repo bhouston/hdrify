@@ -1,6 +1,6 @@
-# HDRify Web Converter Demo
+# HDRify Website
 
-A browser-based EXR and HDR image viewer built with TanStack Start, Tailwind CSS, and ShadCN UI.
+A browser-based EXR and HDR image viewer built with TanStack Start, Tailwind CSS, and ShadCN UI. This is the official website for the HDRify monorepo.
 
 ## Features
 
@@ -15,7 +15,7 @@ From the monorepo root:
 
 ```bash
 pnpm install
-cd demos/web-converter
+cd packages/website
 pnpm run dev
 ```
 

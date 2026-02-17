@@ -1,5 +1,4 @@
 packages:
   - packages/*
-  - demos/*
 
 link-workspace-packages: true
