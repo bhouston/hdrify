@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { encodeGainMap } from './gainMapEncoder.js';
 
 describe('encodeGainMap', () => {
@@ -57,7 +57,7 @@ describe('encodeGainMap', () => {
       height: 1,
       linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array([0.001, 0.001, 0.001, 1]),
-    } satisfies FloatImageData;
+    } satisfies HdrifyImage;
     const result = encodeGainMap(lowImage);
 
     expect(result.sdr.length).toBe(4);

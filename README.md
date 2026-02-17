@@ -31,12 +31,12 @@ pnpm add hdrify
 
 ## Main Entry Points
 
-All read functions return `FloatImageData`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
+All read functions return `HdrifyImage`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
 
-### FloatImageData
+### HdrifyImage
 
 ```ts
-interface FloatImageData {
+interface HdrifyImage {
   width: number;           // Image width in pixels
   height: number;          // Image height in pixels
   data: Float32Array;     // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]

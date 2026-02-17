@@ -1,11 +1,11 @@
 /**
- * Read JPEG with embedded gain map (JPEG-R / Ultra HDR) into FloatImageData.
+ * Read JPEG with embedded gain map (JPEG-R / Ultra HDR) into HdrifyImage.
  * Throws if the buffer does not contain valid gain map metadata or both SDR and gain map images.
  */
 
 import './ensureBuffer.js';
 import { decode as jpegDecode } from 'jpeg-js';
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { decodeGainMapCpu } from './readJpegGainMap/decodeGainMapCpu.js';
 import { extractGainMapXmp } from './readJpegGainMap/extractXmp.js';
 import { extractImagesBySecondSoi, extractImagesFromMpf } from './readJpegGainMap/mpfExtractor.js';
@@ -14,13 +14,13 @@ export type GainMapFormat = 'ultrahdr' | 'adobe-gainmap';
 
 /**
  * Read a JPEG buffer that contains embedded gain map (XMP + MPF) and return
- * decoded HDR as FloatImageData. Supports UltraHDR/JPEG-R layout.
+ * decoded HDR as HdrifyImage. Supports UltraHDR/JPEG-R layout.
  *
  * @param buffer - Full JPEG-R file bytes
- * @returns FloatImageData with linear HDR RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
+ * @returns HdrifyImage with linear HDR RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
  * @throws If no gain map XMP is found, or if primary/gain map images cannot be extracted
  */
-export function readJpegGainMap(buffer: Uint8Array): FloatImageData {
+export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
   const metadata = extractGainMapXmp(buffer);
   let primaryImage: Uint8Array;
   let gainmapImage: Uint8Array;

@@ -1,13 +1,13 @@
 /**
  * EXR (OpenEXR) file writer
  *
- * Writes EXR files from FloatImageData.
+ * Writes EXR files from HdrifyImage.
  * Orchestrates header builder, offset table, and scan block modules.
  * Supports NO_COMPRESSION, RLE, ZIP, ZIPS.
  */
 
 import { LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import {
   HALF,
   PIZ_COMPRESSION,
@@ -47,21 +47,21 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
 }
 
 /**
- * Write an EXR file buffer from FloatImageData
+ * Write an EXR file buffer from HdrifyImage
  *
- * @param floatImageData - FloatImageData containing image dimensions and pixel data
+ * @param HdrifyImage - HdrifyImage containing image dimensions and pixel data
  * @param options - Optional compression (default: zip; use piz for broader compatibility)
  * @returns Uint8Array containing EXR file data
  */
-export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptions): Uint8Array {
-  ensureNonNegativeFinite(floatImageData.data);
-  const { width, height } = floatImageData;
+export function writeExr(hdrifyImage: HdrifyImage, options?: WriteExrOptions): Uint8Array {
+  ensureNonNegativeFinite(hdrifyImage.data);
+  const { width, height } = hdrifyImage;
   const compression = options?.compression ?? ZIP_COMPRESSION;
   const channels = getChannelsForCompression(compression);
   // OpenEXR requires channels to be sorted alphabetically
   channels.sort((a, b) => a.name.localeCompare(b.name));
 
-  const chromaticities = LINEAR_TO_CHROMATICITIES[floatImageData.linearColorSpace];
+  const chromaticities = LINEAR_TO_CHROMATICITIES[hdrifyImage.linearColorSpace];
   const magicVersion = buildMagicAndVersion();
   const header = buildExrHeader({ width, height, compression, channels, chromaticities });
   const headerEnd = magicVersion.length + header.length;
@@ -74,7 +74,7 @@ export function writeExr(floatImageData: FloatImageData, options?: WriteExrOptio
     const firstY = b * blockHeight;
     const lineCount = Math.min(blockHeight, height - firstY);
     const block = writeExrScanBlock({
-      floatImageData,
+      hdrifyImage,
       firstLineY: firstY,
       lineCount,
       compression,

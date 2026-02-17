@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { addRangeMetadata, type FloatImageData, readExr, readHdr, readJpegGainMap } from 'hdrify';
+import { addRangeMetadata, type HdrifyImage, readExr, readHdr, readJpegGainMap } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
 function yamlStringNeedsEscape(s: string): boolean {
@@ -90,7 +90,7 @@ function stringifyYaml(obj: Record<string, unknown>, indent: number): string {
   return lines.join('\n');
 }
 
-function buildInfoOutput(imageData: FloatImageData, ext: string): InfoOutput {
+function buildInfoOutput(imageData: HdrifyImage, ext: string): InfoOutput {
   const format = ext.toUpperCase().slice(1);
   const output: InfoOutput = {
     format,
@@ -146,7 +146,7 @@ export const command = defineCommand({
       const fileBuf = fs.readFileSync(file);
       const fileBuffer = new Uint8Array(fileBuf.buffer, fileBuf.byteOffset, fileBuf.byteLength);
 
-      let imageData: FloatImageData;
+      let imageData: HdrifyImage;
       if (ext === '.exr') {
         imageData = readExr(fileBuffer);
       } else if (ext === '.jpg' || ext === '.jpeg') {

@@ -10,7 +10,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareFloatImages, convertLinearColorSpace, createCieColorWedgeImage, readExr, readHdr } from 'hdrify';
+import { compareImages, convertLinearColorSpace, createCieColorWedgeImage, readExr, readHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -34,7 +34,7 @@ describe('reference_cie banding detection', () => {
     const fromExr = readExr(toUint8Array(fs.readFileSync(refCieExr)));
     const generated = createCieColorWedgeImage({ width: fromExr.width, height: fromExr.height });
 
-    const result = compareFloatImages(generated, fromExr, TOLERANCE_1_PCT);
+    const result = compareImages(generated, fromExr, TOLERANCE_1_PCT);
     expect(
       result.match,
       `EXR should match generated: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -48,7 +48,7 @@ describe('reference_cie banding detection', () => {
     // CLI converts cie-wedge to linear-rec709 before writing HDR
     const expected = convertLinearColorSpace(generated, 'linear-rec709');
 
-    const result = compareFloatImages(expected, fromHdr, TOLERANCE_1_PCT);
+    const result = compareImages(expected, fromHdr, TOLERANCE_1_PCT);
     console.log(result);
     expect(
       result.match,

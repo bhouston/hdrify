@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ensureNonNegativeFinite } from './floatImage.js';
+import { ensureNonNegativeFinite } from './hdrifyImage.js';
 
 describe('ensureNonNegativeFinite', () => {
   it('leaves positive finite values unchanged', () => {

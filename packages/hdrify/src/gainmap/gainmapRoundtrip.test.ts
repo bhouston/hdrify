@@ -6,12 +6,12 @@
  * We test incrementally: float-only (no quantization), then add SDR quantization,
  * then full quantization, to isolate where precision is lost.
  *
- * Tolerance: compareFloatImages uses decimal 0.01 = 1%. We keep tolerances tight.
+ * Tolerance: compareImages uses decimal 0.01 = 1%. We keep tolerances tight.
  */
 
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
-import { compareFloatImages } from '../synthetic/compareFloatImages.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
+import { compareImages } from '../synthetic/compareImages.js';
 import { createGradientImage } from '../synthetic/createGradientImage.js';
 import { createHsvRainbowImage } from '../synthetic/createHsvRainbowImage.js';
 import { decodeGainMap, decodeGainMapFromFloatEncoding } from './decodeGainMap.js';
@@ -31,8 +31,8 @@ interface SlowGradientValidationResult {
 
 /** Compute per-column max error for a horizontal gradient (for banding diagnosis). */
 function worstColumnsByError(
-  original: FloatImageData,
-  decoded: FloatImageData,
+  original: HdrifyImage,
+  decoded: HdrifyImage,
   width: number,
   height: number,
   min: number,
@@ -59,8 +59,8 @@ function worstColumnsByError(
 }
 
 function validateSlowGradientLineByLine(
-  original: FloatImageData,
-  decoded: FloatImageData,
+  original: HdrifyImage,
+  decoded: HdrifyImage,
   width: number,
   height: number,
   min: number,
@@ -139,7 +139,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
       height: 1,
       linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array([2, 2, 2, 1]),
-    } satisfies FloatImageData;
+    } satisfies HdrifyImage;
     const encoding = encodeGainMapToFloat(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMapFromFloatEncoding(encoding);
     expect(decoded.data[0]).toBeCloseTo(2, 5);
@@ -158,7 +158,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const encoding = encodeGainMapToFloat(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMapFromFloatEncoding(encoding);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_FLOAT_ONLY);
+    const result = compareImages(original, decoded, TOLERANCE_FLOAT_ONLY);
     expect(
       result.match,
       `Float-only round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -176,7 +176,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const encoding = encodeGainMapToFloat(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMapFromFloatEncoding(encoding);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_FLOAT_ONLY);
+    const result = compareImages(original, decoded, TOLERANCE_FLOAT_ONLY);
     expect(
       result.match,
       `Float-only gradient: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -197,8 +197,8 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const decReinhard = decodeGainMapFromFloatEncoding(encReinhard);
     const decAces = decodeGainMapFromFloatEncoding(encAces);
 
-    const resR = compareFloatImages(original, decReinhard, TOLERANCE_FLOAT_ONLY);
-    const resA = compareFloatImages(original, decAces, TOLERANCE_FLOAT_ONLY);
+    const resR = compareImages(original, decReinhard, TOLERANCE_FLOAT_ONLY);
+    const resA = compareImages(original, decAces, TOLERANCE_FLOAT_ONLY);
     expect(resR.match).toBe(true);
     expect(resA.match).toBe(true);
   });
@@ -214,7 +214,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const sdrU8 = quantizeRgbaFloatToU8(encoding.sdrFloat);
     const decoded = decodeGainMapCpu(sdrU8, encoding.gainMapFloat, encoding.width, encoding.height, encoding.metadata);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_SDR_QUANTIZED);
+    const result = compareImages(original, decoded, TOLERANCE_SDR_QUANTIZED);
     expect(
       result.match,
       `SDR quantized round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -231,7 +231,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMap(encoding);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
+    const result = compareImages(original, decoded, TOLERANCE_FULL);
     expect(
       result.match,
       `Full round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -249,7 +249,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMap(encoding);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
+    const result = compareImages(original, decoded, TOLERANCE_FULL);
     expect(
       result.match,
       `Full gradient: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -266,7 +266,7 @@ describe('gain map in-memory round-trip (encode → decode, no JPEG)', () => {
     const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
     const decoded = decodeGainMap(encoding);
 
-    const result = compareFloatImages(original, decoded, TOLERANCE_FULL);
+    const result = compareImages(original, decoded, TOLERANCE_FULL);
     expect(
       result.match,
       `Low-DR round-trip: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,

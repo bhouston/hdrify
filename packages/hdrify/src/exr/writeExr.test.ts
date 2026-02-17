@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import {
   PIZ_COMPRESSION,
   PXR24_COMPRESSION,
@@ -12,8 +12,8 @@ import { writeExr } from './writeExr.js';
 
 describe('exrWriter', () => {
   describe('writeExr', () => {
-    it('should write EXR file from FloatImageData', () => {
-      const floatImageData: FloatImageData = {
+    it('should write EXR file from HdrifyImage', () => {
+      const hdrifyImage: HdrifyImage = {
         width: 2,
         height: 2,
         linearColorSpace: 'linear-rec709',
@@ -38,21 +38,21 @@ describe('exrWriter', () => {
         ]),
       };
 
-      const exrBuffer = writeExr(floatImageData);
+      const exrBuffer = writeExr(hdrifyImage);
 
       expect(exrBuffer).toBeInstanceOf(Uint8Array);
       expect(exrBuffer.length).toBeGreaterThan(0);
     });
 
     it('should write EXR file with correct magic number', () => {
-      const floatImageData: FloatImageData = {
+      const hdrifyImage: HdrifyImage = {
         width: 1,
         height: 1,
         linearColorSpace: 'linear-rec709',
         data: new Float32Array([1.0, 1.0, 1.0, 1.0]),
       };
 
-      const exrBuffer = writeExr(floatImageData);
+      const exrBuffer = writeExr(hdrifyImage);
 
       // EXR magic number is 20000630 (little-endian)
       const magic = new DataView(exrBuffer.buffer, exrBuffer.byteOffset, exrBuffer.byteLength).getUint32(0, true);
@@ -77,20 +77,20 @@ describe('exrWriter', () => {
           data[i + 3] = 1.0; // A
         }
 
-        const floatImageData: FloatImageData = {
+        const hdrifyImage: HdrifyImage = {
           width: size.width,
           height: size.height,
           linearColorSpace: 'linear-rec709',
           data,
         };
 
-        const exrBuffer = writeExr(floatImageData);
+        const exrBuffer = writeExr(hdrifyImage);
         expect(exrBuffer.length).toBeGreaterThan(0);
       }
     });
 
     it('should round-trip EXR file (write then read)', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 4,
         height: 4,
         linearColorSpace: 'linear-rec709',
@@ -129,7 +129,7 @@ describe('exrWriter', () => {
     });
 
     it('should round-trip EXR with RLE compression', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 4,
         height: 4,
         linearColorSpace: 'linear-rec709',
@@ -158,7 +158,7 @@ describe('exrWriter', () => {
     });
 
     it('should round-trip EXR with ZIP compression', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 16,
         height: 16,
         linearColorSpace: 'linear-rec709',
@@ -187,7 +187,7 @@ describe('exrWriter', () => {
     });
 
     it('should round-trip EXR with PIZ compression', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 32,
         height: 32,
         linearColorSpace: 'linear-rec709',
@@ -216,7 +216,7 @@ describe('exrWriter', () => {
     });
 
     it('should round-trip EXR with ZIPS compression', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 16,
         height: 16,
         linearColorSpace: 'linear-rec709',
@@ -244,7 +244,7 @@ describe('exrWriter', () => {
     });
 
     it('should round-trip EXR with PXR24 compression', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 16,
         height: 16,
         linearColorSpace: 'linear-rec709',

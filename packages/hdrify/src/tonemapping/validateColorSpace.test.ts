@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { CHROMATICITIES_REC709 } from '../color/chromaticities.js';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { validateToneMappingColorSpace, validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';
 
-function createImage(metadata?: Record<string, unknown>): FloatImageData {
+function createImage(metadata?: Record<string, unknown>): HdrifyImage {
   return {
     width: 1,
     height: 1,

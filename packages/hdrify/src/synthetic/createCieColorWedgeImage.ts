@@ -5,7 +5,7 @@
 
 import { CHROMATICITIES_REC2020 } from '../color/chromaticities.js';
 import { xyToLinearRgb } from '../color/cie.js';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
 export type CieWedgeChannel = 'r' | 'g' | 'b';
 
@@ -23,10 +23,10 @@ const CIE_X_MAX = 0.735;
 const CIE_Y_MAX = 0.834;
 
 /**
- * Create a synthetic FloatImageData with CIE 1931 chromaticity diagram layout.
+ * Create a synthetic HdrifyImage with CIE 1931 chromaticity diagram layout.
  * Returns linear Rec 2020 RGB.
  */
-export function createCieColorWedgeImage(options: CreateCieColorWedgeImageOptions): FloatImageData {
+export function createCieColorWedgeImage(options: CreateCieColorWedgeImageOptions): HdrifyImage {
   const { width, height, luminance = 1, channel } = options;
 
   const data = new Float32Array(width * height * 4);

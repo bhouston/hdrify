@@ -1,9 +1,9 @@
 /**
- * Decode an in-memory gain map encoding result back to HDR FloatImageData.
+ * Decode an in-memory gain map encoding result back to HDR HdrifyImage.
  * Use this to test the encode/decode pipeline without JPEG (no compression loss).
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import {
   type DecodeGainMapOptions,
   decodeGainMapCpu,
@@ -14,11 +14,11 @@ import type { EncodingResult, EncodingResultFloat } from './types.js';
 export type { DecodeGainMapOptions } from './readJpegGainMap/decodeGainMapCpu.js';
 
 /**
- * Decode SDR + gain map (from an EncodingResult) into linear HDR FloatImageData.
+ * Decode SDR + gain map (from an EncodingResult) into linear HDR HdrifyImage.
  * Does not involve JPEG; use for round-trip tests and when you already have
  * in-memory SDR and gain map buffers.
  */
-export function decodeGainMap(encodingResult: EncodingResult, options?: DecodeGainMapOptions): FloatImageData {
+export function decodeGainMap(encodingResult: EncodingResult, options?: DecodeGainMapOptions): HdrifyImage {
   return decodeGainMapCpu(
     encodingResult.sdr,
     encodingResult.gainMap,
@@ -35,7 +35,7 @@ export function decodeGainMap(encodingResult: EncodingResult, options?: DecodeGa
 export function decodeGainMapFromFloatEncoding(
   encoding: EncodingResultFloat,
   options?: DecodeGainMapOptions,
-): FloatImageData {
+): HdrifyImage {
   return decodeGainMapFromFloat(
     encoding.sdrFloat,
     encoding.gainMapFloat,

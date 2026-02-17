@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { FloatImageData } from 'hdrify';
-import { compareFloatImages, createHsvRainbowImage, readExr, readHdr, writeExr, writeHdr } from 'hdrify';
+import type { HdrifyImage } from 'hdrify';
+import { compareImages, createHsvRainbowImage, readExr, readHdr, writeExr, writeHdr } from 'hdrify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -20,7 +20,7 @@ const TOLERANCE = { toleranceRelative: 0.01 };
 const TOLERANCE_HDR = { toleranceRelative: 0.05, toleranceAbsolute: 0.01 };
 
 describe('conversion round-trip', () => {
-  let original: FloatImageData;
+  let original: HdrifyImage;
   let tempDir: string;
 
   beforeAll(() => {
@@ -40,7 +40,7 @@ describe('conversion round-trip', () => {
   it('EXR round-trip: writeExr -> readExr matches original', () => {
     const buffer = writeExr(original);
     const parsed = readExr(buffer);
-    const result = compareFloatImages(original, parsed, TOLERANCE);
+    const result = compareImages(original, parsed, TOLERANCE);
     expect(
       result.match,
       `EXR round-trip failed: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -50,7 +50,7 @@ describe('conversion round-trip', () => {
   it('EXR PXR24 round-trip: writeExr(pxr24) -> readExr matches original', () => {
     const buffer = writeExr(original, { compression: 5 }); // PXR24
     const parsed = readExr(buffer);
-    const result = compareFloatImages(original, parsed, TOLERANCE);
+    const result = compareImages(original, parsed, TOLERANCE);
     expect(
       result.match,
       `EXR PXR24 round-trip failed: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -60,7 +60,7 @@ describe('conversion round-trip', () => {
   it('HDR round-trip: writeHdr -> readHdr matches original', () => {
     const buffer = writeHdr(original);
     const parsed = readHdr(buffer);
-    const result = compareFloatImages(original, parsed, TOLERANCE_HDR);
+    const result = compareImages(original, parsed, TOLERANCE_HDR);
     expect(
       result.match,
       `HDR round-trip failed: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -75,7 +75,7 @@ describe('conversion round-trip', () => {
     const fromHdr = readHdr(hdrBuffer);
 
     const expectedHdr = readHdr(writeHdr(original));
-    const result = compareFloatImages(expectedHdr, fromHdr, TOLERANCE);
+    const result = compareImages(expectedHdr, fromHdr, TOLERANCE);
     expect(
       result.match,
       `EXR->HDR path failed: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -89,7 +89,7 @@ describe('conversion round-trip', () => {
     const fromExr = readExr(exrBuffer);
 
     const expectedExr = readExr(writeExr(original));
-    const result = compareFloatImages(expectedExr, fromExr, TOLERANCE_HDR);
+    const result = compareImages(expectedExr, fromExr, TOLERANCE_HDR);
     expect(
       result.match,
       `HDR->EXR path failed: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -105,7 +105,7 @@ describe('reference asset comparison', () => {
     const refBuffer = new Uint8Array(fs.readFileSync(refHdrPath));
     const reference = readHdr(refBuffer);
 
-    const result = compareFloatImages(generated, reference, TOLERANCE_HDR);
+    const result = compareImages(generated, reference, TOLERANCE_HDR);
     expect(
       result.match,
       `Generated vs rainbow.hdr: maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,

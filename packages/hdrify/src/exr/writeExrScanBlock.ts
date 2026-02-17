@@ -3,7 +3,7 @@
  * Writes a single scan line block: y (4) + dataSize (4) + pixelData
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { compressPizBlock } from './compressPiz.js';
 import { compressPxr24Block } from './compressPxr24.js';
 import { compressRleBlock } from './compressRle.js';
@@ -39,7 +39,7 @@ function getPixelTypeSize(pixelType: number): number {
 }
 
 export interface WriteExrScanBlockOptions {
-  floatImageData: FloatImageData;
+  hdrifyImage: HdrifyImage;
   firstLineY: number;
   lineCount: number;
   compression: number;
@@ -64,8 +64,8 @@ function getChannelValue(data: Float32Array, pixelIndex: number, channelName: st
  * Block layout: y coordinate (4) + pixel data size (4) + pixel data.
  */
 export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array {
-  const { floatImageData, firstLineY, lineCount, compression, channels } = options;
-  const { width, height, data } = floatImageData;
+  const { hdrifyImage, firstLineY, lineCount, compression, channels } = options;
+  const { width, height, data } = hdrifyImage;
 
   const numChannels = channels.length;
   const useCompression =

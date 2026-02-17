@@ -7,7 +7,7 @@ import type { LinearColorSpace } from './color/colorSpaces.js';
  * This format enables format-agnostic processing and ensures consistent
  * data structure across different environment map formats.
  */
-export interface FloatImageData {
+export interface HdrifyImage {
   /** Image width in pixels */
   width: number;
   /** Image height in pixels */

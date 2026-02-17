@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { compareFloatImages } from '../synthetic/compareFloatImages.js';
+import { compareImages } from '../synthetic/compareImages.js';
 import type { GradientChannel } from '../synthetic/createGradientImage.js';
 import { createGradientImage } from '../synthetic/createGradientImage.js';
 import type { LinearColorSpace } from './colorSpaces.js';
@@ -55,7 +55,7 @@ describe('linear color space round-trip', () => {
           const toOther = convertLinearColorSpace(inFromSpace, toSpace);
           const back = convertLinearColorSpace(toOther, fromSpace);
 
-          const result = compareFloatImages(inFromSpace, back, {
+          const result = compareImages(inFromSpace, back, {
             toleranceRelative: LINEAR_ROUNDTRIP_TOLERANCE,
             toleranceAbsolute: 1e-6,
             includeMismatchSamples: 5,
@@ -87,7 +87,7 @@ describe('linear → display → linear round-trip', () => {
             linearSpace,
           );
 
-          const result = compareFloatImages(inLinearSpace, back, {
+          const result = compareImages(inLinearSpace, back, {
             toleranceRelative: DISPLAY_ROUNDTRIP_TOLERANCE,
             toleranceAbsolute: 1e-6,
             includeMismatchSamples: 5,

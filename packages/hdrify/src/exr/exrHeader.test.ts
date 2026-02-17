@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { NO_COMPRESSION, PIZ_COMPRESSION, RLE_COMPRESSION, ZIP_COMPRESSION, ZIPS_COMPRESSION } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
 import { buildExrHeaderForParsing } from './exrHeaderBuilder.js';
@@ -85,7 +85,7 @@ describe('EXR header parsing - box2i (displayWindow, dataWindow)', () => {
       height: 5,
       linearColorSpace: 'linear-rec709' as const,
       data: new Float32Array(5 * 5 * 4).fill(0.5),
-    } satisfies FloatImageData;
+    } satisfies HdrifyImage;
     const exr = writeExr(img);
     const { header } = parseExrHeader(exr);
     expect(header.dataWindow.xMax - header.dataWindow.xMin + 1).toBe(5);

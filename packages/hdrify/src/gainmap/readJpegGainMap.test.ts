@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  compareFloatImages,
+  compareImages,
   createGradientImage,
   encodeGainMap,
   encodeToJpeg,
@@ -25,7 +25,7 @@ describe('readJpegGainMap', () => {
     expect(decoded.height).toBe(original.height);
     expect(decoded.metadata?.format).toBeDefined();
 
-    const result = compareFloatImages(original, decoded, {
+    const result = compareImages(original, decoded, {
       toleranceRelative: 0.005,
       toleranceAbsolute: 0.005,
     });

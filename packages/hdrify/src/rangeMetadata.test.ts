@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from './floatImage.js';
+import type { HdrifyImage } from './hdrifyImage.js';
 import { addRangeMetadata } from './rangeMetadata.js';
 
 describe('addRangeMetadata', () => {
   it('computes correct MIN_VALUE, MAX_VALUE, RANGE, AVG_VALUE for known 2x2 image', () => {
-    const image: FloatImageData = {
+    const image: HdrifyImage = {
       width: 2,
       height: 2,
       linearColorSpace: 'linear-rec709',
@@ -37,7 +37,7 @@ describe('addRangeMetadata', () => {
   });
 
   it('single pixel: min equals max, range is [0,0,0], avg equals min/max', () => {
-    const image: FloatImageData = {
+    const image: HdrifyImage = {
       width: 1,
       height: 1,
       linearColorSpace: 'linear-rec709',
@@ -53,7 +53,7 @@ describe('addRangeMetadata', () => {
   });
 
   it('uniform image: RANGE is [0,0,0], AVG equals MIN/MAX', () => {
-    const image: FloatImageData = {
+    const image: HdrifyImage = {
       width: 3,
       height: 2,
       linearColorSpace: 'linear-rec709',
@@ -69,7 +69,7 @@ describe('addRangeMetadata', () => {
   });
 
   it('empty image returns zeros for all arrays', () => {
-    const image: FloatImageData = {
+    const image: HdrifyImage = {
       width: 0,
       height: 0,
       linearColorSpace: 'linear-rec709',

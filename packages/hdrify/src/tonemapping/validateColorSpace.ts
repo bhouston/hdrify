@@ -5,7 +5,7 @@
  */
 
 import { CHROMATICITIES_REC709, type Chromaticities } from '../color/chromaticities.js';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
 const TOLERANCE = 0.01;
 
@@ -80,11 +80,11 @@ export function validateToneMappingColorSpaceFromMetadata(
  * Validate that image chromaticities match Rec. 709 before tone mapping.
  * If chromaticities are present and do not match, throws a descriptive error.
  *
- * @param image - FloatImageData with optional metadata.chromaticities from EXR
+ * @param image - HdrifyImage with optional metadata.chromaticities from EXR
  * @throws Error when chromaticities are present and do not match Rec. 709
  */
 export function validateToneMappingColorSpace(
-  image: FloatImageData,
+  image: HdrifyImage,
   options: ValidateToneMappingColorSpaceOptions = {},
 ): void {
   validateToneMappingColorSpaceFromMetadata(image.metadata, options);

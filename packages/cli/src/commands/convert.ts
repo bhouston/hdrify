@@ -4,7 +4,7 @@ import {
   applyToneMapping,
   convertLinearColorSpace,
   encodeGainMap,
-  type FloatImageData,
+  type HdrifyImage,
   readExr,
   readHdr,
   readJpegGainMap,
@@ -124,7 +124,7 @@ export const command = defineCommand({
       const inputBuffer = new Uint8Array(inputBuf.buffer, inputBuf.byteOffset, inputBuf.byteLength);
       console.log(`Reading ${inputExt} file: ${input}`);
 
-      let imageData: FloatImageData;
+      let imageData: HdrifyImage;
       if (inputExt === '.exr') {
         imageData = readExr(inputBuffer);
       } else if (isJpegGainMapExtension(inputExt)) {

@@ -1,4 +1,4 @@
-import type { FloatImageData } from './floatImage.js';
+import type { HdrifyImage } from './hdrifyImage.js';
 
 const PRECISION = 6;
 
@@ -10,7 +10,7 @@ function round(val: number): number {
  * Compute MIN_VALUE, MAX_VALUE, RANGE, and AVG_VALUE from RGB channels in a single pass.
  * Adds these to the returned metadata object.
  */
-export function addRangeMetadata(image: FloatImageData): Record<string, unknown> {
+export function addRangeMetadata(image: HdrifyImage): Record<string, unknown> {
   const { data } = image;
   let minR = Infinity;
   let minG = Infinity;

@@ -1,21 +1,21 @@
 /**
  * HDR (Radiance RGBE) file writer
  *
- * Writes HDR files from FloatImageData
+ * Writes HDR files from HdrifyImage
  * Implements the Radiance RGBE encoding format
  */
 
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 
 /**
- * Write an HDR file buffer from FloatImageData
+ * Write an HDR file buffer from HdrifyImage
  *
- * @param floatImageData - FloatImageData containing image dimensions and pixel data
+ * @param HdrifyImage - HdrifyImage containing image dimensions and pixel data
  * @returns Uint8Array containing HDR file data
  */
-export function writeHdr(floatImageData: FloatImageData): Uint8Array {
-  ensureNonNegativeFinite(floatImageData.data);
-  const { width, height, data } = floatImageData;
+export function writeHdr(hdrifyImage: HdrifyImage): Uint8Array {
+  ensureNonNegativeFinite(hdrifyImage.data);
+  const { width, height, data } = hdrifyImage;
 
   // Calculate file size: header + pixel data
   // Header: "#?RADIANCE\n# Land of Assets\nFORMAT=32-bit_rle_rgbe\n\n-Y {height} +X {width}\n"

@@ -3,7 +3,7 @@
  * convertFloat32ToLinearColorSpace returns original data when no conversion needed.
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import type { DisplayColorSpace, LinearColorSpace } from './colorSpaces.js';
 import { DISPLAY_TO_LINEAR } from './colorSpaces.js';
 import { applyMatrix3, getLinearToLinearMatrix, mat3ToArray } from './matrixConversion.js';
@@ -44,10 +44,10 @@ export function convertFloat32ToLinearColorSpace(
 }
 
 /**
- * Convert FloatImageData to a different linear color space.
+ * Convert HdrifyImage to a different linear color space.
  * Returns a new image with converted data.
  */
-export function convertLinearColorSpace(image: FloatImageData, to: LinearColorSpace): FloatImageData {
+export function convertLinearColorSpace(image: HdrifyImage, to: LinearColorSpace): HdrifyImage {
   const data = convertFloat32ToLinearColorSpace(image.data, image.width, image.height, image.linearColorSpace, to);
 
   return {
@@ -58,14 +58,14 @@ export function convertLinearColorSpace(image: FloatImageData, to: LinearColorSp
 }
 
 /**
- * Convert linear FloatImageData to display-referred for a given display space.
+ * Convert linear HdrifyImage to display-referred for a given display space.
  * Converts primaries to match display space if needed, then applies transfer function.
  * Returns new image with display-encoded data in Float32Array (values 0-1).
  */
 export function convertLinearToDisplay(
-  image: FloatImageData,
+  image: HdrifyImage,
   to: DisplayColorSpace,
-): FloatImageData & { displayColorSpace: DisplayColorSpace } {
+): HdrifyImage & { displayColorSpace: DisplayColorSpace } {
   const targetLinear = DISPLAY_TO_LINEAR[to];
   const linearData = convertFloat32ToLinearColorSpace(
     image.data,
@@ -98,11 +98,11 @@ export function convertLinearToDisplay(
     ...image,
     data: out,
     displayColorSpace: to,
-  } as FloatImageData & { displayColorSpace: DisplayColorSpace };
+  } as HdrifyImage & { displayColorSpace: DisplayColorSpace };
 }
 
 /**
- * Convert display-referred Float32Array to linear FloatImageData.
+ * Convert display-referred Float32Array to linear HdrifyImage.
  * Primaries are determined by the display space.
  */
 export function convertDisplayToLinear(
@@ -111,7 +111,7 @@ export function convertDisplayToLinear(
   height: number,
   from: DisplayColorSpace,
   linearColorSpace: LinearColorSpace,
-): FloatImageData {
+): HdrifyImage {
   const fromLinear = DISPLAY_TO_LINEAR[from];
   const matrix = getLinearToLinearMatrix(fromLinear, linearColorSpace);
 

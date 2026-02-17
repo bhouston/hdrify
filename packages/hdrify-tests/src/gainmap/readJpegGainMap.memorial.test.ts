@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  compareFloatImages,
+  compareImages,
   encodeGainMap,
   encodeToJpeg,
   extractIccProfileFromJpeg,
@@ -140,7 +140,7 @@ describe('readJpegGainMap', () => {
       const jpegBuffer2 = writeJpegGainMap(reEncode, { quality: 100 });
       const secondRead = readJpegGainMap(jpegBuffer2);
 
-      const result = compareFloatImages(firstRead, secondRead, TOLERANCE_ROUNDTRIP);
+      const result = compareImages(firstRead, secondRead, TOLERANCE_ROUNDTRIP);
       expect(
         result.match,
         `Full round-trip (decode→re-encode): maxRelativeDelta=${result.maxRelativeDelta} maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,
@@ -157,7 +157,7 @@ describe('readJpegGainMap', () => {
 
       const TOLERANCE_ROUNDTRIP = { toleranceRelative: 0.15, toleranceAbsolute: 0.01 };
 
-      const result = compareFloatImages(original, decoded, TOLERANCE_ROUNDTRIP);
+      const result = compareImages(original, decoded, TOLERANCE_ROUNDTRIP);
       expect(
         result.match,
         `EXR→gain map→read: maxRelativeDelta=${result.maxRelativeDelta} maxAbsoluteDelta=${result.maxAbsoluteDelta} mismatchedPixels=${result.mismatchedPixels}`,

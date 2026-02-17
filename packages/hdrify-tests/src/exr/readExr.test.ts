@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareFloatImages, createHsvRainbowImage, readExr, writeExr } from 'hdrify';
+import { compareImages, createHsvRainbowImage, readExr, writeExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,7 +44,7 @@ describe('exrReader', () => {
       expect(result.data.length).toBe(result.width * result.height * 4);
     });
 
-    it('should return FloatImageData with correct structure', () => {
+    it('should return HdrifyImage with correct structure', () => {
       const result = readExr(exrBuffer!);
 
       expect(result).toHaveProperty('width');
@@ -222,7 +222,7 @@ describe('exrReader', () => {
       const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
       const buffer = writeExr(original, { compression: 0 });
       const parsed = readExr(buffer);
-      const result = compareFloatImages(original, parsed, TOLERANCE);
+      const result = compareImages(original, parsed, TOLERANCE);
       expect(result.match).toBe(true);
     });
 
@@ -230,7 +230,7 @@ describe('exrReader', () => {
       const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
       const buffer = writeExr(original, { compression: 3 });
       const parsed = readExr(buffer);
-      const result = compareFloatImages(original, parsed, TOLERANCE);
+      const result = compareImages(original, parsed, TOLERANCE);
       expect(result.match).toBe(true);
     });
 
@@ -238,7 +238,7 @@ describe('exrReader', () => {
       const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
       const buffer = writeExr(original, { compression: 1 });
       const parsed = readExr(buffer);
-      const result = compareFloatImages(original, parsed, TOLERANCE);
+      const result = compareImages(original, parsed, TOLERANCE);
       expect(result.match).toBe(true);
     });
 
@@ -246,7 +246,7 @@ describe('exrReader', () => {
       const original = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
       const buffer = writeExr(original, { compression: 2 }); // ZIPS
       const parsed = readExr(buffer);
-      const result = compareFloatImages(original, parsed, TOLERANCE);
+      const result = compareImages(original, parsed, TOLERANCE);
       expect(result.match).toBe(true);
     });
 

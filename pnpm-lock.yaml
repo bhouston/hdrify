@@ -113,6 +113,28 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@24.10.13)(jsdom@27.4.0)(lightningcss@1.30.2)
 
+  packages/hdrify-react:
+    dependencies:
+      hdrify:
+        specifier: workspace:*
+        version: link:../hdrify
+      react:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^18.0.0 || ^19.0.0
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.14)
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20251202.1
+        version: 7.0.0-dev.20251202.1
+
   packages/hdrify-tests:
     devDependencies:
       '@types/node':
@@ -157,6 +179,9 @@ importers:
       hdrify:
         specifier: workspace:*
         version: link:../hdrify
+      hdrify-react:
+        specifier: workspace:*
+        version: link:../hdrify-react
       lucide-react:
         specifier: ^0.561.0
         version: 0.561.0(react@19.2.4)

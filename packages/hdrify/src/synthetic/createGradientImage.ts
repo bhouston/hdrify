@@ -5,7 +5,7 @@
  * min/max values. Useful for testing that tone mapping preserves continuity.
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
 export type GradientMode = 'horizontal' | 'vertical' | 'diagonal';
 
@@ -25,9 +25,9 @@ export interface CreateGradientImageOptions {
 }
 
 /**
- * Create a synthetic FloatImageData with a linear gradient.
+ * Create a synthetic HdrifyImage with a linear gradient.
  */
-export function createGradientImage(options: CreateGradientImageOptions): FloatImageData {
+export function createGradientImage(options: CreateGradientImageOptions): HdrifyImage {
   const { width, height, mode, min, max, channel = 'rgb' } = options;
 
   const data = new Float32Array(width * height * 4);

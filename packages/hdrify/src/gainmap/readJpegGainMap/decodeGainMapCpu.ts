@@ -7,7 +7,7 @@
  */
 
 import { sRGBToLinear } from '../../color/srgb.js';
-import type { FloatImageData } from '../../floatImage.js';
+import type { HdrifyImage } from '../../hdrifyImage.js';
 import type { GainMapMetadata } from '../types.js';
 
 const HALF_FLOAT_MAX = 65504;
@@ -22,7 +22,7 @@ function isFloat32Array(a: Uint8Array | Uint8ClampedArray | Float32Array): a is 
 }
 
 /**
- * Decode SDR + gain map pixels with metadata into linear HDR FloatImageData.
+ * Decode SDR + gain map pixels with metadata into linear HDR HdrifyImage.
  * SDR and gainMap can be 0-255 RGBA (Uint8) or 0-1 float (Float32Array). Mixed modes supported.
  */
 export function decodeGainMapCpu(
@@ -32,7 +32,7 @@ export function decodeGainMapCpu(
   height: number,
   metadata: GainMapMetadata,
   options: DecodeGainMapOptions = {},
-): FloatImageData {
+): HdrifyImage {
   const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
@@ -100,7 +100,7 @@ export function decodeGainMapFromFloat(
   height: number,
   metadata: GainMapMetadata,
   options: DecodeGainMapOptions = {},
-): FloatImageData {
+): HdrifyImage {
   const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;

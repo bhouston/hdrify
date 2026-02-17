@@ -1,6 +1,6 @@
 import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { getToneMapping } from '../tonemapping/mappers.js';
 import type { ToneMappingBatchFn, ToneMappingType } from '../tonemapping/types.js';
 import type { EncodingResult, EncodingResultFloat, GainMapEncodingOptions, GainMapMetadata } from './types.js';
@@ -76,7 +76,7 @@ function findMaxContentBoostFromGains(
 /**
  * Encode HDR image to SDR + gain map (pure TypeScript, no WebGL).
  */
-export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOptions = {}): EncodingResult {
+export function encodeGainMap(image: HdrifyImage, options: GainMapEncodingOptions = {}): EncodingResult {
   ensureNonNegativeFinite(image.data);
   const data = convertFloat32ToLinearColorSpace(
     image.data,
@@ -214,7 +214,7 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
  * Encode to float buffers only (no quantization). For testing and incremental pipeline.
  * Decode is tone-map-agnostic: the gain map stores the ratio HDR_linear/SDR_linear.
  */
-export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEncodingOptions = {}): EncodingResultFloat {
+export function encodeGainMapToFloat(image: HdrifyImage, options: GainMapEncodingOptions = {}): EncodingResultFloat {
   ensureNonNegativeFinite(image.data);
   const data = convertFloat32ToLinearColorSpace(
     image.data,

@@ -6,7 +6,7 @@
  */
 
 import { chromaticitiesToLinearColorSpace } from '../color/colorSpaces.js';
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { decompressPiz } from './decompressPiz.js';
 import { decompressPxr24 } from './decompressPxr24.js';
 import { decompressRleBlock } from './decompressRle.js';
@@ -59,12 +59,12 @@ function readChannelValue(dataView: DataView, offset: number, pixelType: number)
 }
 
 /**
- * Read an EXR file buffer and return FloatImageData
+ * Read an EXR file buffer and return HdrifyImage
  *
  * @param exrBuffer - Uint8Array containing EXR file data
- * @returns Parsed EXR image data with dimensions and pixel data as FloatImageData
+ * @returns Parsed EXR image data with dimensions and pixel data as HdrifyImage
  */
-export function readExr(exrBuffer: Uint8Array): FloatImageData {
+export function readExr(exrBuffer: Uint8Array): HdrifyImage {
   const dataView = new DataView(exrBuffer.buffer, exrBuffer.byteOffset, exrBuffer.byteLength);
   const { header: parsedHeader, offset } = parseExrHeader(exrBuffer);
 

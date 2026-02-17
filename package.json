@@ -17,6 +17,7 @@
     "cloc": "npx cloc * --exclude-dir=node_modules,dist,.nx,.next,build",
     "make-release:hdrify": "node scripts/make-release.ts packages/hdrify",
     "make-release:hdrify-cli": "node scripts/make-release.ts packages/cli",
+    "make-release:hdrify-react": "node scripts/make-release.ts packages/hdrify-react",
     "hdrify": "node ./packages/cli/dist/index.js"
   },
   "devDependencies": {

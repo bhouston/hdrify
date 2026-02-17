@@ -1,4 +1,4 @@
-import { ensureNonNegativeFinite, type FloatImageData } from '../floatImage.js';
+import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { applyToneMapping } from '../tonemapping/applyToneMapping.js';
 import type { ToneMappingType } from '../tonemapping/types.js';
 
@@ -24,9 +24,9 @@ export interface ParseHDROptions {
  *
  * @param hdrBuffer - Uint8Array containing HDR file data
  * @param options - Parse options (headerStrict, output)
- * @returns Parsed HDR image data with dimensions and pixel data as FloatImageData
+ * @returns Parsed HDR image data with dimensions and pixel data as HdrifyImage
  */
-export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): FloatImageData {
+export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): HdrifyImage {
   const { headerStrict = true, output = 'raw' } = options;
 
   // Use Uint8Array for processing

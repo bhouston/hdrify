@@ -157,7 +157,7 @@ describe('writeJpegGainMap', () => {
 
   it('should produce valid adobe-gainmap format and round-trip', async () => {
     const { readJpegGainMap } = await import('./readJpegGainMap.js');
-    const { compareFloatImages } = await import('../synthetic/compareFloatImages.js');
+    const { compareImages } = await import('../synthetic/compareImages.js');
     const encodingResult = encodeGainMap(smallImage);
     const jpegAdobe = writeJpegGainMap(encodingResult, { format: 'adobe-gainmap', quality: 100 });
 
@@ -171,7 +171,7 @@ describe('writeJpegGainMap', () => {
     expect(decoded.height).toBe(smallImage.height);
     expect(decoded.metadata?.format).toBeDefined();
 
-    const result = compareFloatImages(smallImage, decoded, {
+    const result = compareImages(smallImage, decoded, {
       toleranceRelative: 0.005,
       toleranceAbsolute: 0.005,
     });

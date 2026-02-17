@@ -11,7 +11,7 @@ import type { LinearColorSpace } from '../color/colorSpaces.js';
 export interface ApplyToneMappingOptions {
   toneMapping?: ToneMappingType;
   exposure?: number;
-  /** EXR metadata (e.g. from FloatImageData.metadata) for color space validation */
+  /** EXR metadata (e.g. from HdrifyImage.metadata) for color space validation */
   metadata?: Record<string, unknown>;
   /** Source linear color space. When not linear-rec709, data is converted before tone mapping */
   sourceColorSpace?: LinearColorSpace;

@@ -7,7 +7,7 @@
  * Default size is 512×512 like other reference images.
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
 export interface CreateSdfGradientImageOptions {
   width: number;
@@ -15,10 +15,10 @@ export interface CreateSdfGradientImageOptions {
 }
 
 /**
- * Create a synthetic FloatImageData with a smooth circular gradient from top-left.
+ * Create a synthetic HdrifyImage with a smooth circular gradient from top-left.
  * White at (0,0), black at (width-1, height-1); gradient is linear in distance.
  */
-export function createSdfGradientImage(options: CreateSdfGradientImageOptions): FloatImageData {
+export function createSdfGradientImage(options: CreateSdfGradientImageOptions): HdrifyImage {
   const { width, height } = options;
 
   const data = new Float32Array(width * height * 4);

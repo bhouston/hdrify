@@ -1,10 +1,10 @@
 /**
- * Compare two FloatImageData images within a tolerance.
+ * Compare two HdrifyImage images within a tolerance.
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
-export interface CompareFloatImagesOptions {
+export interface CompareImagesOptions {
   /** Relative tolerance as decimal (e.g. 0.01 = 1% of reference value) */
   toleranceRelative?: number;
   /** Absolute tolerance for near-zero values */
@@ -21,7 +21,7 @@ export interface MismatchSample {
   actual: [number, number, number, number];
 }
 
-export interface CompareFloatImagesResult {
+export interface CompareImagesResult {
   match: boolean;
   /** Maximum absolute difference over all channels */
   maxAbsoluteDelta?: number;
@@ -39,13 +39,9 @@ const DEFAULT_TOLERANCE_ABSOLUTE = 1e-6;
 const SMALL_VALUE_THRESHOLD = 0.01;
 
 /**
- * Compare two FloatImageData images.
+ * Compare two HdrifyImage images.
  */
-export function compareFloatImages(
-  a: FloatImageData,
-  b: FloatImageData,
-  options?: CompareFloatImagesOptions,
-): CompareFloatImagesResult {
+export function compareImages(a: HdrifyImage, b: HdrifyImage, options?: CompareImagesOptions): CompareImagesResult {
   const toleranceRelative = options?.toleranceRelative ?? DEFAULT_TOLERANCE_RELATIVE;
   const toleranceAbsolute = options?.toleranceAbsolute ?? DEFAULT_TOLERANCE_ABSOLUTE;
   const maxSamples = options?.includeMismatchSamples ?? 0;
@@ -122,7 +118,7 @@ export function compareFloatImages(
 
   const rootMeanSquaredError = Math.sqrt(sumSquaredDiff / totalValues);
 
-  const result: CompareFloatImagesResult = {
+  const result: CompareImagesResult = {
     match: mismatchedPixels === 0,
     maxAbsoluteDelta,
     maxRelativeDelta,

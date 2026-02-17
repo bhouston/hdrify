@@ -1,4 +1,4 @@
-// FloatImageData - shared type
+// HdrifyImage - shared type
 
 export {
   CANVAS_DISPLAY_COLOR_SPACES,
@@ -34,7 +34,6 @@ export { linearTosRGB, sRGBToLinear } from './color/srgb.js';
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';
-export { ensureNonNegativeFinite, type FloatImageData } from './floatImage.js';
 export type { DecodeGainMapOptions } from './gainmap/decodeGainMap.js';
 // Gainmap
 export { decodeGainMap, decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';
@@ -62,14 +61,15 @@ export { writeGainMapAsSeparateFiles, writeJpegGainMap } from './gainmap/writeJp
 export type { HDRToLDROptions, ParseHDROptions } from './hdr/readHdr.js';
 export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
 export { writeHdr } from './hdr/writeHdr.js';
+export { ensureNonNegativeFinite, type HdrifyImage } from './hdrifyImage.js';
 export { addRangeMetadata } from './rangeMetadata.js';
 export type {
-  CompareFloatImagesOptions,
-  CompareFloatImagesResult,
+  CompareImagesOptions,
+  CompareImagesResult,
   MismatchSample,
-} from './synthetic/compareFloatImages.js';
+} from './synthetic/compareImages.js';
 // Synthetic test images
-export { compareFloatImages } from './synthetic/compareFloatImages.js';
+export { compareImages } from './synthetic/compareImages.js';
 export type {
   CieWedgeChannel,
   CreateCieColorWedgeImageOptions,

@@ -11,7 +11,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareFloatImages, convertLinearColorSpace, createCieColorWedgeImage, readHdr, writeHdr } from 'hdrify';
+import { compareImages, convertLinearColorSpace, createCieColorWedgeImage, readHdr, writeHdr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -30,12 +30,14 @@ const TOLERANCE = { toleranceRelative: 0.01, toleranceAbsolute: 0.01 };
  * Decode RGBE bytes to float using floor restoration (current reader formula).
  */
 function decodeRGBEFloor(source: Uint8Array, dest: Float32Array, sourceOffset: number, destOffset: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: index bounds-checked by sourceOffset
   const e = source[sourceOffset + 3]!;
   const scale = 2.0 ** (e - 128.0) / 255.0;
   dest[destOffset] = source[sourceOffset]! * scale;
   dest[destOffset + 1] = source[sourceOffset + 1]! * scale;
   dest[destOffset + 2] = source[sourceOffset + 2]! * scale;
   dest[destOffset + 3] = 1;
+  // biome-ignore-end lint/style/noNonNullAssertion: index bounds-checked by sourceOffset
 }
 
 /**
@@ -43,6 +45,7 @@ function decodeRGBEFloor(source: Uint8Array, dest: Float32Array, sourceOffset: n
  * Reduces error by ~2x vs floor (C. Bloom).
  */
 function decodeRGBEMidpoint(source: Uint8Array, dest: Float32Array, sourceOffset: number, destOffset: number): void {
+  // biome-ignore-start lint/style/noNonNullAssertion: index bounds-checked by sourceOffset
   const e = source[sourceOffset + 3]!;
   if (e === 0) {
     dest[destOffset] = 0;
@@ -56,14 +59,17 @@ function decodeRGBEMidpoint(source: Uint8Array, dest: Float32Array, sourceOffset
   dest[destOffset + 1] = (source[sourceOffset + 1]! + 0.5) * scale;
   dest[destOffset + 2] = (source[sourceOffset + 2]! + 0.5) * scale;
   dest[destOffset + 3] = 1;
+  // biome-ignore-end lint/style/noNonNullAssertion: index bounds-checked by sourceOffset
 }
 
 /** Extract raw RGBE pixel bytes (after header) from HDR buffer. Requires standard header. */
 function extractRGBEBytes(hdrBuffer: Uint8Array): { bytes: Uint8Array; width: number; height: number } {
   const str = new TextDecoder().decode(hdrBuffer);
   const resolutionMatch = str.match(/-Y\s+(\d+)\s+\+X\s+(\d+)/);
-  if (!resolutionMatch) throw new Error('Could not parse resolution');
+  if (!resolutionMatch || resolutionMatch.length < 3) throw new Error('Could not parse resolution');
+  // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by resolutionMatch
   const height = parseInt(resolutionMatch[1]!, 10);
+  // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by resolutionMatch
   const width = parseInt(resolutionMatch[2]!, 10);
 
   const resolutionStart = str.indexOf(resolutionMatch[0]);
@@ -105,12 +111,12 @@ describe('HDR banding diagnostic (writer vs reader)', () => {
     const decodedFloor = decodeImage(bytes, width, height, decodeRGBEFloor);
     const decodedMidpoint = decodeImage(bytes, width, height, decodeRGBEMidpoint);
 
-    const floorResult = compareFloatImages(
+    const floorResult = compareImages(
       expected,
       { width, height, data: decodedFloor, linearColorSpace: 'linear-rec709' },
       TOLERANCE,
     );
-    const midpointResult = compareFloatImages(
+    const midpointResult = compareImages(
       expected,
       { width, height, data: decodedMidpoint, linearColorSpace: 'linear-rec709' },
       TOLERANCE,
@@ -131,7 +137,7 @@ describe('HDR banding diagnostic (writer vs reader)', () => {
 
     const decodedMidpoint = decodeImage(bytes, width, height, decodeRGBEMidpoint);
 
-    const result = compareFloatImages(
+    const result = compareImages(
       fromReadHdr,
       { width, height, data: decodedMidpoint, linearColorSpace: 'linear-rec709' },
       { toleranceRelative: 0.0001, toleranceAbsolute: 1e-9 },

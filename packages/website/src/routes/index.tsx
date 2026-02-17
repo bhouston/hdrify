@@ -3,7 +3,6 @@ import { zodValidator } from '@tanstack/zod-adapter';
 import {
   addRangeMetadata,
   encodeGainMap,
-  type FloatImageData,
   readExr,
   readHdr,
   readJpegGainMap,
@@ -12,12 +11,11 @@ import {
   writeHdr,
   writeJpegGainMap,
 } from 'hdrify';
+import { HdrifyCanvas, type HdrifyImage } from 'hdrify-react';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-
-import { FloatImageCanvas } from '@/components/FloatImageCanvas';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
@@ -86,7 +84,7 @@ function downloadBlob(blob: Blob, filename: string) {
 function Index() {
   const navigate = useNavigate();
   const { image: imageParam } = Route.useSearch();
-  const [imageData, setImageData] = useState<FloatImageData | null>(null);
+  const [hdrifyImage, setHdrifyImage] = useState<HdrifyImage | null>(null);
   const [exposure, setExposure] = useState(1.0);
   const [displayMode, setDisplayMode] = useState<ToneMappingType>('neutral');
   const [isDragging, setIsDragging] = useState(false);
@@ -103,7 +101,7 @@ function Index() {
         const buffer = new Uint8Array(arrayBuffer);
 
         const ext = file.name.toLowerCase().split('.').pop();
-        let parsed: FloatImageData;
+        let parsed: HdrifyImage;
 
         if (ext === 'exr') {
           parsed = readExr(buffer);
@@ -116,7 +114,7 @@ function Index() {
           return;
         }
 
-        setImageData(parsed);
+        setHdrifyImage(parsed);
         setSourceFileName(file.name);
         setSelectedExampleUrl('');
         void navigate({ to: '.', search: {} as IndexSearch });
@@ -136,7 +134,7 @@ function Index() {
       const arrayBuffer = await res.arrayBuffer();
       const buffer = new Uint8Array(arrayBuffer);
       const ext = url.toLowerCase().split('.').pop() ?? '';
-      let parsed: FloatImageData;
+      let parsed: HdrifyImage;
       if (ext === 'exr') {
         parsed = readExr(buffer);
       } else if (ext === 'hdr') {
@@ -147,7 +145,7 @@ function Index() {
         toast.error('Unsupported format. Example must be .exr, .hdr, or .jpg (gain map).');
         return;
       }
-      setImageData(parsed);
+      setHdrifyImage(parsed);
       setSourceFileName(url.split('/').pop() ?? '');
       setSelectedExampleUrl(url);
       toast.success('Example loaded');
@@ -204,30 +202,30 @@ function Index() {
   }, []);
 
   const handleDownloadExr = useCallback(() => {
-    if (!imageData) return;
-    const bytes = writeExr(imageData);
+    if (!hdrifyImage) return;
+    const bytes = writeExr(hdrifyImage);
     const blob = new Blob([bytes], { type: 'image/x-exr' });
     downloadBlob(blob, 'image.exr');
-  }, [imageData]);
+  }, [hdrifyImage]);
 
   const handleDownloadHdr = useCallback(() => {
-    if (!imageData) return;
-    const bytes = writeHdr(imageData);
+    if (!hdrifyImage) return;
+    const bytes = writeHdr(hdrifyImage);
     const blob = new Blob([bytes], { type: 'image/vnd.radiance' });
     downloadBlob(blob, 'image.hdr');
-  }, [imageData]);
+  }, [hdrifyImage]);
 
   const handleDownloadJpegR = useCallback(() => {
-    if (!imageData) return;
+    if (!hdrifyImage) return;
     try {
-      const encoding = encodeGainMap(imageData, { toneMapping: displayMode });
+      const encoding = encodeGainMap(hdrifyImage, { toneMapping: displayMode });
       const bytes = writeJpegGainMap(encoding, { quality: 90 });
       const blob = new Blob([bytes], { type: 'image/jpeg' });
       downloadBlob(blob, 'image.jpg');
     } catch (err) {
       toast.error(`Failed to create Ultra HDR JPEG: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [imageData, displayMode]);
+  }, [hdrifyImage, displayMode]);
 
   const handleDownloadWebP = useCallback(() => {
     const canvas = ldrCanvasRef.current;
@@ -308,7 +306,7 @@ function Index() {
       </div>
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         {/* Tone controls above image — horizontal exposure */}
-        {imageData && (
+        {hdrifyImage && (
           <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
             <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
             <span className="text-xs font-medium text-muted-foreground">Exposure</span>
@@ -359,14 +357,14 @@ function Index() {
             ref={fileInputRef}
             type="file"
           />
-          {imageData ? (
+          {hdrifyImage ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4">
               <div className="flex min-h-0 flex-1 items-center justify-center">
-                <FloatImageCanvas
+                <HdrifyCanvas
                   className="max-h-full max-w-full rounded object-contain"
                   exposure={exposure}
                   forwardedRef={ldrCanvasRef}
-                  imageData={imageData}
+                  hdrifyImage={hdrifyImage}
                   toneMapping={displayMode}
                 />
               </div>
@@ -386,7 +384,7 @@ function Index() {
         </button>
 
         {/* Below image: Info (left) + Download (right) in two columns */}
-        {imageData && (
+        {hdrifyImage && (
           <div className="grid w-full grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium text-muted-foreground">Info</span>
@@ -401,30 +399,30 @@ function Index() {
                 )}
                 <div className="flex justify-between gap-4">
                   <dt className="text-foreground">Width</dt>
-                  <dd>{imageData.width}</dd>
+                  <dd>{hdrifyImage.width}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-foreground">Height</dt>
-                  <dd>{imageData.height}</dd>
+                  <dd>{hdrifyImage.height}</dd>
                 </div>
-                {imageData.metadata?.compression != null && (
+                {hdrifyImage.metadata?.compression != null && (
                   <div className="flex justify-between gap-4">
                     <dt className="text-foreground">Compression</dt>
                     <dd>
-                      {EXR_COMPRESSION_NAMES[imageData.metadata.compression as number] ??
-                        `unknown (${imageData.metadata.compression})`}
+                      {EXR_COMPRESSION_NAMES[hdrifyImage.metadata.compression as number] ??
+                        `unknown (${hdrifyImage.metadata.compression})`}
                     </dd>
                   </div>
                 )}
-                {imageData.metadata?.format != null &&
-                  (imageData.metadata.format === 'ultrahdr' || imageData.metadata.format === 'adobe-gainmap') && (
+                {hdrifyImage.metadata?.format != null &&
+                  (hdrifyImage.metadata.format === 'ultrahdr' || hdrifyImage.metadata.format === 'adobe-gainmap') && (
                     <div className="flex justify-between gap-4">
                       <dt className="text-foreground">Gain map format</dt>
-                      <dd>{imageData.metadata.format === 'ultrahdr' ? 'Ultra HDR (JPEG-R)' : 'Adobe gain map'}</dd>
+                      <dd>{hdrifyImage.metadata.format === 'ultrahdr' ? 'Ultra HDR (JPEG-R)' : 'Adobe gain map'}</dd>
                     </div>
                   )}
                 {(() => {
-                  const rangeMeta = addRangeMetadata(imageData);
+                  const rangeMeta = addRangeMetadata(hdrifyImage);
                   const min = rangeMeta.MIN_VALUE as [number, number, number];
                   const max = rangeMeta.MAX_VALUE as [number, number, number];
                   return (

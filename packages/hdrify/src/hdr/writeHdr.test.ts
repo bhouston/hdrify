@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { readHdr } from './readHdr.js';
 import { writeHdr } from './writeHdr.js';
 
 describe('hdrWriter', () => {
   describe('writeHdr', () => {
-    it('should write HDR file from FloatImageData', () => {
-      const floatImageData: FloatImageData = {
+    it('should write HDR file from HdrifyImage', () => {
+      const hdrifyImage: HdrifyImage = {
         width: 2,
         height: 2,
         linearColorSpace: 'linear-rec709',
@@ -31,21 +31,21 @@ describe('hdrWriter', () => {
         ]),
       };
 
-      const writtenHdrBuffer = writeHdr(floatImageData);
+      const writtenHdrBuffer = writeHdr(hdrifyImage);
 
       expect(writtenHdrBuffer).toBeInstanceOf(Uint8Array);
       expect(writtenHdrBuffer.length).toBeGreaterThan(0);
     });
 
     it('should write HDR file with correct header', () => {
-      const floatImageData: FloatImageData = {
+      const hdrifyImage: HdrifyImage = {
         width: 10,
         height: 20,
         linearColorSpace: 'linear-rec709',
         data: new Float32Array(10 * 20 * 4).fill(0.5),
       };
 
-      const writtenHdrBuffer = writeHdr(floatImageData);
+      const writtenHdrBuffer = writeHdr(hdrifyImage);
       const header = new TextDecoder().decode(writtenHdrBuffer.subarray(0, 200));
 
       expect(header).toContain('#?RADIANCE');
@@ -72,20 +72,20 @@ describe('hdrWriter', () => {
           data[i + 3] = 1.0; // A
         }
 
-        const floatImageData: FloatImageData = {
+        const hdrifyImage: HdrifyImage = {
           width: size.width,
           height: size.height,
           linearColorSpace: 'linear-rec709',
           data,
         };
 
-        const writtenHdrBuffer = writeHdr(floatImageData);
+        const writtenHdrBuffer = writeHdr(hdrifyImage);
         expect(writtenHdrBuffer.length).toBeGreaterThan(0);
       }
     });
 
     it('should round-trip HDR file (write then read)', () => {
-      const originalData: FloatImageData = {
+      const originalData: HdrifyImage = {
         width: 4,
         height: 4,
         linearColorSpace: 'linear-rec709',
@@ -115,7 +115,7 @@ describe('hdrWriter', () => {
     });
 
     /** Build 0..10 single-channel R gradient (1001 steps) for round-trip tests */
-    function buildGradient010(): FloatImageData {
+    function buildGradient010(): HdrifyImage {
       const steps = 1001;
       const data = new Float32Array(steps * 4);
       for (let i = 0; i < steps; i++) {
@@ -130,7 +130,7 @@ describe('hdrWriter', () => {
     }
 
     function roundTripErrors(
-      original: FloatImageData,
+      original: HdrifyImage,
       buffer: Uint8Array,
     ): { value: number; decoded: number; relErr: number }[] {
       const decoded = readHdr(buffer);

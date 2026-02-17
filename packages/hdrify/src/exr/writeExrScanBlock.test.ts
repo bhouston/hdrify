@@ -3,12 +3,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { FLOAT32_SIZE, NO_COMPRESSION } from './exrConstants.js';
 import { DEFAULT_CHANNELS } from './exrHeaderBuilder.js';
 import { writeExrScanBlock } from './writeExrScanBlock.js';
 
-function createTestImage(width: number, height: number): FloatImageData {
+function createTestImage(width: number, height: number): HdrifyImage {
   const data = new Float32Array(width * height * 4);
   for (let i = 0; i < width * height; i++) {
     data[i * 4] = i / (width * height); // R
@@ -23,7 +23,7 @@ describe('writeExrScanBlock', () => {
   it('produces correct block layout for 1x1 image', () => {
     const img = createTestImage(1, 1);
     const block = writeExrScanBlock({
-      floatImageData: img,
+      hdrifyImage: img,
       firstLineY: 0,
       lineCount: 1,
       compression: NO_COMPRESSION,
@@ -43,7 +43,7 @@ describe('writeExrScanBlock', () => {
   it('produces correct block layout for 2x2 image, first line', () => {
     const img = createTestImage(2, 2);
     const block = writeExrScanBlock({
-      floatImageData: img,
+      hdrifyImage: img,
       firstLineY: 0,
       lineCount: 1,
       compression: NO_COMPRESSION,
@@ -71,7 +71,7 @@ describe('writeExrScanBlock', () => {
   it('produces correct block for second scan line', () => {
     const img = createTestImage(2, 2);
     const block = writeExrScanBlock({
-      floatImageData: img,
+      hdrifyImage: img,
       firstLineY: 1,
       lineCount: 1,
       compression: NO_COMPRESSION,
@@ -88,7 +88,7 @@ describe('writeExrScanBlock', () => {
     const img = createTestImage(1, 1);
     expect(() =>
       writeExrScanBlock({
-        floatImageData: img,
+        hdrifyImage: img,
         firstLineY: 0,
         lineCount: 1,
         compression: 6, // B44 - not implemented

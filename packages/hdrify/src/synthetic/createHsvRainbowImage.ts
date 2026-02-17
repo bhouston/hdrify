@@ -8,7 +8,7 @@
  * - Intensity: multiplies RGB output for HDR (SDR -> HDR conversion)
  */
 
-import type { FloatImageData } from '../floatImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 
 export interface CreateHsvRainbowImageOptions {
   width: number;
@@ -70,9 +70,9 @@ function hsvToRgb(h: number, s: number, v: number): { r: number; g: number; b: n
 }
 
 /**
- * Create a synthetic FloatImageData with HSV rainbow layout.
+ * Create a synthetic HdrifyImage with HSV rainbow layout.
  */
-export function createHsvRainbowImage(options: CreateHsvRainbowImageOptions): FloatImageData {
+export function createHsvRainbowImage(options: CreateHsvRainbowImageOptions): HdrifyImage {
   const { width, height, value, intensity } = options;
 
   const data = new Float32Array(width * height * 4);

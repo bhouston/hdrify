@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { FloatImageData } from 'hdrify';
+import type { HdrifyImage } from 'hdrify';
 import {
   convertLinearColorSpace,
   createCieColorWedgeImage,
@@ -76,7 +76,7 @@ export const command = defineCommand({
     }
 
     try {
-      let imageData: FloatImageData;
+      let imageData: HdrifyImage;
       if (type === 'cie-wedge' || type === 'cie-wedge-r' || type === 'cie-wedge-g' || type === 'cie-wedge-b') {
         const channel =
           type === 'cie-wedge-r' ? 'r' : type === 'cie-wedge-g' ? 'g' : type === 'cie-wedge-b' ? 'b' : undefined;

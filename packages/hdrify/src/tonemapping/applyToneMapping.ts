@@ -1,6 +1,6 @@
 import { convertFloat32ToLinearColorSpace } from '../color/convert.js';
 import { linearTosRGB } from '../color/srgb.js';
-import { ensureNonNegativeFinite } from '../floatImage.js';
+import { ensureNonNegativeFinite } from '../hdrifyImage.js';
 import { getToneMapping } from './mappers.js';
 import type { ApplyToneMappingOptions, ToneMappingType } from './types.js';
 import { validateToneMappingColorSpaceFromMetadata } from './validateColorSpace.js';

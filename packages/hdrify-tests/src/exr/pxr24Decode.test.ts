@@ -6,8 +6,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { CompareFloatImagesResult, FloatImageData, MismatchSample } from 'hdrify';
-import { compareFloatImages, readExr } from 'hdrify';
+import type { CompareImagesResult, HdrifyImage, MismatchSample } from 'hdrify';
+import { compareImages, readExr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,7 +20,7 @@ const exampleZipPath = path.join(assetsDir, 'example_zip.exr');
 // Half-float decode can differ slightly from float reference; allow small absolute tolerance.
 const TOLERANCE = { toleranceRelative: 0.01, toleranceAbsolute: 0.0001, includeMismatchSamples: 15 };
 
-function formatPixel(x: number, y: number, img: FloatImageData): string {
+function formatPixel(x: number, y: number, img: HdrifyImage): string {
   const i = (y * img.width + x) * 4;
   const r = img.data[i] ?? 0;
   const g = img.data[i + 1] ?? 0;
@@ -29,11 +29,7 @@ function formatPixel(x: number, y: number, img: FloatImageData): string {
   return `(${x},${y}) RGBA=[${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)}, ${a.toFixed(4)}]`;
 }
 
-function formatDiagnostics(
-  result: CompareFloatImagesResult,
-  reference: FloatImageData,
-  parsed: FloatImageData,
-): string {
+function formatDiagnostics(result: CompareImagesResult, reference: HdrifyImage, parsed: HdrifyImage): string {
   const w = reference.width;
   const h = reference.height;
   const lines: string[] = [
@@ -75,7 +71,7 @@ describe('PXR24 decode vs ground truth (example_zip.exr)', () => {
     expect(decodedPxr24.width).toBe(reference.width);
     expect(decodedPxr24.height).toBe(reference.height);
 
-    const result = compareFloatImages(reference, decodedPxr24, TOLERANCE);
+    const result = compareImages(reference, decodedPxr24, TOLERANCE);
 
     if (!result.match) {
       const msg = formatDiagnostics(result, reference, decodedPxr24);
