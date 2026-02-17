@@ -36,7 +36,11 @@ export function decodeGainMapCpu(
   const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
-  const unclampedWeight = (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
+  const capacityRange = hdrCapacityMax - hdrCapacityMin;
+  const unclampedWeight =
+    capacityRange <= 0
+      ? 1
+      : (Math.log2(maxDisplayBoost) - hdrCapacityMin) / capacityRange;
   const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
 
   const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]] as [number, number, number];
@@ -103,7 +107,11 @@ export function decodeGainMapFromFloat(
   const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
   const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
-  const unclampedWeight = (Math.log2(maxDisplayBoost) - hdrCapacityMin) / (hdrCapacityMax - hdrCapacityMin);
+  const capacityRange = hdrCapacityMax - hdrCapacityMin;
+  const unclampedWeight =
+    capacityRange <= 0
+      ? 1
+      : (Math.log2(maxDisplayBoost) - hdrCapacityMin) / capacityRange;
   const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
 
   const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]] as [number, number, number];

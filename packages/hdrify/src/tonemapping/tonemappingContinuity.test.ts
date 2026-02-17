@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createGradientImage } from '../synthetic/createGradientImage.js';
 import { applyToneMapping } from './applyToneMapping.js';
 
-/** Adjacent pixel difference tolerance (8-bit + gamma can produce larger steps in steep regions) */
-const CONTINUITY_TOLERANCE = 60;
+/** Adjacent pixel difference tolerance: 5% of 8-bit range (255). */
+const CONTINUITY_TOLERANCE = Math.ceil(0.05 * 255); // 13
 
 describe('tonemapping continuity', () => {
   it('preserves continuity for horizontal gradient 0→1 with ACES', () => {
@@ -33,11 +33,12 @@ describe('tonemapping continuity', () => {
   it('preserves continuity for gradient 0→10 with Reinhard', () => {
     const img = createGradientImage({ width: 256, height: 1, mode: 'horizontal', min: 0, max: 10 });
     const result = applyToneMapping(img.data, img.width, img.height, { toneMapping: 'reinhard' });
-
+    // High DR (0→10) compresses into 0–255 so adjacent steps can exceed 5%; allow ~25% for this case
+    const highDrTolerance = Math.ceil(0.25 * 255);
     for (let i = 0; i < 255; i++) {
       for (let c = 0; c < 3; c++) {
         const diff = Math.abs((result[i * 3 + c] ?? 0) - (result[(i + 1) * 3 + c] ?? 0));
-        expect(diff).toBeLessThanOrEqual(CONTINUITY_TOLERANCE);
+        expect(diff).toBeLessThanOrEqual(highDrTolerance);
       }
     }
   });
@@ -80,8 +81,8 @@ describe('tonemapping continuity', () => {
 });
 
 describe('ACES pure white neutrality', () => {
-  /** ACES color space transform introduces channel differences for neutral input; document current behavior */
-  const NEUTRALITY_TOLERANCE = 130;
+  /** Neutral (gray) input: R,G,B should match within 5% of 8-bit range. */
+  const NEUTRALITY_TOLERANCE = Math.ceil(0.05 * 255); // 13
 
   it('produces neutral output for (1,1,1)', () => {
     const hdrData = new Float32Array([1, 1, 1, 1]);

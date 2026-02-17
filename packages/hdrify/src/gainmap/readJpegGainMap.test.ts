@@ -18,7 +18,7 @@ describe('readJpegGainMap', () => {
       max: 2,
     });
     const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
-    const jpegBuffer = writeJpegGainMap(encoding, { quality: 95 });
+    const jpegBuffer = writeJpegGainMap(encoding, { quality: 100 });
     const decoded = readJpegGainMap(jpegBuffer);
 
     expect(decoded.width).toBe(original.width);
@@ -26,7 +26,7 @@ describe('readJpegGainMap', () => {
     expect(decoded.metadata?.format).toBeDefined();
 
     const result = compareFloatImages(original, decoded, {
-      tolerancePercent: 0.25,
+      tolerancePercent: 0.05,
       toleranceAbsolute: 0.05,
     });
     expect(result.match, `Round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`).toBe(

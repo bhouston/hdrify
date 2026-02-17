@@ -18,7 +18,8 @@
     "make-release:hdrify": "node scripts/make-release.ts packages/hdrify",
     "make-release:hdrify-cli": "node scripts/make-release.ts packages/cli",
     "hdrify": "pnpm tsgo && node ./packages/cli/dist/index.js",
-    "generate:cie": "pnpm build && pnpm hdrify reference assets/example_cie.exr --type cie-wedge"
+    "generate:cie": "pnpm build && mkdir -p assets && pnpm hdrify reference assets/reference_cie.exr --type cie-wedge && pnpm hdrify reference assets/reference_cie.hdr --type cie-wedge && pnpm hdrify convert assets/reference_cie.exr assets/reference_cie.jpg && rm -f assets/example_cie.exr",
+    "generate:gradient": "pnpm build && mkdir -p assets && pnpm hdrify reference assets/reference_gradient.exr --type gradient && pnpm hdrify reference assets/reference_gradient.hdr --type gradient && pnpm hdrify convert assets/reference_gradient.exr assets/reference_gradient.jpg && rm -f assets/gradient.exr assets/gradient.hdr"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.4",

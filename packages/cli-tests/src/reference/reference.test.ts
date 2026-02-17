@@ -156,4 +156,28 @@ describe('CLI reference command', () => {
       expect(meta.height).toBe(32);
     });
   });
+
+  describe('gradient type', () => {
+    it('creates valid EXR with default 512x512', async () => {
+      const output = path.join(tempDir, 'grad.exr');
+      const result = runCli(['reference', output, '--type', 'gradient']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateExrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+
+    it('creates valid HDR', async () => {
+      const output = path.join(tempDir, 'grad.hdr');
+      const result = runCli(['reference', output, '--type', 'gradient']);
+
+      expect(result.exitCode).toBe(0);
+      expect(fs.existsSync(output)).toBe(true);
+      const meta = await validateHdrOutput(output);
+      expect(meta.width).toBe(512);
+      expect(meta.height).toBe(512);
+    });
+  });
 });

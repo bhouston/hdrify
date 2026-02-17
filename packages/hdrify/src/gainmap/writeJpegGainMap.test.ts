@@ -159,7 +159,7 @@ describe('writeJpegGainMap', () => {
     const { readJpegGainMap } = await import('./readJpegGainMap.js');
     const { compareFloatImages } = await import('../synthetic/compareFloatImages.js');
     const encodingResult = encodeGainMap(smallImage);
-    const jpegAdobe = writeJpegGainMap(encodingResult, { format: 'adobe-gainmap', quality: 95 });
+    const jpegAdobe = writeJpegGainMap(encodingResult, { format: 'adobe-gainmap', quality: 100 });
 
     expect(jpegAdobe).toBeInstanceOf(Uint8Array);
     expect(jpegAdobe.length).toBeGreaterThan(100);
@@ -172,7 +172,7 @@ describe('writeJpegGainMap', () => {
     expect(decoded.metadata?.format).toBeDefined();
 
     const result = compareFloatImages(smallImage, decoded, {
-      tolerancePercent: 0.25,
+      tolerancePercent: 0.05,
       toleranceAbsolute: 0.05,
     });
     expect(

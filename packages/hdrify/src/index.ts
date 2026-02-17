@@ -76,6 +76,8 @@ export type { CreateGradientImageOptions, GradientChannel, GradientMode } from '
 export { createGradientImage } from './synthetic/createGradientImage.js';
 export type { CreateHsvRainbowImageOptions } from './synthetic/createHsvRainbowImage.js';
 export { createHsvRainbowImage } from './synthetic/createHsvRainbowImage.js';
+export type { CreateSdfGradientImageOptions } from './synthetic/createSdfGradientImage.js';
+export { createSdfGradientImage } from './synthetic/createSdfGradientImage.js';
 export { applyToneMapping } from './tonemapping/applyToneMapping.js';
 export { getToneMapping } from './tonemapping/mappers.js';
 export type { ApplyToneMappingOptions, ToneMappingBatchFn, ToneMappingType } from './tonemapping/types.js';

@@ -62,8 +62,8 @@ function hasSecondaryXmpStructure(xml: string): boolean {
   );
 }
 
-/** Round-trip tolerance: 8-bit + gain map clamping + JPEG loss (memorial has high DR). */
-const TOLERANCE_ROUNDTRIP = { tolerancePercent: 1, toleranceAbsolute: 0.01 };
+/** Round-trip tolerance: target 5%. */
+const TOLERANCE_ROUNDTRIP = { tolerancePercent: 0.05, toleranceAbsolute: 0.01 };
 
 describe('readJpegGainMap', () => {
   describe('throw when no gain map data', () => {
@@ -99,7 +99,7 @@ describe('readJpegGainMap', () => {
 
       const original = readExr(toUint8Array(fs.readFileSync(memorialExr)));
       const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
-      const generatedJpeg = writeJpegGainMap(encoding, { quality: 95 });
+      const generatedJpeg = writeJpegGainMap(encoding, { quality: 100 });
       const genBlocks = extractXmpBlocks(generatedJpeg);
       expect(genBlocks.length).toBeGreaterThanOrEqual(2);
       const genPrimary = genBlocks.find(hasPrimaryXmpStructure);
@@ -118,7 +118,7 @@ describe('readJpegGainMap', () => {
 
       const original = readExr(toUint8Array(fs.readFileSync(memorialExr)));
       const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
-      const generatedJpeg = writeJpegGainMap(encoding, { quality: 95 });
+      const generatedJpeg = writeJpegGainMap(encoding, { quality: 100 });
       const genProfile = extractIccProfileFromJpeg(generatedJpeg);
       expect(genProfile, 'generated Ultra HDR JPEG should have an embedded ICC profile').not.toBeNull();
       if (!genProfile) return;
@@ -134,11 +134,11 @@ describe('readJpegGainMap', () => {
     it('EXR → gain map → read that gain map → encode → write → read again: second read matches first read within 5%', () => {
       const original = readExr(toUint8Array(fs.readFileSync(memorialExr)));
       const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
-      const jpegBuffer = writeJpegGainMap(encoding, { quality: 95 });
+      const jpegBuffer = writeJpegGainMap(encoding, { quality: 100 });
 
       const firstRead = readJpegGainMap(jpegBuffer);
       const reEncode = encodeGainMap(firstRead, { toneMapping: 'reinhard' });
-      const jpegBuffer2 = writeJpegGainMap(reEncode, { quality: 95 });
+      const jpegBuffer2 = writeJpegGainMap(reEncode, { quality: 100 });
       const secondRead = readJpegGainMap(jpegBuffer2);
 
       const result = compareFloatImages(firstRead, secondRead, TOLERANCE_ROUNDTRIP);
@@ -153,7 +153,7 @@ describe('readJpegGainMap', () => {
     it('load memorial.exr, encode to gain map, write, read back; decoded matches original EXR within tolerance', () => {
       const original = readExr(toUint8Array(fs.readFileSync(memorialExr)));
       const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
-      const jpegBuffer = writeJpegGainMap(encoding, { quality: 95 });
+      const jpegBuffer = writeJpegGainMap(encoding, { quality: 100 });
       const decoded = readJpegGainMap(jpegBuffer);
 
       const result = compareFloatImages(original, decoded, TOLERANCE_ROUNDTRIP);

@@ -113,7 +113,12 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   maxContentBoost = Math.max(maxContentBoost, 1.0001);
   const minContentBoost = options.minContentBoost ?? 1;
   const minLog2 = Math.log2(minContentBoost);
-  const maxLog2 = Math.log2(maxContentBoost);
+  let maxLog2 = Math.log2(maxContentBoost);
+  const logRange = maxLog2 - minLog2;
+  if (logRange <= 0) {
+    maxLog2 = minLog2 + 1e-6;
+  }
+  const invLogRange = 1 / (maxLog2 - minLog2);
 
   const sdr = new Uint8ClampedArray(totalPixels * 4);
   const gainMap = new Uint8ClampedArray(totalPixels * 4);
@@ -155,9 +160,9 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
     const pixelGainG = hdrG / sdrLinG;
     const pixelGainB = hdrB / sdrLinB;
 
-    const logRecoveryR = (Math.log2(pixelGainR) - minLog2) / (maxLog2 - minLog2);
-    const logRecoveryG = (Math.log2(pixelGainG) - minLog2) / (maxLog2 - minLog2);
-    const logRecoveryB = (Math.log2(pixelGainB) - minLog2) / (maxLog2 - minLog2);
+    const logRecoveryR = (Math.log2(pixelGainR) - minLog2) * invLogRange;
+    const logRecoveryG = (Math.log2(pixelGainG) - minLog2) * invLogRange;
+    const logRecoveryB = (Math.log2(pixelGainB) - minLog2) * invLogRange;
 
     const clampedR = Math.max(0, Math.min(1, logRecoveryR));
     const clampedG = Math.max(0, Math.min(1, logRecoveryG));
@@ -242,8 +247,13 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
   }
   maxContentBoostFloat = Math.max(maxContentBoostFloat, 1.0001);
   const minContentBoost = options.minContentBoost ?? 1;
-  const minLog2 = Math.log2(minContentBoost);
-  const maxLog2 = Math.log2(maxContentBoostFloat);
+  const minLog2Float = Math.log2(minContentBoost);
+  let maxLog2Float = Math.log2(maxContentBoostFloat);
+  const logRangeFloat = maxLog2Float - minLog2Float;
+  if (logRangeFloat <= 0) {
+    maxLog2Float = minLog2Float + 1e-6;
+  }
+  const invLogRangeFloat = 1 / (maxLog2Float - minLog2Float);
 
   const sdrFloat = new Float32Array(totalPixels * 4);
   const gainMapFloat = new Float32Array(totalPixels * 4);
@@ -283,9 +293,9 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
     const pixelGainG = hdrG / sdrLinG;
     const pixelGainB = hdrB / sdrLinB;
 
-    const logRecoveryR = (Math.log2(pixelGainR) - minLog2) / (maxLog2 - minLog2);
-    const logRecoveryG = (Math.log2(pixelGainG) - minLog2) / (maxLog2 - minLog2);
-    const logRecoveryB = (Math.log2(pixelGainB) - minLog2) / (maxLog2 - minLog2);
+    const logRecoveryR = (Math.log2(pixelGainR) - minLog2Float) * invLogRangeFloat;
+    const logRecoveryG = (Math.log2(pixelGainG) - minLog2Float) * invLogRangeFloat;
+    const logRecoveryB = (Math.log2(pixelGainB) - minLog2Float) * invLogRangeFloat;
 
     const clampedR = Math.max(0, Math.min(1, logRecoveryR));
     const clampedG = Math.max(0, Math.min(1, logRecoveryG));
@@ -298,27 +308,27 @@ export function encodeGainMapToFloat(image: FloatImageData, options: GainMapEnco
   }
   // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
 
-  const gainMapMinLog = [minLog2, minLog2, minLog2] as [number, number, number];
-  const gainMapMaxLog = [maxLog2, maxLog2, maxLog2] as [number, number, number];
-  const hdrCapacityMin = Math.min(
-    Math.max(0, gainMapMinLog[0]),
-    Math.max(0, gainMapMinLog[1]),
-    Math.max(0, gainMapMinLog[2]),
+  const gainMapMinLogFloat = [minLog2Float, minLog2Float, minLog2Float] as [number, number, number];
+  const gainMapMaxLogFloat = [maxLog2Float, maxLog2Float, maxLog2Float] as [number, number, number];
+  const hdrCapacityMinFloat = Math.min(
+    Math.max(0, gainMapMinLogFloat[0]),
+    Math.max(0, gainMapMinLogFloat[1]),
+    Math.max(0, gainMapMinLogFloat[2]),
   );
-  const hdrCapacityMax = Math.max(
-    Math.max(0, gainMapMaxLog[0]),
-    Math.max(0, gainMapMaxLog[1]),
-    Math.max(0, gainMapMaxLog[2]),
+  const hdrCapacityMaxFloat = Math.max(
+    Math.max(0, gainMapMaxLogFloat[0]),
+    Math.max(0, gainMapMaxLogFloat[1]),
+    Math.max(0, gainMapMaxLogFloat[2]),
   );
 
   const metadata: GainMapMetadata = {
     gamma,
     offsetSdr,
     offsetHdr,
-    gainMapMin: gainMapMinLog,
-    gainMapMax: gainMapMaxLog,
-    hdrCapacityMin,
-    hdrCapacityMax,
+    gainMapMin: gainMapMinLogFloat,
+    gainMapMax: gainMapMaxLogFloat,
+    hdrCapacityMin: hdrCapacityMinFloat,
+    hdrCapacityMax: hdrCapacityMaxFloat,
   };
 
   return {

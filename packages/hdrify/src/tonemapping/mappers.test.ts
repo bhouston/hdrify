@@ -100,7 +100,8 @@ describe('acesFilmic neutrality (low-level)', () => {
 });
 
 const HUE_NEUTRAL_TOLERANCE = 1e-2;
-const HUE_NEUTRAL_TOLERANCE_AGX = 0.65;
+/** 5% in 0–1 output (neutral input should keep R≈G≈B). */
+const HUE_NEUTRAL_TOLERANCE_AGX = 0.05;
 
 function assertNeutral(
   mapper: ToneMappingBatchFn,
