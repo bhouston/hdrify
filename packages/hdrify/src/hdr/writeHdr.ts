@@ -62,31 +62,37 @@ export function writeHdr(floatImageData: FloatImageData): Uint8Array {
  * @returns RGBE values as bytes
  */
 function floatToRGBE(r: number, g: number, b: number): { r: number; g: number; b: number; e: number } {
-  // Find the maximum of the three values
+  // Shared exponent: scale is determined by the largest channel so all three mantissas use the same factor
   const max = Math.max(r, g, b);
 
   if (max < 1e-32) {
-    // All values are essentially zero
     return { r: 0, g: 0, b: 0, e: 0 };
   }
 
-  // Normalize and find exponent
-  // We want to represent the value as mantissa * 2^exponent
-  // The exponent is stored as E - 128, so E = 128 + exponent
-  let exponent = Math.floor(Math.log2(max)) + 128;
-  if (exponent < 128) {
-    exponent = 128;
-  } else if (exponent > 255) {
-    exponent = 255;
+  // Exponent from largest channel so factor >= max and (max/factor)*255 fits in [0,255]
+  let exponent = Math.ceil(Math.log2(max)) + 128;
+  if (exponent < 128) exponent = 128;
+  else if (exponent > 255) exponent = 255;
+
+  let factor = 2 ** (exponent - 128);
+
+  // Mantissas: same scale for R,G,B; decode is (byte+0.5)*factor/255 so encode byte = round(v*255/factor - 0.5)
+  const toMantissa = (v: number, f: number) => Math.round((v / f) * 255 - 0.5);
+
+  let re = toMantissa(r, factor);
+  let ge = toMantissa(g, factor);
+  let be = toMantissa(b, factor);
+
+  // Quantization-aware: if the largest channel's rounded mantissa exceeds 255, bump exponent and recompute
+  const maxMantissa = Math.max(re, ge, be);
+  if (maxMantissa > 255 && exponent < 255) {
+    exponent += 1;
+    factor = 2 ** (exponent - 128);
+    re = toMantissa(r, factor);
+    ge = toMantissa(g, factor);
+    be = toMantissa(b, factor);
   }
 
-  // Calculate mantissa (multiply by 2^(128-exponent) and scale to 0-255)
-  const factor = 2 ** (exponent - 128);
-  const re = Math.floor((r / factor) * 255 + 0.5);
-  const ge = Math.floor((g / factor) * 255 + 0.5);
-  const be = Math.floor((b / factor) * 255 + 0.5);
-
-  // Clamp to valid range
   return {
     r: Math.max(0, Math.min(255, re)),
     g: Math.max(0, Math.min(255, ge)),

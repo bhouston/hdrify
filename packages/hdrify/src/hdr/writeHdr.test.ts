@@ -113,5 +113,50 @@ describe('hdrWriter', () => {
       // Note: parse-hdr may return RGB data, not RGBA, so we check for at least RGB
       expect(parsedData.data.length).toBeGreaterThanOrEqual(originalData.width * originalData.height * 3);
     });
+
+    it('RGBE round-trip: values 0 to 10 in 0.01 steps (R channel only) within 8%', () => {
+      // Single-channel gradient to isolate encode/decode for values > 1 (where banding was observed).
+      // RGBE has 8-bit mantissa per channel; worst-case relative error at exponent boundaries can reach ~8%.
+      const steps = 1001; // 0, 0.01, 0.02, ..., 10.0
+      const width = steps;
+      const height = 1;
+      const data = new Float32Array(width * height * 4);
+      for (let i = 0; i < steps; i++) {
+        const value = (i / (steps - 1)) * 10; // 0 to 10 inclusive
+        const idx = i * 4;
+        data[idx] = value; // R only
+        data[idx + 1] = 0;
+        data[idx + 2] = 0;
+        data[idx + 3] = 1;
+      }
+      const original: FloatImageData = {
+        width,
+        height,
+        linearColorSpace: 'linear-rec709',
+        data,
+      };
+
+      const buffer = writeHdr(original);
+      const decoded = readHdr(buffer);
+
+      const tolerancePercent = 0.08; // 8%: covers format limit at exponent boundaries
+      const toleranceAbsolute = 1e-6; // for values near 0
+      const failures: { value: number; decoded: number; relErr: number }[] = [];
+
+      for (let i = 0; i < steps; i++) {
+        const value = (i / (steps - 1)) * 10;
+        const r = decoded.data[i * 4]!;
+        const scale = Math.max(Math.abs(value), toleranceAbsolute);
+        const relErr = scale > 0 ? Math.abs(r - value) / scale : Math.abs(r - value);
+        if (relErr > tolerancePercent) {
+          failures.push({ value, decoded: r, relErr });
+        }
+      }
+
+      expect(
+        failures,
+        `RGBE round-trip should be within 8% for 0..10 (step 0.01). Failures: ${failures.slice(0, 20).map((f) => `value=${f.value.toFixed(3)} decoded=${f.decoded.toFixed(6)} relErr=${(f.relErr * 100).toFixed(2)}%`).join('; ')}${failures.length > 20 ? ` ... and ${failures.length - 20} more` : ''}`,
+      ).toHaveLength(0);
+    });
   });
 });
