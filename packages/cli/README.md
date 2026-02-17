@@ -1,4 +1,4 @@
-# HDRify CLI
+# hdrify-cli
 
 <img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
 
@@ -9,7 +9,9 @@
 
 CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
 
-An **online demo** (the website from this repository) is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — an HDR, EXR, and Ultra HDR (JPEG-R) format viewer and converter; try it in your browser without installing the CLI.
+**Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
+
+An **online demo** is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
 
 ## Installation
 
@@ -29,34 +31,30 @@ pnpm add -g hdrify-cli
 # Convert between formats
 hdrify convert input.exr output.hdr
 hdrify convert input.hdr output.exr --compression piz
-hdrify convert input.exr output.ultrahdr.jpg    # JPEG-R with gain map (Ultra HDR, default)
-hdrify convert input.exr output.gainmap.jpg --format adobe-gainmap   # Adobe gain map format
-hdrify convert input.jpg output.exr    # Read JPEG gain map (Ultra HDR or Adobe) as input
-hdrify convert input.exr output.webp   # Tonemaps the HDR during conversion to SDR webp format
+hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
+hdrify convert input.exr output.jpg --format adobe-gainmap
+hdrify convert input.jpg output.exr    # Read JPEG gain map as input
+hdrify convert input.exr output.webp   # Tonemaps to SDR
 
 # View file metadata
 hdrify info input.exr
 hdrify info input.hdr
-hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
+hdrify info input.jpg
 
-# Create synthetic reference image
-hdrify reference output.exr
-hdrify reference output.exr --compression zip   # EXR only; --compression ignored for .hdr
+# Create synthetic reference images
+hdrify reference output.exr --compression zip
 hdrify reference output.hdr
-hdrify reference output.exr --type cie-wedge    # CIE chromaticity wedge (default: rainbow)
-hdrify reference output.hdr --type cie-wedge-r # CIE wedge, R channel only (G,B black)
-hdrify reference output.hdr --type cie-wedge-g # CIE wedge, G channel only
-hdrify reference output.hdr --type cie-wedge-b # CIE wedge, B channel only
-hdrify reference output.hdr --type gradient     # SDF gradient
+hdrify reference output.exr --type cie-wedge
+hdrify reference output.hdr --type gradient
 ```
 
 ## Options
 
-Key flags for `convert`: `--compression` (EXR output only: none, rle, zip, zips, piz, pxr24), `--format` (JPEG output only: ultrahdr, adobe-gainmap; default: ultrahdr), `--tonemapping` (aces, reinhard, neutral, agx), `--exposure`, `--quality` (JPEG). For `reference`: `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient; default: rainbow), `--compression` (EXR output only: rle, zip, piz, pxr24), `--width`, `--height`. Run `hdrify --help` for full usage.
+**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`
 
-## Library
+**reference:** `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient), `--compression`, `--width`, `--height`
 
-For programmatic use, install the [hdrify](https://www.npmjs.com/package/hdrify) library.
+Run `hdrify --help` for full usage.
 
 ## License
 
@@ -64,7 +62,7 @@ MIT
 
 ## Author
 
-Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
 
 [npm]: https://img.shields.io/npm/v/hdrify-cli
 [npm-url]: https://www.npmjs.com/package/hdrify-cli

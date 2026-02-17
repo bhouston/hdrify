@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { zodValidator } from '@tanstack/zod-adapter';
+import type { HdrifyImage } from 'hdrify';
 import {
   addRangeMetadata,
   encodeGainMap,
@@ -11,7 +12,7 @@ import {
   writeHdr,
   writeJpegGainMap,
 } from 'hdrify';
-import { HdrifyCanvas, type HdrifyImage } from 'hdrify-react';
+import { HdrifyCanvas } from 'hdrify-react';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
