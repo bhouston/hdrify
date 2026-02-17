@@ -9,7 +9,6 @@ import {
   readExr,
   readJpegGainMap,
   writeJpegGainMap,
-  type GainMapMetadata,
 } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
@@ -131,24 +130,21 @@ describe('readJpegGainMap', () => {
     });
   });
 
-  describe('gain map round-trip (read → encode → write → read)', () => {
-    it('EXR → gain map → read that gain map → encode → write → read again: second read matches first read within 5%', () => {
+  describe('gain map round-trip (read → encode → write → read, full decode/re-encode)', () => {
+    it('EXR → gain map → read → encode (no metadata reuse) → write → read: second read matches first read within tolerance', () => {
       const original = readExr(toUint8Array(fs.readFileSync(memorialExr)));
       const encoding = encodeGainMap(original, { toneMapping: 'reinhard' });
       const jpegBuffer = writeJpegGainMap(encoding, { quality: 100 });
 
       const firstRead = readJpegGainMap(jpegBuffer);
-      const reEncode = encodeGainMap(firstRead, {
-        toneMapping: 'reinhard',
-        reuseMetadata: firstRead.metadata as unknown as GainMapMetadata,
-      });
+      const reEncode = encodeGainMap(firstRead, { toneMapping: 'reinhard' });
       const jpegBuffer2 = writeJpegGainMap(reEncode, { quality: 100 });
       const secondRead = readJpegGainMap(jpegBuffer2);
 
       const result = compareFloatImages(firstRead, secondRead, TOLERANCE_ROUNDTRIP);
       expect(
         result.match,
-        `Read→write→read round-trip: maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
+        `Full round-trip (decode→re-encode): maxDiff=${result.maxDiff} mismatchedPixels=${result.mismatchedPixels}`,
       ).toBe(true);
     });
   });

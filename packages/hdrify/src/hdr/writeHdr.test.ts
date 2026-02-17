@@ -114,49 +114,47 @@ describe('hdrWriter', () => {
       expect(parsedData.data.length).toBeGreaterThanOrEqual(originalData.width * originalData.height * 3);
     });
 
-    it('RGBE round-trip: values 0 to 10 in 0.01 steps (R channel only) within 8%', () => {
-      // Single-channel gradient to isolate encode/decode for values > 1 (where banding was observed).
-      // RGBE has 8-bit mantissa per channel; worst-case relative error at exponent boundaries can reach ~8%.
-      const steps = 1001; // 0, 0.01, 0.02, ..., 10.0
-      const width = steps;
-      const height = 1;
-      const data = new Float32Array(width * height * 4);
+    /** Build 0..10 single-channel R gradient (1001 steps) for round-trip tests */
+    function buildGradient010(): FloatImageData {
+      const steps = 1001;
+      const data = new Float32Array(steps * 4);
       for (let i = 0; i < steps; i++) {
-        const value = (i / (steps - 1)) * 10; // 0 to 10 inclusive
+        const value = (i / (steps - 1)) * 10;
         const idx = i * 4;
-        data[idx] = value; // R only
+        data[idx] = value;
         data[idx + 1] = 0;
         data[idx + 2] = 0;
         data[idx + 3] = 1;
       }
-      const original: FloatImageData = {
-        width,
-        height,
-        linearColorSpace: 'linear-rec709',
-        data,
-      };
+      return { width: steps, height: 1, linearColorSpace: 'linear-rec709' as const, data };
+    }
 
-      const buffer = writeHdr(original);
+    function roundTripErrors(original: FloatImageData, buffer: Uint8Array): { value: number; decoded: number; relErr: number }[] {
       const decoded = readHdr(buffer);
-
-      const tolerancePercent = 0.08; // 8%: covers format limit at exponent boundaries
-      const toleranceAbsolute = 1e-6; // for values near 0
+      const steps = original.width * original.height;
+      const toleranceAbsolute = 1e-6;
       const failures: { value: number; decoded: number; relErr: number }[] = [];
-
       for (let i = 0; i < steps; i++) {
         const value = (i / (steps - 1)) * 10;
-        const r = decoded.data[i * 4]!;
+        const r = decoded.data[i * 4] ?? 0;
         const scale = Math.max(Math.abs(value), toleranceAbsolute);
         const relErr = scale > 0 ? Math.abs(r - value) / scale : Math.abs(r - value);
-        if (relErr > tolerancePercent) {
-          failures.push({ value, decoded: r, relErr });
-        }
+        failures.push({ value, decoded: r, relErr });
       }
+      return failures;
+    }
 
+    it('RGBE round-trip: values 0 to 10 in 0.01 steps (R channel only) within 8%', () => {
+      const original = buildGradient010();
+      const buffer = writeHdr(original);
+      const errors = roundTripErrors(original, buffer);
+      const tolerancePercent = 0.08;
+      const failures = errors.filter((e) => e.relErr > tolerancePercent);
       expect(
         failures,
-        `RGBE round-trip should be within 8% for 0..10 (step 0.01). Failures: ${failures.slice(0, 20).map((f) => `value=${f.value.toFixed(3)} decoded=${f.decoded.toFixed(6)} relErr=${(f.relErr * 100).toFixed(2)}%`).join('; ')}${failures.length > 20 ? ` ... and ${failures.length - 20} more` : ''}`,
+        `RGBE round-trip should be within 8% for 0..10. Failures: ${failures.slice(0, 20).map((f) => `value=${f.value.toFixed(3)} relErr=${(f.relErr * 100).toFixed(2)}%`).join('; ')}${failures.length > 20 ? ` ... and ${failures.length - 20} more` : ''}`,
       ).toHaveLength(0);
     });
+
   });
 });

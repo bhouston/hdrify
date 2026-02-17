@@ -89,10 +89,9 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const { width, height } = image;
   const totalPixels = width * height;
 
-  const reuse = options.reuseMetadata;
-  const offsetSdr = reuse?.offsetSdr ?? options.offsetSdr ?? defaultOffset;
-  const offsetHdr = reuse?.offsetHdr ?? options.offsetHdr ?? defaultOffset;
-  const gamma = reuse?.gamma ?? options.gamma ?? defaultGamma;
+  const offsetSdr = options.offsetSdr ?? defaultOffset;
+  const offsetHdr = options.offsetHdr ?? defaultOffset;
+  const gamma = options.gamma ?? defaultGamma;
   const exposure = options.exposure ?? 1;
   const toneMappingType: ToneMappingType = options.toneMapping ?? 'aces';
   const toneMapping = getToneMapping(toneMappingType);
@@ -100,10 +99,6 @@ export function encodeGainMap(image: FloatImageData, options: GainMapEncodingOpt
   const linearRgbBuffer = new Float32Array(totalPixels * 3);
   let maxContentBoost = options.maxContentBoost;
   let minContentBoost = options.minContentBoost;
-  if (reuse) {
-    minContentBoost = 2 ** reuse.gainMapMin[0];
-    maxContentBoost = 2 ** reuse.gainMapMax[0];
-  }
   if (maxContentBoost === undefined || maxContentBoost <= 0) {
     const fromGains = findMaxContentBoostFromGains(
       data,
