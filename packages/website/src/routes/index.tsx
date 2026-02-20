@@ -547,6 +547,10 @@ function Index() {
             </a>
             .
           </li>
+          <li className="md:col-span-2">
+            <strong className="text-foreground">VS Code & Cursor Extensions:</strong> Supports HDR Preview and Conversion directly in the editor.  
+            <a href="https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension" rel="noopener noreferrer" target="_blank" style={{ textDecoration: 'underline' }}>HDRify extension on VS Code Marketplace</a> or <a href="https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension" rel="noopener noreferrer" target="_blank" style={{ textDecoration: 'underline' }} >HDRify extension on Open VSX for Cursor</a>.
+        </li>
         </ul>
       </section>
     </div>

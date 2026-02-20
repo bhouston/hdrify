@@ -22,6 +22,7 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 - Written in a functional style to support tree-shaking
 - Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.benhouston3d.com
 - [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
+- [HDRify VS Code Extension](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) — for [VS Code](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) and [Cursor](https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension)
 
 ## Installation
 
