@@ -5,3 +5,4 @@ tsconfig.tsbuildinfo
 .nx
 coverage
 profile-output
+.vsix

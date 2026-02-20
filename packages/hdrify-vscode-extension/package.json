@@ -1,0 +1,150 @@
+{
+  "name": "hdrify-vscode-extension",
+  "displayName": "HDRify",
+  "description": "Convert and preview HDR images (EXR, HDR, UltraHDR Jpeg) using the hdrify library",
+  "version": "1.0.1",
+  "publisher": "benhouston3d",
+  "author": {
+    "name": "Ben Houston",
+    "url": "https://benhouston3d.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bhouston/hdrify.git",
+    "directory": "packages/hdrify-vscode-extension"
+  },
+  "homepage": "https://github.com/bhouston/hdrify#readme",
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
+  },
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "keywords": ["hdr", "exr", "ultrahdr", "gainmap", "image", "convert", "preview"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Visualization", "Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onCustomEditor:hdrify.hdrPreview",
+    "onCommand:hdrify.convertToExr",
+    "onCommand:hdrify.convertToHdr",
+    "onCommand:hdrify.convertToUltraHdrJpeg",
+    "onCommand:hdrify.openHdrPreview"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "hdrify.convertToExr",
+        "title": "Convert to EXR"
+      },
+      {
+        "command": "hdrify.convertToHdr",
+        "title": "Convert to HDR"
+      },
+      {
+        "command": "hdrify.convertToUltraHdrJpeg",
+        "title": "Convert to UltraHDR Jpeg"
+      },
+      {
+        "command": "hdrify.openHdrPreview",
+        "title": "Open with HDR Image Preview"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "submenu": "hdrify.convertImage",
+          "when": "resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i",
+          "group": "7_modification"
+        },
+        {
+          "command": "hdrify.openHdrPreview",
+          "when": "resourceExtname =~ /\\.(jpg|jpeg)$/i",
+          "group": "7_modification"
+        }
+      ],
+      "hdrify.convertImage": [
+        {
+          "command": "hdrify.convertToExr",
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.exr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+        },
+        {
+          "command": "hdrify.convertToHdr",
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.hdr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+        },
+        {
+          "command": "hdrify.convertToUltraHdrJpeg",
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.jpg' && resourceExtname != '.jpeg') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "hdrify.convertImage",
+        "label": "Convert HDR Image"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "hdrify.hdrPreview",
+        "displayName": "HDR Image Preview",
+        "selector": [
+          { "filenamePattern": "*.exr" },
+          { "filenamePattern": "*.hdr" }
+        ],
+        "priority": "default"
+      },
+      {
+        "viewType": "hdrify.hdrPreview",
+        "displayName": "HDR Image Preview",
+        "selector": [
+          { "filenamePattern": "*.jpg" },
+          { "filenamePattern": "*.jpeg" }
+        ],
+        "priority": "option"
+      }
+    ],
+    "configuration": {
+      "title": "HDRify",
+      "properties": {
+        "hdrify.conversionQuality": {
+          "type": "number",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Quality for UltraHDR JPEG output (0-100)"
+        },
+        "hdrify.leaveOriginalWhenChangingFormat": {
+          "type": "boolean",
+          "default": false,
+          "description": "When converting format, leave the original file unchanged and write to a new file (same name, target extension)"
+        },
+        "hdrify.exrCompression": {
+          "type": "string",
+          "default": "piz",
+          "enum": ["none", "rle", "zips", "zip", "piz", "pxr24"],
+          "description": "Compression for EXR output when converting to EXR"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "build:preview": "node scripts/build-preview.js",
+    "build:extension": "node scripts/build-extension.js",
+    "build": "pnpm run build:preview && pnpm run build:extension",
+    "watch": "tsc -watch -p .",
+    "package": "pnpm run build && vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "hdrify": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.3.0"
+  }
+}
