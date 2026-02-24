@@ -172,12 +172,26 @@ describe('exrReader', () => {
       expect(() => readExr(buffer)).toThrow(/none, RLE, ZIPS, ZIP, PIZ, PXR24/);
     });
 
-    it('should throw for non-RGB EXR (example_nonRGB.exr has grayscale only)', () => {
+    it('should read non-RGB EXR with luminance channel (example_nonRGB.exr)', () => {
       const buf = fs.readFileSync(exampleNonRgbPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
-      expect(() => readExr(buffer)).toThrow(/Non-RGB EXR files are not supported/);
-      expect(() => readExr(buffer)).toThrow(/R, G, and B channels/);
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+
+      for (let i = 0; i < Math.min(200, result.data.length); i += 4) {
+        const r = result.data[i] ?? 0;
+        const g = result.data[i + 1] ?? 0;
+        const b = result.data[i + 2] ?? 0;
+        const a = result.data[i + 3] ?? 1;
+        expect(r).toBeCloseTo(g, 6);
+        expect(g).toBeCloseTo(b, 6);
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(a).toBeLessThanOrEqual(1);
+      }
     });
 
     it('should read ZIP-compressed EXR file (example_zip.exr)', () => {

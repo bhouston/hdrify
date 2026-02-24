@@ -58,6 +58,30 @@ function readChannelValue(dataView: DataView, offset: number, pixelType: number)
   }
 }
 
+function normalizeChannelName(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getChannelSemanticName(name: string): string {
+  const normalized = normalizeChannelName(name);
+  if (normalized === 'r' || normalized === 'red') return 'r';
+  if (normalized === 'g' || normalized === 'green') return 'g';
+  if (normalized === 'b' || normalized === 'blue') return 'b';
+  if (normalized === 'a' || normalized === 'alpha') return 'a';
+  if (
+    normalized === 'y' ||
+    normalized === 'l' ||
+    normalized === 'lum' ||
+    normalized === 'luma' ||
+    normalized === 'luminance' ||
+    normalized === 'gray' ||
+    normalized === 'grey'
+  ) {
+    return 'luma';
+  }
+  return normalized;
+}
+
 /**
  * Read an EXR file buffer and return HdrifyImage
  *
@@ -72,16 +96,22 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
   const width = dataWindow.xMax - dataWindow.xMin + 1;
   const height = dataWindow.yMax - dataWindow.yMin + 1;
 
-  // Find RGB channels (case-insensitive, check exact match first)
-  const rChannel = channels.find((ch) => ch.name === 'R' || ch.name === 'r' || ch.name.toLowerCase() === 'red');
-  const gChannel = channels.find((ch) => ch.name === 'G' || ch.name === 'g' || ch.name.toLowerCase() === 'green');
-  const bChannel = channels.find((ch) => ch.name === 'B' || ch.name === 'b' || ch.name.toLowerCase() === 'blue');
+  const semanticChannelSet = new Set(channels.map((channel) => getChannelSemanticName(channel.name)));
+  const hasRgb = semanticChannelSet.has('r') && semanticChannelSet.has('g') && semanticChannelSet.has('b');
+  const hasLuma = semanticChannelSet.has('luma');
 
-  if (!rChannel || !gChannel || !bChannel) {
-    throw new Error('Non-RGB EXR files are not supported. This reader requires R, G, and B channels.');
+  if (!hasRgb && !hasLuma) {
+    throw new Error(
+      'Unsupported EXR channel layout. This reader requires R/G/B channels or a luminance channel (Y/L/luminance).',
+    );
   }
 
   const numChannels = channels.length;
+  const referenceChannel = channels[0];
+  if (!referenceChannel) {
+    throw new Error('Invalid EXR file: no channels found in header');
+  }
+  const referencePixelType = referenceChannel.pixelType;
 
   // Determine block height based on compression type (OpenEXR spec: ZIP/PXR24=16, PIZ=32, others=1)
   const blockHeight =
@@ -211,7 +241,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData = decompressZip(compressedData);
     } else if (compression === RLE_COMPRESSION) {
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(rChannel.pixelType);
+      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(referencePixelType);
       decompressedData = decompressRleBlock(compressedData, expectedSize);
     } else if (compression === PIZ_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
@@ -238,8 +268,8 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData.byteLength,
     );
 
-    const bytesPerScanline = width * numChannels * getPixelTypeSize(rChannel.pixelType);
-    const bytesPerChannel = getPixelTypeSize(rChannel.pixelType);
+    const bytesPerScanline = width * numChannels * getPixelTypeSize(referencePixelType);
+    const bytesPerChannel = getPixelTypeSize(referencePixelType);
 
     const isPlanar =
       compression === RLE_COMPRESSION ||
@@ -268,17 +298,17 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
           channelValues.r = readChannelValue(
             blockDataView,
             lineOffset + 2 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            referencePixelType,
           );
           channelValues.g = readChannelValue(
             blockDataView,
             lineOffset + 1 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            referencePixelType,
           );
           channelValues.b = readChannelValue(
             blockDataView,
             lineOffset + 0 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            referencePixelType,
           );
         } else {
           for (let c = 0; c < channels.length; c++) {
@@ -288,14 +318,18 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
               ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
               : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
             const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
-            channelValues[channel.name.toLowerCase()] = value;
+            channelValues[getChannelSemanticName(channel.name)] = value;
           }
         }
+        const luma = channelValues.luma;
+        const red = channelValues.r ?? luma ?? 0;
+        const green = channelValues.g ?? luma ?? 0;
+        const blue = channelValues.b ?? luma ?? 0;
 
-        pixelData[pixelIndex] = channelValues.r ?? channelValues.red ?? 0;
-        pixelData[pixelIndex + 1] = channelValues.g ?? channelValues.green ?? 0;
-        pixelData[pixelIndex + 2] = channelValues.b ?? channelValues.blue ?? 0;
-        pixelData[pixelIndex + 3] = channelValues.a ?? channelValues.alpha ?? 1.0;
+        pixelData[pixelIndex] = red;
+        pixelData[pixelIndex + 1] = green;
+        pixelData[pixelIndex + 2] = blue;
+        pixelData[pixelIndex + 3] = channelValues.a ?? 1.0;
       }
     }
   }
