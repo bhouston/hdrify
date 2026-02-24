@@ -1,0 +1,109 @@
+/**
+ * CPU decode: apply gain map to SDR to produce HDR Float32 RGBA.
+ * Matches UltraHDR/gainmap-js formula: logRecovery, logBoost, weightFactor, offsets.
+ *
+ * Adobe/Ultra HDR spec: SDR base image is sRGB (display-ready for standard viewers).
+ * We linearize before applying gain; the gain formula uses linear light.
+ */
+import { sRGBToLinear } from '../../color/srgb.js';
+const HALF_FLOAT_MAX = 65504;
+function isFloat32Array(a) {
+    return a instanceof Float32Array;
+}
+/**
+ * Decode SDR + gain map pixels with metadata into linear HDR HdrifyImage.
+ * SDR and gainMap can be 0-255 RGBA (Uint8) or 0-1 float (Float32Array). Mixed modes supported.
+ */
+export function decodeGainMapCpu(sdr, gainMap, width, height, metadata, options = {}) {
+    const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
+    const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
+    const capacityRange = hdrCapacityMax - hdrCapacityMin;
+    const unclampedWeight = capacityRange <= 0 ? 1 : (Math.log2(maxDisplayBoost) - hdrCapacityMin) / capacityRange;
+    const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
+    const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]];
+    const useGammaOne = gamma[0] === 1 && gamma[1] === 1 && gamma[2] === 1;
+    const sdrIsFloat = isFloat32Array(sdr);
+    const gainMapIsFloat = isFloat32Array(gainMap);
+    const pixelCount = width * height;
+    const out = new Float32Array(pixelCount * 4);
+    for (let i = 0; i < pixelCount; i++) {
+        const i4 = i * 4;
+        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
+        // Spec: SDR base is sRGB. Linearize to get SDR_linear for the gain formula.
+        const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4]) : sRGBToLinear(sdr[i4] / 255);
+        const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1]) : sRGBToLinear(sdr[i4 + 1] / 255);
+        const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2]) : sRGBToLinear(sdr[i4 + 2] / 255);
+        const gainR = gainMapIsFloat ? gainMap[i4] : gainMap[i4] / 255;
+        const gainG = gainMapIsFloat ? gainMap[i4 + 1] : gainMap[i4 + 1] / 255;
+        const gainB = gainMapIsFloat ? gainMap[i4 + 2] : gainMap[i4 + 2] / 255;
+        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
+        const logRecoveryR = useGammaOne ? gainR : gainR ** invGamma[0];
+        const logRecoveryG = useGammaOne ? gainG : gainG ** invGamma[1];
+        const logRecoveryB = useGammaOne ? gainB : gainB ** invGamma[2];
+        const logBoostR = gainMapMin[0] * (1 - logRecoveryR) + gainMapMax[0] * logRecoveryR;
+        const logBoostG = gainMapMin[1] * (1 - logRecoveryG) + gainMapMax[1] * logRecoveryG;
+        const logBoostB = gainMapMin[2] * (1 - logRecoveryB) + gainMapMax[2] * logRecoveryB;
+        const w = weightFactor;
+        const hdrR = (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
+        const hdrG = (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
+        const hdrB = (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
+        out[i4] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrR));
+        out[i4 + 1] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrG));
+        out[i4 + 2] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrB));
+        out[i4 + 3] = 1;
+    }
+    return {
+        width,
+        height,
+        data: out,
+        linearColorSpace: 'linear-rec709',
+    };
+}
+/**
+ * Decode from float SDR and float gain map (no quantization). For testing and incremental pipeline.
+ * Same formula as decodeGainMapCpu. sdrFloat is sRGB [0,1] per spec (matches stored base image).
+ */
+export function decodeGainMapFromFloat(sdrFloat, gainMapFloat, width, height, metadata, options = {}) {
+    const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
+    const maxDisplayBoost = options.maxDisplayBoost ?? 2 ** hdrCapacityMax;
+    const capacityRange = hdrCapacityMax - hdrCapacityMin;
+    const unclampedWeight = capacityRange <= 0 ? 1 : (Math.log2(maxDisplayBoost) - hdrCapacityMin) / capacityRange;
+    const weightFactor = Math.max(0, Math.min(1, unclampedWeight));
+    const invGamma = [1 / gamma[0], 1 / gamma[1], 1 / gamma[2]];
+    const useGammaOne = gamma[0] === 1 && gamma[1] === 1 && gamma[2] === 1;
+    const pixelCount = width * height;
+    const out = new Float32Array(pixelCount * 4);
+    for (let i = 0; i < pixelCount; i++) {
+        const i4 = i * 4;
+        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
+        // Spec: SDR base is sRGB. sdrFloat mirrors the stored format; linearize for gain formula.
+        const sdrR = sRGBToLinear(sdrFloat[i4]);
+        const sdrG = sRGBToLinear(sdrFloat[i4 + 1]);
+        const sdrB = sRGBToLinear(sdrFloat[i4 + 2]);
+        const gainR = gainMapFloat[i4];
+        const gainG = gainMapFloat[i4 + 1];
+        const gainB = gainMapFloat[i4 + 2];
+        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
+        const logRecoveryR = useGammaOne ? gainR : gainR ** invGamma[0];
+        const logRecoveryG = useGammaOne ? gainG : gainG ** invGamma[1];
+        const logRecoveryB = useGammaOne ? gainB : gainB ** invGamma[2];
+        const logBoostR = gainMapMin[0] * (1 - logRecoveryR) + gainMapMax[0] * logRecoveryR;
+        const logBoostG = gainMapMin[1] * (1 - logRecoveryG) + gainMapMax[1] * logRecoveryG;
+        const logBoostB = gainMapMin[2] * (1 - logRecoveryB) + gainMapMax[2] * logRecoveryB;
+        const w = weightFactor;
+        const hdrR = (sdrR + offsetSdr[0]) * (w * logBoostR === 0 ? 1 : 2 ** (logBoostR * w)) - offsetHdr[0];
+        const hdrG = (sdrG + offsetSdr[1]) * (w * logBoostG === 0 ? 1 : 2 ** (logBoostG * w)) - offsetHdr[1];
+        const hdrB = (sdrB + offsetSdr[2]) * (w * logBoostB === 0 ? 1 : 2 ** (logBoostB * w)) - offsetHdr[2];
+        out[i4] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrR));
+        out[i4 + 1] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrG));
+        out[i4 + 2] = Math.max(0, Math.min(HALF_FLOAT_MAX, hdrB));
+        out[i4 + 3] = 1;
+    }
+    return {
+        width,
+        height,
+        data: out,
+        linearColorSpace: 'linear-rec709',
+    };
+}
+//# sourceMappingURL=decodeGainMapCpu.js.map
