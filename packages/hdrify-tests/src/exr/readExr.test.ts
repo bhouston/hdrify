@@ -18,6 +18,7 @@ const exampleHalfsPath = path.join(assetsDir, 'example_halfs.exr');
 const exampleB44Path = path.join(assetsDir, 'example_b44.exr');
 const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
 const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
+const example16bitBlockPizPath = path.join(assetsDir, 'example_16bit_block_PIZ.exr');
 const example32bitBlockPizPath = path.join(assetsDir, 'example_32bit_block_PIZ.exr');
 
 const TOLERANCE = { toleranceRelative: 0.01 };
@@ -305,6 +306,47 @@ describe('exrReader', () => {
       });
       const expectedLdrLength = image.width * image.height * 3;
       expect(ldr.length).toBe(expectedLdrLength);
+    });
+
+    it('example_16bit_block_PIZ.exr: stays aligned with 32-bit reference (no bottom block corruption)', () => {
+      const lowBuf = fs.readFileSync(example16bitBlockPizPath);
+      const lowBuffer = new Uint8Array(lowBuf.buffer, lowBuf.byteOffset, lowBuf.byteLength);
+      const lowImage = readExr(lowBuffer);
+
+      const refBuf = fs.readFileSync(example32bitBlockPizPath);
+      const refBuffer = new Uint8Array(refBuf.buffer, refBuf.byteOffset, refBuf.byteLength);
+      const refImage = readExr(refBuffer);
+
+      expect(lowImage.width).toBeGreaterThan(0);
+      expect(lowImage.height).toBeGreaterThan(0);
+      expect(refImage.width).toBeGreaterThanOrEqual(lowImage.width * 2 - 1);
+      expect(refImage.height).toBeGreaterThanOrEqual(lowImage.height * 2 - 1);
+
+      const rowAverageError: number[] = [];
+      for (let y = 0; y < lowImage.height; y++) {
+        const refY = Math.min(refImage.height - 1, y * 2);
+        let errorSum = 0;
+        for (let x = 0; x < lowImage.width; x++) {
+          const refX = Math.min(refImage.width - 1, x * 2);
+          const iLow = (y * lowImage.width + x) * 4;
+          const iRef = (refY * refImage.width + refX) * 4;
+          const dr = Math.abs((lowImage.data[iLow] ?? 0) - (refImage.data[iRef] ?? 0));
+          const dg = Math.abs((lowImage.data[iLow + 1] ?? 0) - (refImage.data[iRef + 1] ?? 0));
+          const db = Math.abs((lowImage.data[iLow + 2] ?? 0) - (refImage.data[iRef + 2] ?? 0));
+          errorSum += (dr + dg + db) / 3;
+        }
+        rowAverageError.push(errorSum / lowImage.width);
+      }
+
+      const sorted = [...rowAverageError].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+      const tailRows = rowAverageError.slice(-32);
+      const tailAverage = tailRows.reduce((sum, value) => sum + value, 0) / Math.max(1, tailRows.length);
+      const tailMax = Math.max(...tailRows);
+
+      // The last scanline block should look like the rest of the frame, not blue/black garbage.
+      expect(tailAverage).toBeLessThan(median * 1.3);
+      expect(tailMax).toBeLessThan(median * 1.6);
     });
 
     it('throws for no valid scanline block offsets', () => {

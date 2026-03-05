@@ -251,7 +251,8 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
         decompressedData = compressedData;
         isPlanarBlock = true;
       } else {
-        decompressedData = decompressPiz(compressedData, width, channels, dataSize, actualBlockHeightFinal);
+        // PIZ decode must use this chunk's exact line count (last chunk may be shorter than block size).
+        decompressedData = decompressPiz(compressedData, width, channels, dataSize, linesInBlock);
       }
     } else if (compression === PXR24_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
