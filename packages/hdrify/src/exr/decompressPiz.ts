@@ -260,7 +260,14 @@ export function decompressPiz(
   const totalU16 = numChannels * u16sPerChannel;
   const outputBuffer = new Uint16Array(totalU16);
 
-  hufUncompress(compressedBuffer, new DataView(compressedBuffer.buffer, compressedBuffer.byteOffset, compressedBuffer.byteLength), { value: 0 }, compressedSize, outputBuffer, totalU16);
+  hufUncompress(
+    compressedBuffer,
+    new DataView(compressedBuffer.buffer, compressedBuffer.byteOffset, compressedBuffer.byteLength),
+    { value: 0 },
+    compressedSize,
+    outputBuffer,
+    totalU16,
+  );
 
   for (let c = 0; c < numChannels; c++) {
     const channelOffset = c * u16sPerChannel;

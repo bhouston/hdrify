@@ -4,7 +4,10 @@
  */
 
 export function normalizeChannelName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
 
 export function getChannelSemanticName(name: string): string {

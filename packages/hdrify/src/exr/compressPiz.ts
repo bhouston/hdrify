@@ -291,12 +291,11 @@ export function compressPizBlock(
   const pixelsPerChannel = width * blockHeight;
   const primaryChannel = channels[0];
   if (!primaryChannel) {
+    // biome-ignore lint/security/noSecrets: not a secret
     throw new Error('compressPizBlock: no channels');
   }
   const isFloat = primaryChannel.pixelType === FLOAT;
-  const totalU16 = isFloat
-    ? pixelsPerChannel * numChannels * 2
-    : pixelsPerChannel * numChannels;
+  const totalU16 = isFloat ? pixelsPerChannel * numChannels * 2 : pixelsPerChannel * numChannels;
 
   const planar = isFloat
     ? rearrangeFloat32ToChannelPlanarU16(rawInterleaved, width, blockHeight, numChannels)
@@ -327,8 +326,7 @@ export function compressPizBlock(
 
   const hufCompressed = hufCompress(planar);
 
-  const bitmapBytes =
-    minNonZero.value <= maxNonZero.value ? maxNonZero.value - minNonZero.value + 1 : 0;
+  const bitmapBytes = minNonZero.value <= maxNonZero.value ? maxNonZero.value - minNonZero.value + 1 : 0;
   const result = new Uint8Array(2 + 2 + bitmapBytes + INT32_SIZE + hufCompressed.length);
   const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
   view.setUint16(0, minNonZero.value, true);

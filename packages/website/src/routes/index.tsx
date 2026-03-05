@@ -74,7 +74,6 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/example_zip.exr', label: 'Example ZIP compression (EXR)' },
   { value: '/examples/example_zips.exr', label: 'Example ZIPS compression (EXR)' },
   { value: '/examples/example_nonRGB.exr', label: 'Example non-RGB Luminance (EXR)' },
-  
 ];
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -552,9 +551,27 @@ function Index() {
             .
           </li>
           <li className="md:col-span-2">
-            <strong className="text-foreground">VS Code & Cursor Extensions:</strong> Supports HDR Preview and Conversion directly in the editor.  
-            <a href="https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension" rel="noopener noreferrer" target="_blank" style={{ textDecoration: 'underline' }}>HDRify extension on VS Code Marketplace</a> or <a href="https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension" rel="noopener noreferrer" target="_blank" style={{ textDecoration: 'underline' }} >HDRify extension on Open VSX for Cursor</a>.
-        </li>
+            <strong className="text-foreground">VS Code & Cursor Extensions:</strong> Supports HDR Preview and
+            Conversion directly in the editor.
+            <a
+              href="https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'underline' }}
+              target="_blank"
+            >
+              HDRify extension on VS Code Marketplace
+            </a>{' '}
+            or{' '}
+            <a
+              href="https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'underline' }}
+              target="_blank"
+            >
+              HDRify extension on Open VSX for Cursor
+            </a>
+            .
+          </li>
         </ul>
       </section>
     </div>

@@ -117,7 +117,7 @@ describe('PIZ encoder (fine-grained)', () => {
     const interleaved = new Uint8Array(width * blockHeight * 4 * INT16_SIZE);
     const view = new DataView(interleaved.buffer, interleaved.byteOffset, interleaved.byteLength);
     for (let i = 0; i < width * blockHeight * 4; i++) {
-      view.setUint16(i * 2, (i & 0xffff), true);
+      view.setUint16(i * 2, i & 0xffff, true);
     }
     const compressed = compressPizBlock(interleaved, width, blockHeight, HALF_CHANNELS);
     expect(compressed.length).toBeGreaterThanOrEqual(8);

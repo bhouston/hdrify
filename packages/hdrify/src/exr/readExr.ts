@@ -11,6 +11,7 @@ import { decompressPiz } from './decompressPiz.js';
 import { decompressPxr24 } from './decompressPxr24.js';
 import { decompressRleBlock } from './decompressRle.js';
 import { decompressZip } from './decompressZip.js';
+import { getChannelSemanticName } from './exrChannelSemantics.js';
 import {
   FLOAT32_SIZE,
   INT16_SIZE,
@@ -23,9 +24,8 @@ import {
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
-import type { ExrChannel } from './exrTypes.js';
-import { getChannelSemanticName } from './exrChannelSemantics.js';
 import { parseExrHeader } from './exrHeader.js';
+import type { ExrChannel } from './exrTypes.js';
 import { decodeFloat16 } from './halfFloat.js';
 
 function getPixelTypeSize(pixelType: number): number {
@@ -96,7 +96,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
   const primaryChannelOrUndef: ExrChannel | undefined =
     isRgbMode && rChannel
       ? rChannel
-      : channels.find((ch) => getChannelSemanticName(ch.name) === 'luma') ?? channels[0];
+      : (channels.find((ch) => getChannelSemanticName(ch.name) === 'luma') ?? channels[0]);
   if (!primaryChannelOrUndef) {
     throw new Error('Invalid EXR file: no usable channel for pixel type.');
   }

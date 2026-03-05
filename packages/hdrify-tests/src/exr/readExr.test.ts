@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareImages, createHsvRainbowImage, readExr, writeExr, applyToneMapping } from 'hdrify';
+import { applyToneMapping, compareImages, createHsvRainbowImage, readExr, writeExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
