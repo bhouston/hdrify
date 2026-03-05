@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compareImages, createHsvRainbowImage, readExr, writeExr } from 'hdrify';
+import { compareImages, createHsvRainbowImage, readExr, writeExr, applyToneMapping } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -18,6 +18,7 @@ const exampleHalfsPath = path.join(assetsDir, 'example_halfs.exr');
 const exampleB44Path = path.join(assetsDir, 'example_b44.exr');
 const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
 const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
+const example32bitBlockPizPath = path.join(assetsDir, 'example_32bit_block_PIZ.exr');
 
 const TOLERANCE = { toleranceRelative: 0.01 };
 
@@ -278,6 +279,32 @@ describe('exrReader', () => {
       expect(result.data).toBeInstanceOf(Float32Array);
       expect(result.data.length).toBe(result.width * result.height * 4);
       expect(result.metadata?.compression).toBe(2); // ZIPS
+    });
+
+    it('should load example_32bit_block_PIZ.exr and have data size match reported dimensions', () => {
+      const buf = fs.readFileSync(example32bitBlockPizPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      const expectedDataLength = result.width * result.height * 4;
+      expect(result.data.length).toBe(expectedDataLength);
+    });
+
+    it('example_32bit_block_PIZ.exr: applyToneMapping uses same dimensions as reader (React viewer path)', () => {
+      const buf = fs.readFileSync(example32bitBlockPizPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+      const image = readExr(buffer);
+
+      const ldr = applyToneMapping(image.data, image.width, image.height, {
+        toneMapping: 'neutral',
+        sourceColorSpace: image.linearColorSpace,
+      });
+      const expectedLdrLength = image.width * image.height * 3;
+      expect(ldr.length).toBe(expectedLdrLength);
     });
 
     it('throws for no valid scanline block offsets', () => {

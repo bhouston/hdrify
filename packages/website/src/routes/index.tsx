@@ -67,6 +67,7 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/memorial.jpg', label: 'Memorial (Ultra HDR)' },
   { value: '/examples/example_halfs.exr', label: 'Example half float (EXR)' },
   { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
+  { value: '/examples/example_32bit_block_PIZ.exr', label: 'Example 32-bit block PIZ (EXR)' },
   { value: '/examples/example_pxr24.exr', label: 'Example PXR24 (EXR)' },
   { value: '/examples/example_rle.exr', label: 'Example RLE compression (EXR)' },
   { value: '/examples/example_wideColorSpace.exr', label: 'Example wide color space (EXR)' },

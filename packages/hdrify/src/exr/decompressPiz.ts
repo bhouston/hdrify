@@ -1,11 +1,27 @@
 /**
  * PIZ decompression for OpenEXR
  * PIZ compression uses blocks of 32 scanlines (or fewer for the last block)
+ * Supports both 16-bit half and 32-bit float channel data (OpenEXR stores 32-bit as two u16 halves).
  */
 
-import { A_OFFSET, BITMAP_SIZE, INT8_SIZE, INT16_SIZE, INT32_SIZE, MOD_MASK, USHORT_RANGE } from './exrConstants.js';
+import {
+  A_OFFSET,
+  BITMAP_SIZE,
+  FLOAT,
+  FLOAT32_SIZE,
+  INT8_SIZE,
+  INT16_SIZE,
+  INT32_SIZE,
+  MOD_MASK,
+  USHORT_RANGE,
+} from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { hufUncompress } from './pizHuffman.js';
+
+function getBytesPerChannel(pixelType: number): number {
+  if (pixelType === FLOAT) return FLOAT32_SIZE;
+  return INT16_SIZE; // HALF or other
+}
 
 function UInt16(value: number): number {
   return value & 0xffff;
@@ -232,44 +248,55 @@ export function decompressPiz(
   // Read compressed data - it starts right after the bitmap
   const compressedBuffer = new Uint8Array(compressedData.buffer, compressedData.byteOffset + offset, compressedSize);
 
-  // Calculate output size - total number of uint16 values needed
-  // PIZ outputs data organized by channel: all R values for all scanlines, then all G, then all B, etc.
   const numChannels = channels.length;
-  const pixelsPerChannel = width * blockHeight; // For all scanlines in block
-  const totalPixels = width * blockHeight * numChannels; // Total uint16 values
-  const outputBuffer = new Uint16Array(totalPixels);
+  const primaryChannel = channels[0];
+  if (!primaryChannel) {
+    throw new Error('Invalid PIZ data: no channels');
+  }
+  const bytesPerChannel = getBytesPerChannel(primaryChannel.pixelType);
+  const u16sPerChannelValue = bytesPerChannel / INT16_SIZE; // 1 for HALF, 2 for FLOAT
+  const pixelsPerChannel = width * blockHeight;
+  const u16sPerChannel = pixelsPerChannel * u16sPerChannelValue;
+  const totalU16 = numChannels * u16sPerChannel;
+  const outputBuffer = new Uint16Array(totalU16);
 
-  // Decompress using Huffman
-  const inDataView = new DataView(compressedBuffer.buffer, compressedBuffer.byteOffset, compressedBuffer.byteLength);
-  const hufOffset = { value: 0 };
-  hufUncompress(compressedBuffer, inDataView, hufOffset, compressedSize, outputBuffer, totalPixels);
+  hufUncompress(compressedBuffer, new DataView(compressedBuffer.buffer, compressedBuffer.byteOffset, compressedBuffer.byteLength), { value: 0 }, compressedSize, outputBuffer, totalU16);
 
-  // Wavelet decode each channel separately
-  // Each channel has blockHeight scanlines worth of data
-  for (let i = 0; i < numChannels; i++) {
-    const channelOffset = i * pixelsPerChannel;
-    if (n !== undefined) {
-      // Wavelet decode: data, offset, nx, ox, ny, oy, mx
+  for (let c = 0; c < numChannels; c++) {
+    const channelOffset = c * u16sPerChannel;
+    if (u16sPerChannelValue === 1) {
       wav2Decode(outputBuffer, channelOffset, width, 1, blockHeight, width, n);
+    } else {
+      // 32-bit float: two u16 halves per value, decode low and high planes with stride 2
+      wav2Decode(outputBuffer, channelOffset, width, 2, blockHeight, width * 2, n);
+      wav2Decode(outputBuffer, channelOffset + 1, width, 2, blockHeight, width * 2, n);
     }
   }
 
-  // Apply LUT
-  applyLut(lut, outputBuffer, totalPixels);
+  applyLut(lut, outputBuffer, totalU16);
 
-  // Rearrange from channel-major to scanline-interleaved in header channel order.
-  // PIZ output: [ch0...ch0(n-1), ch1..., ch2..., ...] — slot c in result must be channels[c] for readExr.
-  const result = new Uint8Array(totalPixels * INT16_SIZE);
-  const resultView = new DataView(result.buffer);
+  const resultSize = width * blockHeight * numChannels * bytesPerChannel;
+  const result = new Uint8Array(resultSize);
+  const resultView = new DataView(result.buffer, result.byteOffset, result.byteLength);
 
   for (let y = 0; y < blockHeight; y++) {
     for (let x = 0; x < width; x++) {
       const pixelIndex = y * width + x;
-      const resultPixelOffset = (y * width + x) * numChannels * INT16_SIZE;
+      const resultPixelOffset = (y * width + x) * numChannels * bytesPerChannel;
       for (let c = 0; c < numChannels; c++) {
-        const value = outputBuffer[c * pixelsPerChannel + pixelIndex];
-        if (value !== undefined) {
-          resultView.setUint16(resultPixelOffset + c * INT16_SIZE, value, true);
+        const base = c * u16sPerChannel + pixelIndex * u16sPerChannelValue;
+        if (bytesPerChannel === INT16_SIZE) {
+          const value = outputBuffer[base];
+          if (value !== undefined) {
+            resultView.setUint16(resultPixelOffset + c * INT16_SIZE, value, true);
+          }
+        } else {
+          const lo = outputBuffer[base];
+          const hi = outputBuffer[base + 1];
+          if (lo !== undefined && hi !== undefined) {
+            const bits = (hi << 16) | lo;
+            resultView.setUint32(resultPixelOffset + c * FLOAT32_SIZE, bits, true);
+          }
         }
       }
     }

@@ -2,9 +2,19 @@
  * PIZ compression for OpenEXR
  * PIZ uses: bitmap + LUT + 2D Haar wavelet + Huffman encoding
  * Block size: 32 scanlines (or fewer for last block)
+ * Supports both 16-bit half and 32-bit float channels (OpenEXR stores 32-bit as two u16 halves).
  */
 
-import { A_OFFSET, BITMAP_SIZE, INT16_SIZE, INT32_SIZE, MOD_MASK, USHORT_RANGE } from './exrConstants.js';
+import {
+  A_OFFSET,
+  BITMAP_SIZE,
+  FLOAT,
+  FLOAT32_SIZE,
+  INT16_SIZE,
+  INT32_SIZE,
+  MOD_MASK,
+  USHORT_RANGE,
+} from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { hufCompress } from './pizHuffman.js';
 
@@ -233,38 +243,92 @@ function rearrangeToChannelPlanar(
 }
 
 /**
- * Compress half-float interleaved block using PIZ.
- * Input: rawHalfFloatInterleaved (scanline-interleaved bytes in header channel order: ch0, ch1, ... per pixel)
+ * Rearrange scanline-interleaved float32 bytes to channel-planar uint16 (low/high 16 bits per float).
+ * Output layout per channel: [lo0, hi0, lo1, hi1, ...] for wavelet with stride 2.
+ */
+function rearrangeFloat32ToChannelPlanarU16(
+  src: Uint8Array,
+  width: number,
+  blockHeight: number,
+  numChannels: number,
+): Uint16Array {
+  const pixelsPerChannel = width * blockHeight;
+  const u16sPerChannel = pixelsPerChannel * 2;
+  const totalU16 = numChannels * u16sPerChannel;
+  const out = new Uint16Array(totalU16);
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+
+  for (let y = 0; y < blockHeight; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixelIndex = y * width + x;
+      const srcOffset = (y * width + x) * numChannels * FLOAT32_SIZE;
+      for (let c = 0; c < numChannels; c++) {
+        const bits = view.getUint32(srcOffset + c * FLOAT32_SIZE, true);
+        const lo = bits & 0xffff;
+        const hi = (bits >> 16) & 0xffff;
+        const base = c * u16sPerChannel + pixelIndex * 2;
+        out[base] = lo;
+        out[base + 1] = hi;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Compress interleaved block using PIZ (16-bit half or 32-bit float per channel).
+ * Input: scanline-interleaved bytes in header channel order.
+ * - For HALF channels: 2 bytes per channel value (raw half-float bytes).
+ * - For FLOAT channels: 4 bytes per channel value (raw float32, little-endian).
  */
 export function compressPizBlock(
-  rawHalfFloatInterleaved: Uint8Array,
+  rawInterleaved: Uint8Array,
   width: number,
   blockHeight: number,
   channels: ExrChannel[],
 ): Uint8Array {
   const numChannels = channels.length;
   const pixelsPerChannel = width * blockHeight;
-  const totalPixels = pixelsPerChannel * numChannels;
+  const primaryChannel = channels[0];
+  if (!primaryChannel) {
+    throw new Error('compressPizBlock: no channels');
+  }
+  const isFloat = primaryChannel.pixelType === FLOAT;
+  const totalU16 = isFloat
+    ? pixelsPerChannel * numChannels * 2
+    : pixelsPerChannel * numChannels;
 
-  const planar = rearrangeToChannelPlanar(rawHalfFloatInterleaved, width, blockHeight, channels);
+  const planar = isFloat
+    ? rearrangeFloat32ToChannelPlanarU16(rawInterleaved, width, blockHeight, numChannels)
+    : rearrangeToChannelPlanar(rawInterleaved, width, blockHeight, channels);
 
   const bitmap = new Uint8Array(BITMAP_SIZE);
   const minNonZero = { value: 0 };
   const maxNonZero = { value: 0 };
-  bitmapFromData(planar, totalPixels, bitmap, minNonZero, maxNonZero);
+  bitmapFromData(planar, totalU16, bitmap, minNonZero, maxNonZero);
 
   const lut = new Uint16Array(USHORT_RANGE);
   const maxValue = forwardLutFromBitmap(bitmap, lut);
-  applyLutForward(lut, planar, totalPixels);
+  applyLutForward(lut, planar, totalU16);
 
-  for (let c = 0; c < numChannels; c++) {
-    const channelOffset = c * pixelsPerChannel;
-    wav2Encode(planar, channelOffset, width, 1, blockHeight, width, maxValue);
+  if (isFloat) {
+    const wcount = 2;
+    for (let c = 0; c < numChannels; c++) {
+      const channelOffset = c * (pixelsPerChannel * wcount);
+      wav2Encode(planar, channelOffset, width, wcount, blockHeight, width * wcount, maxValue);
+      wav2Encode(planar, channelOffset + 1, width, wcount, blockHeight, width * wcount, maxValue);
+    }
+  } else {
+    for (let c = 0; c < numChannels; c++) {
+      const channelOffset = c * pixelsPerChannel;
+      wav2Encode(planar, channelOffset, width, 1, blockHeight, width, maxValue);
+    }
   }
 
   const hufCompressed = hufCompress(planar);
 
-  const bitmapBytes = maxNonZero.value - minNonZero.value + 1;
+  const bitmapBytes =
+    minNonZero.value <= maxNonZero.value ? maxNonZero.value - minNonZero.value + 1 : 0;
   const result = new Uint8Array(2 + 2 + bitmapBytes + INT32_SIZE + hufCompressed.length);
   const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
   view.setUint16(0, minNonZero.value, true);

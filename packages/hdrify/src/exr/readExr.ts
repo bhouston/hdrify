@@ -223,8 +223,15 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
 
     const linesInBlock = Math.min(actualBlockHeightFinal, height - firstLineY);
 
+    const expectedUncompressedSize = linesInBlock * width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
+
     // Decompress block data
     let decompressedData: Uint8Array;
+    let isPlanarBlock =
+      compression === RLE_COMPRESSION ||
+      compression === ZIP_COMPRESSION ||
+      compression === ZIPS_COMPRESSION ||
+      compression === PXR24_COMPRESSION;
     if (compression === NO_COMPRESSION) {
       decompressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
     } else if (compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION) {
@@ -232,14 +239,20 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData = decompressZip(compressedData);
     } else if (compression === RLE_COMPRESSION) {
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
-      decompressedData = decompressRleBlock(compressedData, expectedSize);
+      decompressedData = decompressRleBlock(compressedData, expectedUncompressedSize);
     } else if (compression === PIZ_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
         throw new Error(`Invalid PIZ data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
       }
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      decompressedData = decompressPiz(compressedData, width, channels, dataSize, actualBlockHeightFinal);
+      // OpenEXR may store raw packed scanlines for a PIZ chunk if compression is not beneficial.
+      // In that case, packed_size == unpacked_size and payload is already channel-planar scanline data.
+      if (dataSize === expectedUncompressedSize) {
+        decompressedData = compressedData;
+        isPlanarBlock = true;
+      } else {
+        decompressedData = decompressPiz(compressedData, width, channels, dataSize, actualBlockHeightFinal);
+      }
     } else if (compression === PXR24_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
         throw new Error(
@@ -262,12 +275,6 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
     const bytesPerScanline = width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
     const bytesPerChannel = getPixelTypeSize(primaryChannel.pixelType);
 
-    const isPlanar =
-      compression === RLE_COMPRESSION ||
-      compression === ZIP_COMPRESSION ||
-      compression === ZIPS_COMPRESSION ||
-      compression === PXR24_COMPRESSION;
-
     for (let lineInBlock = 0; lineInBlock < linesInBlock; lineInBlock++) {
       const y = firstLineY + lineInBlock;
       if (y >= height) {
@@ -284,7 +291,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
         // PXR24 with 3 channels (RGB mode): decoder outputs in header order (e.g. B, G, R). Map to R,G,B by
         // semantic: block 0 = first in header (e.g. B), block 1 = G, block 2 = R. So R=block2, G=block1, B=block0.
         const usePxr24RgbBlockOrder =
-          isRgbMode && isPlanar && compression === PXR24_COMPRESSION && numChannels === 3;
+          isRgbMode && isPlanarBlock && compression === PXR24_COMPRESSION && numChannels === 3;
 
         if (usePxr24RgbBlockOrder && rChannel && gChannel && bChannel) {
           channelValues.r = readChannelValue(
@@ -306,7 +313,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
           for (let c = 0; c < channels.length; c++) {
             const channel = channels[c];
             if (channel === undefined) continue;
-            const pixelOffset = isPlanar
+            const pixelOffset = isPlanarBlock
               ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
               : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
             const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
