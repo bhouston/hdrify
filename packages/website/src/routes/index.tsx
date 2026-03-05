@@ -52,6 +52,7 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/moonless_golf_1k.jpg', label: 'Moonless Golf 1k (Ultra HDR)' },
   { value: '/examples/pedestrian_overpass_1k.hdr', label: 'Pedestrian Overpass 1k (HDR)' },
   { value: '/examples/pedestrian_overpass_1k.jpg', label: 'Pedestrian Overpass 1k (Ultra HDR)' },
+
   { value: '/examples/reference_cie.exr', label: 'Reference CIE (EXR)' },
   { value: '/examples/reference_cie.hdr', label: 'Reference CIE (HDR)' },
   { value: '/examples/reference_cie.jpg', label: 'Reference CIE (Ultra HDR)' },
@@ -71,6 +72,8 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/example_wideColorSpace.exr', label: 'Example wide color space (EXR)' },
   { value: '/examples/example_zip.exr', label: 'Example ZIP compression (EXR)' },
   { value: '/examples/example_zips.exr', label: 'Example ZIPS compression (EXR)' },
+  { value: '/examples/example_nonRGB.exr', label: 'Example non-RGB Luminance (EXR)' },
+  
 ];
 
 function downloadBlob(blob: Blob, filename: string) {

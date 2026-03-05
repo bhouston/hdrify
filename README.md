@@ -13,7 +13,7 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 
 ## Features
 
-- Read and write RGB EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression)
+- Read and write RGB, RGBA and Luminance EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression)
 - Read and write HDR (Radiance RGBE) files
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
 - Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)

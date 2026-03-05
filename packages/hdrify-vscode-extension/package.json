@@ -2,7 +2,7 @@
   "name": "hdrify-vscode-extension",
   "displayName": "HDRify",
   "description": "Convert and preview HDR images (EXR, HDR, UltraHDR Jpeg) using the hdrify library",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "publisher": "benhouston3d",
   "author": {
     "name": "Ben Houston",

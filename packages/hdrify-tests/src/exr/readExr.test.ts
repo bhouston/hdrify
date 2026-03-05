@@ -172,12 +172,29 @@ describe('exrReader', () => {
       expect(() => readExr(buffer)).toThrow(/none, RLE, ZIPS, ZIP, PIZ, PXR24/);
     });
 
-    it('should throw for non-RGB EXR (example_nonRGB.exr has grayscale only)', () => {
+    it('should read non-RGB EXR with luminance channel (example_nonRGB.exr)', () => {
       const buf = fs.readFileSync(exampleNonRgbPath);
       const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 
-      expect(() => readExr(buffer)).toThrow(/Non-RGB EXR files are not supported/);
-      expect(() => readExr(buffer)).toThrow(/R, G, and B channels/);
+      const result = readExr(buffer);
+      expect(result).toBeDefined();
+      expect(result.width).toBeGreaterThan(0);
+      expect(result.height).toBeGreaterThan(0);
+      expect(result.data).toBeInstanceOf(Float32Array);
+      expect(result.data.length).toBe(result.width * result.height * 4);
+
+      // Luma-only: R = G = B for all pixels; alpha defaults to 1.0 when no alpha channel
+      const { width, height, data } = result;
+      for (let i = 0; i < Math.min(width * height * 4, data.length); i += 4) {
+        const r = data[i] ?? 0;
+        const g = data[i + 1] ?? 0;
+        const b = data[i + 2] ?? 0;
+        const a = data[i + 3] ?? 1;
+        expect(r).toBe(g);
+        expect(g).toBe(b);
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(a).toBeLessThanOrEqual(1);
+      }
     });
 
     it('should read ZIP-compressed EXR file (example_zip.exr)', () => {

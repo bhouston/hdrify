@@ -23,6 +23,8 @@ import {
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
+import type { ExrChannel } from './exrTypes.js';
+import { getChannelSemanticName } from './exrChannelSemantics.js';
 import { parseExrHeader } from './exrHeader.js';
 import { decodeFloat16 } from './halfFloat.js';
 
@@ -72,14 +74,33 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
   const width = dataWindow.xMax - dataWindow.xMin + 1;
   const height = dataWindow.yMax - dataWindow.yMin + 1;
 
-  // Find RGB channels (case-insensitive, check exact match first)
-  const rChannel = channels.find((ch) => ch.name === 'R' || ch.name === 'r' || ch.name.toLowerCase() === 'red');
-  const gChannel = channels.find((ch) => ch.name === 'G' || ch.name === 'g' || ch.name.toLowerCase() === 'green');
-  const bChannel = channels.find((ch) => ch.name === 'B' || ch.name === 'b' || ch.name.toLowerCase() === 'blue');
+  // Resolve channel semantics for mode detection
+  const hasR = channels.some((ch) => getChannelSemanticName(ch.name) === 'r');
+  const hasG = channels.some((ch) => getChannelSemanticName(ch.name) === 'g');
+  const hasB = channels.some((ch) => getChannelSemanticName(ch.name) === 'b');
+  const hasLuma = channels.some((ch) => getChannelSemanticName(ch.name) === 'luma');
 
-  if (!rChannel || !gChannel || !bChannel) {
-    throw new Error('Non-RGB EXR files are not supported. This reader requires R, G, and B channels.');
+  const isRgbMode = hasR && hasG && hasB;
+  const isLumaMode = !isRgbMode && hasLuma;
+
+  if (!isRgbMode && !isLumaMode) {
+    throw new Error(
+      'Non-RGB EXR files are not supported. This reader requires R, G, and B channels, or a luminance (Y/L/luma) channel.',
+    );
   }
+
+  const rChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'r') : undefined;
+  const gChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'g') : undefined;
+  const bChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'b') : undefined;
+
+  const primaryChannelOrUndef: ExrChannel | undefined =
+    isRgbMode && rChannel
+      ? rChannel
+      : channels.find((ch) => getChannelSemanticName(ch.name) === 'luma') ?? channels[0];
+  if (!primaryChannelOrUndef) {
+    throw new Error('Invalid EXR file: no usable channel for pixel type.');
+  }
+  const primaryChannel = primaryChannelOrUndef;
 
   const numChannels = channels.length;
 
@@ -211,7 +232,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData = decompressZip(compressedData);
     } else if (compression === RLE_COMPRESSION) {
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(rChannel.pixelType);
+      const expectedSize = linesInBlock * width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
       decompressedData = decompressRleBlock(compressedData, expectedSize);
     } else if (compression === PIZ_COMPRESSION) {
       if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
@@ -238,8 +259,8 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData.byteLength,
     );
 
-    const bytesPerScanline = width * numChannels * getPixelTypeSize(rChannel.pixelType);
-    const bytesPerChannel = getPixelTypeSize(rChannel.pixelType);
+    const bytesPerScanline = width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
+    const bytesPerChannel = getPixelTypeSize(primaryChannel.pixelType);
 
     const isPlanar =
       compression === RLE_COMPRESSION ||
@@ -260,25 +281,26 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
 
         const channelValues: { [key: string]: number } = {};
 
-        // PXR24 with 3 channels: decoder outputs in header order (e.g. B, G, R). Map to R,G,B by
+        // PXR24 with 3 channels (RGB mode): decoder outputs in header order (e.g. B, G, R). Map to R,G,B by
         // semantic: block 0 = first in header (e.g. B), block 1 = G, block 2 = R. So R=block2, G=block1, B=block0.
-        const usePxr24RgbBlockOrder = isPlanar && compression === PXR24_COMPRESSION && numChannels === 3;
+        const usePxr24RgbBlockOrder =
+          isRgbMode && isPlanar && compression === PXR24_COMPRESSION && numChannels === 3;
 
-        if (usePxr24RgbBlockOrder) {
+        if (usePxr24RgbBlockOrder && rChannel && gChannel && bChannel) {
           channelValues.r = readChannelValue(
             blockDataView,
             lineOffset + 2 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            primaryChannel.pixelType,
           );
           channelValues.g = readChannelValue(
             blockDataView,
             lineOffset + 1 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            primaryChannel.pixelType,
           );
           channelValues.b = readChannelValue(
             blockDataView,
             lineOffset + 0 * width * bytesPerChannel + x * bytesPerChannel,
-            rChannel.pixelType,
+            primaryChannel.pixelType,
           );
         } else {
           for (let c = 0; c < channels.length; c++) {
@@ -288,14 +310,21 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
               ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
               : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
             const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
-            channelValues[channel.name.toLowerCase()] = value;
+            channelValues[getChannelSemanticName(channel.name)] = value;
           }
         }
 
-        pixelData[pixelIndex] = channelValues.r ?? channelValues.red ?? 0;
-        pixelData[pixelIndex + 1] = channelValues.g ?? channelValues.green ?? 0;
-        pixelData[pixelIndex + 2] = channelValues.b ?? channelValues.blue ?? 0;
-        pixelData[pixelIndex + 3] = channelValues.a ?? channelValues.alpha ?? 1.0;
+        if (isRgbMode) {
+          pixelData[pixelIndex] = channelValues.r ?? 0;
+          pixelData[pixelIndex + 1] = channelValues.g ?? 0;
+          pixelData[pixelIndex + 2] = channelValues.b ?? 0;
+        } else {
+          const luma = channelValues.luma ?? 0;
+          pixelData[pixelIndex] = luma;
+          pixelData[pixelIndex + 1] = luma;
+          pixelData[pixelIndex + 2] = luma;
+        }
+        pixelData[pixelIndex + 3] = channelValues.a ?? 1.0;
       }
     }
   }
