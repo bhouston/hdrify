@@ -16,6 +16,7 @@ import { HdrifyCanvas } from 'hdrify-react';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useGoogleAnalytics } from 'tanstack-router-ga4';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -77,6 +78,24 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/example_nonRGB.exr', label: 'Example non-RGB Luminance (EXR)' },
 ];
 
+type ImageLoadSource = 'drag_drop' | 'example' | 'file_input';
+type ImageLoadFormat = 'exr' | 'hdr' | 'jpeg' | 'jpg';
+type DownloadFormat = 'exr' | 'hdr' | 'jpeg' | 'webp';
+
+function getFileExtension(name: string): ImageLoadFormat | '' {
+  const ext = name.toLowerCase().split('.').pop() ?? '';
+
+  if (ext === 'exr' || ext === 'hdr' || ext === 'jpg' || ext === 'jpeg') {
+    return ext;
+  }
+
+  return '';
+}
+
+function toBlobPart(bytes: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(bytes).buffer;
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -87,6 +106,7 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function Index() {
+  const ga = useGoogleAnalytics();
   const navigate = useNavigate();
   const { image: imageParam } = Route.useSearch();
   const [hdrifyImage, setHdrifyImage] = useState<HdrifyImage | null>(null);
@@ -99,13 +119,27 @@ function Index() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const ldrCanvasRef = useRef<HTMLCanvasElement>(null);
 
+  const trackImageLoad = useCallback(
+    (source: ImageLoadSource, fileName: string, format: ImageLoadFormat) => {
+      ga.event('image_load', { file_name: fileName, format, source });
+    },
+    [ga],
+  );
+
+  const trackDownload = useCallback(
+    (format: DownloadFormat) => {
+      ga.event('file_download', { format, source_file_name: sourceFileName ?? undefined });
+    },
+    [ga, sourceFileName],
+  );
+
   const handleFile = useCallback(
-    async (file: File) => {
+    async (file: File, source: Exclude<ImageLoadSource, 'example'>) => {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = new Uint8Array(arrayBuffer);
 
-        const ext = file.name.toLowerCase().split('.').pop();
+        const ext = getFileExtension(file.name);
         let parsed: HdrifyImage;
 
         if (ext === 'exr') {
@@ -122,45 +156,51 @@ function Index() {
         setHdrifyImage(parsed);
         setSourceFileName(file.name);
         setSelectedExampleUrl('');
+        trackImageLoad(source, file.name, ext);
         void navigate({ to: '.', search: {} as IndexSearch });
       } catch (error) {
         console.error('Error parsing file:', error);
         toast.error(`Error parsing file: ${error instanceof Error ? error.message : String(error)}`);
       }
     },
-    [navigate],
+    [navigate, trackImageLoad],
   );
 
-  const loadFromUrl = useCallback(async (url: string) => {
-    setLoadingExample(true);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(res.statusText);
-      const arrayBuffer = await res.arrayBuffer();
-      const buffer = new Uint8Array(arrayBuffer);
-      const ext = url.toLowerCase().split('.').pop() ?? '';
-      let parsed: HdrifyImage;
-      if (ext === 'exr') {
-        parsed = readExr(buffer);
-      } else if (ext === 'hdr') {
-        parsed = readHdr(buffer);
-      } else if (ext === 'jpg' || ext === 'jpeg') {
-        parsed = readJpegGainMap(buffer);
-      } else {
-        toast.error('Unsupported format. Example must be .exr, .hdr, or .jpg (gain map).');
-        return;
+  const loadFromUrl = useCallback(
+    async (url: string) => {
+      setLoadingExample(true);
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.statusText);
+        const arrayBuffer = await res.arrayBuffer();
+        const buffer = new Uint8Array(arrayBuffer);
+        const ext = getFileExtension(url);
+        const fileName = url.split('/').pop() ?? '';
+        let parsed: HdrifyImage;
+        if (ext === 'exr') {
+          parsed = readExr(buffer);
+        } else if (ext === 'hdr') {
+          parsed = readHdr(buffer);
+        } else if (ext === 'jpg' || ext === 'jpeg') {
+          parsed = readJpegGainMap(buffer);
+        } else {
+          toast.error('Unsupported format. Example must be .exr, .hdr, or .jpg (gain map).');
+          return;
+        }
+        setHdrifyImage(parsed);
+        setSourceFileName(fileName);
+        setSelectedExampleUrl(url);
+        trackImageLoad('example', fileName, ext);
+        toast.success('Example loaded');
+      } catch (error) {
+        console.error('Error loading example:', error);
+        toast.error(`Failed to load example: ${error instanceof Error ? error.message : String(error)}`);
+      } finally {
+        setLoadingExample(false);
       }
-      setHdrifyImage(parsed);
-      setSourceFileName(url.split('/').pop() ?? '');
-      setSelectedExampleUrl(url);
-      toast.success('Example loaded');
-    } catch (error) {
-      console.error('Error loading example:', error);
-      toast.error(`Failed to load example: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setLoadingExample(false);
-    }
-  }, []);
+    },
+    [trackImageLoad],
+  );
 
   // Load image from URL when ?image= is present (shared link or example selection)
   useEffect(() => {
@@ -176,7 +216,7 @@ function Index() {
       const files = e.dataTransfer.files;
       const file = files[0];
       if (file) {
-        void handleFile(file);
+        void handleFile(file, 'drag_drop');
       }
     },
     [handleFile],
@@ -196,7 +236,7 @@ function Index() {
       const files = e.target.files;
       const file = files?.[0];
       if (file) {
-        void handleFile(file);
+        void handleFile(file, 'file_input');
       }
     },
     [handleFile],
@@ -209,40 +249,46 @@ function Index() {
   const handleDownloadExr = useCallback(() => {
     if (!hdrifyImage) return;
     const bytes = writeExr(hdrifyImage);
-    const blob = new Blob([bytes], { type: 'image/x-exr' });
+    const blob = new Blob([toBlobPart(bytes)], { type: 'image/x-exr' });
     downloadBlob(blob, 'image.exr');
-  }, [hdrifyImage]);
+    trackDownload('exr');
+  }, [hdrifyImage, trackDownload]);
 
   const handleDownloadHdr = useCallback(() => {
     if (!hdrifyImage) return;
     const bytes = writeHdr(hdrifyImage);
-    const blob = new Blob([bytes], { type: 'image/vnd.radiance' });
+    const blob = new Blob([toBlobPart(bytes)], { type: 'image/vnd.radiance' });
     downloadBlob(blob, 'image.hdr');
-  }, [hdrifyImage]);
+    trackDownload('hdr');
+  }, [hdrifyImage, trackDownload]);
 
   const handleDownloadJpegR = useCallback(() => {
     if (!hdrifyImage) return;
     try {
       const encoding = encodeGainMap(hdrifyImage, { toneMapping: displayMode });
       const bytes = writeJpegGainMap(encoding, { quality: 90 });
-      const blob = new Blob([bytes], { type: 'image/jpeg' });
+      const blob = new Blob([toBlobPart(bytes)], { type: 'image/jpeg' });
       downloadBlob(blob, 'image.jpg');
+      trackDownload('jpeg');
     } catch (err) {
       toast.error(`Failed to create Ultra HDR JPEG: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [hdrifyImage, displayMode]);
+  }, [hdrifyImage, displayMode, trackDownload]);
 
   const handleDownloadWebP = useCallback(() => {
     const canvas = ldrCanvasRef.current;
     if (!canvas) return;
     canvas.toBlob(
       (blob) => {
-        if (blob) downloadBlob(blob, 'image.webp');
+        if (blob) {
+          downloadBlob(blob, 'image.webp');
+          trackDownload('webp');
+        }
       },
       'image/webp',
       0.92,
     );
-  }, []);
+  }, [trackDownload]);
 
   const handleAreaClick = useCallback(() => {
     fileInputRef.current?.click();

@@ -1,5 +1,6 @@
 import { createRootRoute, HeadContent, Scripts } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
+import { GoogleAnalytics } from 'tanstack-router-ga4';
 
 import Footer from '../components/Footer';
 import Header from '../components/Header';
@@ -36,15 +37,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script async={true} src="https://www.googletagmanager.com/gtag/js?id=G-CJJ7XP4N79"></script>
-        <script>{`
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-CJJ7XP4N79');
-`}</script>
       </head>
       <body className="flex min-h-screen flex-col">
+        <GoogleAnalytics measurementId="G-CJJ7XP4N79" />
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
