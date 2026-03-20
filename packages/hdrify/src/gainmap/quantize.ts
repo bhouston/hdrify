@@ -29,11 +29,9 @@ export function dequantizeU8ToFloat(b: number): number {
  */
 export function quantizeRgbaFloatToU8(floatRgba: Float32Array): Uint8ClampedArray {
   const out = new Uint8ClampedArray(floatRgba.length);
-  // biome-ignore-start lint/style/noNonNullAssertion: index bounds-checked by floatRgba.length loop
   for (let i = 0; i < floatRgba.length; i++) {
     out[i] = quantizeFloatToU8(floatRgba[i]!);
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: index bounds-checked by floatRgba.length loop
   return out;
 }
 
@@ -42,10 +40,8 @@ export function quantizeRgbaFloatToU8(floatRgba: Float32Array): Uint8ClampedArra
  */
 export function dequantizeU8ToRgbaFloat(u8: Uint8Array | Uint8ClampedArray): Float32Array {
   const out = new Float32Array(u8.length);
-  // biome-ignore-start lint/style/noNonNullAssertion: index bounds-checked by u8.length loop
   for (let i = 0; i < u8.length; i++) {
     out[i] = dequantizeU8ToFloat(u8[i]!);
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: index bounds-checked by u8.length loop
   return out;
 }

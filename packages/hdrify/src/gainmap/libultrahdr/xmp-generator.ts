@@ -41,14 +41,12 @@ export function generateXmpForPrimaryImage(secondaryImageLength: number, metadat
   lines.push('      <Container:Directory>');
   lines.push('        <rdf:Seq>');
 
-  // biome-ignore lint/security/noSecrets: XMP RDF element name
   lines.push('          <rdf:li rdf:parseType="Resource">');
   lines.push('            <Container:Item');
   lines.push(`              Item:Semantic="${ITEM_SEMANTIC_PRIMARY}"`);
   lines.push(`              Item:Mime="${MIME_IMAGE_JPEG}"/>`);
   lines.push('          </rdf:li>');
 
-  // biome-ignore lint/security/noSecrets: XMP RDF element name
   lines.push('          <rdf:li rdf:parseType="Resource">');
   lines.push('            <Container:Item');
   lines.push(`              Item:Semantic="${ITEM_SEMANTIC_GAIN_MAP}"`);
@@ -100,7 +98,6 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   lines.push(`      hdrgm:OffsetHDR="${escapeXml(offsetHdrScalar)}"`);
   lines.push(`      hdrgm:HDRCapacityMin="${escapeXml(hdrCapacityMin)}"`);
   lines.push(`      hdrgm:HDRCapacityMax="${escapeXml(hdrCapacityMax)}"`);
-  // biome-ignore lint/security/noSecrets: XMP attribute name from Adobe spec
   lines.push('      hdrgm:BaseRenditionIsHDR="False"');
   lines.push('      rdf:about=""/>');
   lines.push('  </rdf:RDF>');

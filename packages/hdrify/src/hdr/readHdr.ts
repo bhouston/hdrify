@@ -51,13 +51,11 @@ export function readHdr(hdrBuffer: Uint8Array, options: ParseHDROptions = {}): H
   }
 
   // Apply physicalRadiance: divide by exposure product
-  // biome-ignore lint/security/noSecrets: not a secret
   if (output === 'physicalRadiance' && header.exposure !== 1.0) {
     const scale = 1 / header.exposure;
     for (let i = 0; i < floatArray.length; i++) {
       if (i % 4 !== 3) {
         // Don't scale alpha
-        // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by floatArray.length loop
         (floatArray as Float32Array)[i] = floatArray[i]! * scale;
       }
     }
@@ -84,7 +82,6 @@ function RGBEByteToRGBFloat(
   destArray: Float32Array,
   destOffset: number,
 ): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
   const e = sourceArray[sourceOffset + 3]!;
   if (e === 0) {
     destArray[destOffset + 0] = 0;
@@ -97,7 +94,6 @@ function RGBEByteToRGBFloat(
     destArray[destOffset + 2] = (sourceArray[sourceOffset + 2]! + 0.5) * scale;
   }
   destArray[destOffset + 3] = 1;
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by caller (4-byte RGBE per pixel)
 }
 
 const magic_token_re = /^#\?(\S+)/;
@@ -229,7 +225,6 @@ function RGBE_ReadHeader(
   header.programtype = match[1];
   header.string += `${line}\n`;
 
-  // biome-ignore lint/nursery/noUnnecessaryConditions: loop breaks when line is false
   while (true) {
     line = fgets();
     if (false === line) break;
@@ -303,7 +298,6 @@ function RGBE_ReadHeader(
 
 /** Old RLE: illegal pixel has R=G=B=255, exponent = repeat count */
 function isOldRLEPixel(buf: Uint8Array, offset: number): boolean {
-  // biome-ignore lint/style/noNonNullAssertion: safe read from buf
   return buf[offset]! === 255 && buf[offset + 1]! === 255 && buf[offset + 2]! === 255;
 }
 
@@ -328,13 +322,9 @@ function decodeOldRLE(buffer: Uint8Array, w: number, h: number): Uint8Array {
       throw new Error('HDR Bad File Format: truncated old RLE data');
     }
 
-    // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
     const r = buffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
     const g = buffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
     const b = buffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
     const e = buffer[pos++]!;
 
     if (r === 255 && g === 255 && b === 255) {
@@ -342,13 +332,9 @@ function decodeOldRLE(buffer: Uint8Array, w: number, h: number): Uint8Array {
       let count = e;
       let shift = 1;
       while (pos + 4 <= buffer.length) {
-        // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
         const r2 = buffer[pos]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
         const g2 = buffer[pos + 1]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
         const b2 = buffer[pos + 2]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from buffer
         const e2 = buffer[pos + 3]!;
         if (r2 !== 255 || g2 !== 255 || b2 !== 255) break;
         pos += 4;
@@ -356,13 +342,9 @@ function decodeOldRLE(buffer: Uint8Array, w: number, h: number): Uint8Array {
         shift++;
       }
       for (let i = 0; i < count && outIdx < output.length; i++) {
-        // biome-ignore lint/style/noNonNullAssertion: safe read from prev
         output[outIdx++] = prev[0]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from prev
         output[outIdx++] = prev[1]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from prev
         output[outIdx++] = prev[2]!;
-        // biome-ignore lint/style/noNonNullAssertion: safe read from prev
         output[outIdx++] = prev[3]!;
       }
     } else {
@@ -407,7 +389,6 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
     pixelBuffer.length < 4 ||
     pixelBuffer[0] !== 2 ||
     pixelBuffer[1] !== 2 ||
-    // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
     pixelBuffer[2]! & 0x80
   ) {
     // Flat path: uncompressed or old RLE
@@ -424,7 +405,6 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
     return new Uint8Array(pixelBuffer);
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
   const bufferWidth = (pixelBuffer[2]! << 8) | pixelBuffer[3]!;
   if (scanline_width !== bufferWidth) {
     throw new Error(`HDR Bad File Format: wrong scanline width (expected ${scanline_width}, got ${bufferWidth})`);
@@ -450,13 +430,9 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
       throw new Error('HDR Read Error');
     }
 
-    // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
     rgbeStart[0] = pixelBuffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
     rgbeStart[1] = pixelBuffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
     rgbeStart[2] = pixelBuffer[pos++]!;
-    // biome-ignore lint/style/noNonNullAssertion: safe read from pixelBuffer
     rgbeStart[3] = pixelBuffer[pos++]!;
 
     if (rgbeStart[0] !== 2 || rgbeStart[1] !== 2 || ((rgbeStart[2] << 8) | rgbeStart[3]) !== scanline_width) {
@@ -503,16 +479,12 @@ function RGBE_ReadPixels_RLE(buffer: Uint8Array, w: number, h: number): Uint8Arr
     const l = scanline_width;
     for (let i = 0; i < l; i++) {
       let off = 0;
-      // biome-ignore lint/style/noNonNullAssertion: safe read
       data_rgba[outputOffset] = scanline_buffer[i + off]!;
       off += scanline_width;
-      // biome-ignore lint/style/noNonNullAssertion: safe read
       data_rgba[outputOffset + 1] = scanline_buffer[i + off]!;
       off += scanline_width;
-      // biome-ignore lint/style/noNonNullAssertion: safe read
       data_rgba[outputOffset + 2] = scanline_buffer[i + off]!;
       off += scanline_width;
-      // biome-ignore lint/style/noNonNullAssertion: safe read
       data_rgba[outputOffset + 3] = scanline_buffer[i + off]!;
       outputOffset += 4;
     }

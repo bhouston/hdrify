@@ -2,28 +2,35 @@
   "name": "hdrify-react",
   "version": "0.12.1",
   "description": "React component for displaying HDR HdrifyImage with tone mapping and exposure",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "module": "dist/index.js",
+  "keywords": [
+    "exr",
+    "float-image",
+    "gainmap",
+    "hdr",
+    "react",
+    "tone-mapping",
+    "ultra-hdr"
+  ],
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
+  },
   "license": "MIT",
   "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
-  "keywords": [
-    "hdr",
-    "exr",
-    "gainmap",
-    "ultra-hdr",
-    "float-image",
-    "tone-mapping",
-    "react"
-  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bhouston/hdrify.git",
     "directory": "packages/hdrify-react"
   },
-  "bugs": {
-    "url": "https://github.com/bhouston/hdrify/issues"
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsgo",
@@ -33,23 +40,16 @@
   "dependencies": {
     "hdrify": "workspace:*"
   },
-  "peerDependencies": {
-    "react": "^18.0.0 || ^19.0.0",
-    "react-dom": "^18.0.0 || ^19.0.0"
-  },
   "devDependencies": {
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@typescript/native-preview": "7.0.0-dev.20251202.1"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "engines": {
     "node": ">=24.0.0"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }

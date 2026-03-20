@@ -1,9 +1,15 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.node.json",
   "compilerOptions": {
+    "composite": true,
     "jsx": "react-jsx",
-    "outDir": "dist",
-    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo"
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "typeRoots": [
+      "${configDir}/node_modules/@types",
+      "${configDir}/../../node_modules/@types",
+      "${configDir}/../../node_modules/@webgpu/types"
+    ]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../hdrify" }]
 }

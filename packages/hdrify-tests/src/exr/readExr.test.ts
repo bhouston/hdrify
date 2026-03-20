@@ -1,4 +1,3 @@
-/** biome-ignore-all lint/style/noNonNullAssertion: file exists */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -338,7 +337,7 @@ describe('exrReader', () => {
         rowAverageError.push(errorSum / lowImage.width);
       }
 
-      const sorted = [...rowAverageError].sort((a, b) => a - b);
+      const sorted = [...rowAverageError].toSorted((a, b) => a - b);
       const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
       const tailRows = rowAverageError.slice(-32);
       const tailAverage = tailRows.reduce((sum, value) => sum + value, 0) / Math.max(1, tailRows.length);

@@ -1,34 +1,47 @@
 {
   "name": "hdrify",
-  "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
   "version": "0.12.1",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "license": "MIT",
-  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
+  "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
   "keywords": [
+    "browser",
     "exr",
-    "openexr",
+    "format",
+    "gainmap",
     "hdr",
+    "image",
+    "jpeg-r",
+    "openexr",
+    "parser",
     "radiance",
     "rgbe",
-    "gainmap",
-    "jpeg-r",
     "ultra-hdr",
-    "image",
-    "format",
-    "parser",
-    "writer",
-    "browser",
-    "universal"
+    "universal",
+    "writer"
   ],
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
+  },
+  "license": "MIT",
+  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bhouston/hdrify.git"
   },
-  "bugs": {
-    "url": "https://github.com/bhouston/hdrify/issues"
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsgo",
+    "dev": "tsgo --watch",
+    "tsgo": "tsgo",
+    "test": "vitest"
   },
   "dependencies": {
     "buffer": "^6.0.3",
@@ -40,20 +53,7 @@
     "exifreader": "^4.36.0",
     "vitest": "^2.1.9"
   },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
   "engines": {
     "node": ">=24.0.0"
-  },
-  "scripts": {
-    "build": "tsgo",
-    "dev": "tsgo --watch",
-    "tsgo": "tsgo",
-    "test": "vitest"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }

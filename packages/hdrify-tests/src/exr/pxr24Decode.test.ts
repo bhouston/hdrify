@@ -18,7 +18,11 @@ const pxr24Path = path.join(assetsDir, 'example_pxr24.exr');
 const exampleZipPath = path.join(assetsDir, 'example_zip.exr');
 
 // Half-float decode can differ slightly from float reference; allow small absolute tolerance.
-const TOLERANCE = { toleranceRelative: 0.01, toleranceAbsolute: 0.0001, includeMismatchSamples: 15 };
+const TOLERANCE = {
+  toleranceRelative: 0.01,
+  toleranceAbsolute: 0.0001,
+  includeMismatchSamples: 15,
+};
 
 function formatPixel(x: number, y: number, img: HdrifyImage): string {
   const i = (y * img.width + x) * 4;

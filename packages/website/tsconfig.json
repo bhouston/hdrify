@@ -1,27 +1,18 @@
 {
+  "extends": "../../tsconfig.node.json",
   "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
-    "target": "ES2022",
+    "composite": true,
+    "noEmit": true,
     "jsx": "react-jsx",
-    "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["vite/client"],
-
-    /* Bundler mode */
+    "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": false,
-    "noEmit": true,
-
-    /* Linting */
-    "skipLibCheck": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true,
     "paths": {
       "@/*": ["./src/*"]
     }
-  }
+  },
+  "references": [{ "path": "../hdrify" }, { "path": "../hdrify-react" }]
 }

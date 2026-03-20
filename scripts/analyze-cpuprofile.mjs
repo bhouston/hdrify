@@ -14,7 +14,7 @@ const profilePath =
     const files = fs
       .readdirSync(profileDir)
       .filter((f) => f.endsWith('.cpuprofile'))
-      .sort();
+      .toSorted();
     return path.join(profileDir, files.pop());
   })();
 
@@ -50,7 +50,7 @@ if (samples && timeDeltas && samples.length > 0) {
 }
 
 // Sort by self time descending
-const sorted = [...selfTime.entries()].sort((a, b) => b[1] - a[1]).slice(0, 80);
+const sorted = [...selfTime.entries()].toSorted((a, b) => b[1] - a[1]).slice(0, 80);
 
 // Filter to hdrify/app code
 function isRelevant(node) {

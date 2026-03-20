@@ -50,7 +50,6 @@ export function HdrifyCanvas({
 
     const canvasImageData = ctx.createImageData(width, height);
     const pixels = canvasImageData.data;
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
     const sourceLength = width * height * 3;
     for (let destIndex = 0, sourceIndex = 0; sourceIndex < sourceLength; destIndex += 4, sourceIndex += 3) {
       pixels[destIndex] = ldrRgb[sourceIndex]!;
@@ -58,7 +57,6 @@ export function HdrifyCanvas({
       pixels[destIndex + 2] = ldrRgb[sourceIndex + 2]!;
       pixels[destIndex + 3] = 255;
     }
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width * height loop
 
     ctx.putImageData(canvasImageData, 0, 0);
   }, []);

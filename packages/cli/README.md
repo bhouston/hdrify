@@ -21,11 +21,11 @@ pnpm add -g hdrify-cli
 
 ## Usage
 
-| Command | Description |
-| ------- | ----------- |
+| Command                           | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
 | `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
-| `hdrify info <file>` | Display metadata (format, dimensions, compression) |
-| `hdrify reference <output>` | Create synthetic reference test images |
+| `hdrify info <file>`              | Display metadata (format, dimensions, compression)           |
+| `hdrify reference <output>`       | Create synthetic reference test images                       |
 
 ```bash
 # Convert between formats

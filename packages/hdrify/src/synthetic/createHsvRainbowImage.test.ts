@@ -39,7 +39,7 @@ describe('createHsvRainbowImage', () => {
   it('right edge (sat=1) has fully saturated colors', () => {
     const img = createHsvRainbowImage({ width: 16, height: 16, value: 1, intensity: 1 });
     // Top-right: hue=0, sat=1 -> red
-    const topRightIndex = (0 * 16 + 15) * 4;
+    const topRightIndex = 15 * 4; // row 0, column 15
     expect(img.data[topRightIndex] ?? 0).toBeCloseTo(1);
     expect(img.data[topRightIndex + 1] ?? 0).toBeCloseTo(0);
     expect(img.data[topRightIndex + 2] ?? 0).toBeCloseTo(0);

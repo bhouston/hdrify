@@ -44,7 +44,6 @@ function rec2020DisplayToLinear(x: number): number {
  * sRGB and Display P3 use the same transfer (IEC 61966-2-1).
  */
 export function linearToDisplay(r: number, g: number, b: number, space: DisplayColorSpace): [number, number, number] {
-  // biome-ignore lint/nursery/noUnnecessaryConditions: exhaustive switch for DisplayColorSpace
   switch (space) {
     case 'display-srgb':
     case 'display-p3':
@@ -62,7 +61,6 @@ export function linearToDisplay(r: number, g: number, b: number, space: DisplayC
  * Convert display-referred RGB to linear.
  */
 export function displayToLinear(r: number, g: number, b: number, space: DisplayColorSpace): [number, number, number] {
-  // biome-ignore lint/nursery/noUnnecessaryConditions: exhaustive switch for DisplayColorSpace
   switch (space) {
     case 'display-srgb':
     case 'display-p3':

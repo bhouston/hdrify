@@ -38,7 +38,6 @@ export function compressPxr24Block(
       const lineDelta = new Uint8Array(segmentSize);
       let p = 0;
 
-      // biome-ignore-start lint/style/noNonNullAssertion: offset within rawHalfFloatPlanar length
       for (let x = 0; x < width; x++) {
         const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
         const lo = rawHalfFloatPlanar[offset]!;
@@ -50,7 +49,6 @@ export function compressPxr24Block(
         lineDelta[x * 2] = (diff >> 8) & 0xff;
         lineDelta[x * 2 + 1] = diff & 0xff;
       }
-      // biome-ignore-end lint/style/noNonNullAssertion: offset within rawHalfFloatPlanar length
       rawParts.push(transposePxr24Bytes(lineDelta, bytesPerSample));
     }
   }

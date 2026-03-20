@@ -64,7 +64,6 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
 
 function scaleToSize(src: Uint8Array, sw: number, sh: number, dw: number, dh: number): Uint8ClampedArray {
   const out = new Uint8ClampedArray(dw * dh * 4);
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by loop and sw/sh
   for (let y = 0; y < dh; y++) {
     const sy = Math.min(Math.floor((y * sh) / dh), sh - 1);
     for (let x = 0; x < dw; x++) {
@@ -77,6 +76,5 @@ function scaleToSize(src: Uint8Array, sw: number, sh: number, dw: number, dh: nu
       out[dstIdx + 3] = src[srcIdx + 3]!;
     }
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by loop and sw/sh
   return out;
 }

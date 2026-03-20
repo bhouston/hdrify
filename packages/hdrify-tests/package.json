@@ -8,9 +8,9 @@
     "tsgo": "tsc --noEmit"
   },
   "devDependencies": {
-    "hdrify": "workspace:*",
-    "vitest": "^2.1.9",
     "@types/node": "^24",
-    "typescript": "^5.6.0"
+    "hdrify": "workspace:*",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.9"
   }
 }

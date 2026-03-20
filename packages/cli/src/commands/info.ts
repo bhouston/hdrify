@@ -106,7 +106,7 @@ function buildInfoOutput(imageData: HdrifyImage, ext: string): InfoOutput {
   }
 
   const rangeMeta = addRangeMetadata(imageData);
-  output.metadata = { ...(imageData.metadata ?? {}), ...rangeMeta };
+  output.metadata = { ...imageData.metadata, ...rangeMeta };
 
   return output;
 }

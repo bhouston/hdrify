@@ -54,7 +54,7 @@ function worstColumnsByError(
       const t = width > 1 ? x / (width - 1) : 0;
       return { x, intensity: min + t * (max - min), maxError: columnErrors.get(x) ?? 0 };
     })
-    .sort((a, b) => b.maxError - a.maxError);
+    .toSorted((a, b) => b.maxError - a.maxError);
   return sorted.slice(0, topN);
 }
 
@@ -97,7 +97,7 @@ function validateSlowGradientLineByLine(
     if (!existing || f.error > existing.error)
       byX.set(f.x, { intensity: f.intensity, decodedR: f.decodedR, error: f.error });
   }
-  const sortedXs = [...byX.keys()].sort((a, b) => a - b);
+  const sortedXs = [...byX.keys()].toSorted((a, b) => a - b);
   return { failures, maxError, firstFailureX, byX, sortedXs };
 }
 

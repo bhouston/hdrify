@@ -80,12 +80,10 @@ export function convertLinearToDisplay(
 
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 4;
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
     const r = linearData[si]!;
     const g = linearData[si + 1]!;
     const b = linearData[si + 2]!;
     const a = linearData[si + 3]!;
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
 
     const [r2, g2, b2] = linearToDisplay(r, g, b, to);
     out[si] = r2;
@@ -121,12 +119,10 @@ export function convertDisplayToLinear(
   const m = matrix !== null ? mat3ToArray(matrix) : null;
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 4;
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
     const r = data[si]!;
     const g = data[si + 1]!;
     const b = data[si + 2]!;
     const a = data[si + 3]!;
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
 
     const [rLinear, gLinear, bLinear] = displayToLinear(r, g, b, from);
     linearData[si] = rLinear;

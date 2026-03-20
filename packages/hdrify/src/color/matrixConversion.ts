@@ -122,14 +122,12 @@ export function applyMatrix3(
   inputOffset = 0,
   outputOffset = 0,
 ): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: caller guarantees valid inputOffset and 9-element matrix
   const r = input[inputOffset]!;
   const g = input[inputOffset + 1]!;
   const b = input[inputOffset + 2]!;
   (output as number[])[outputOffset] = matrix[0]! * r + matrix[1]! * g + matrix[2]! * b;
   (output as number[])[outputOffset + 1] = matrix[3]! * r + matrix[4]! * g + matrix[5]! * b;
   (output as number[])[outputOffset + 2] = matrix[6]! * r + matrix[7]! * g + matrix[8]! * b;
-  // biome-ignore-end lint/style/noNonNullAssertion: caller guarantees valid inputOffset and 9-element matrix
 }
 
 /**

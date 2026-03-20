@@ -118,7 +118,6 @@ function hufUnpackEncTable(
 
     if (l === LONG_ZEROCODE_RUN) {
       if (p.value - inOffset.value > ni) {
-        // biome-ignore lint/security/noSecrets: This is an error message, not a secret
         throw new Error('Something wrong with hufUnpackEncTable');
       }
 
@@ -128,7 +127,6 @@ function hufUnpackEncTable(
       lc = getBitsReturn.lc;
 
       if (currentIm + zerun > iM + 1) {
-        // biome-ignore lint/security/noSecrets: This is an error message, not a secret
         throw new Error('Something wrong with hufUnpackEncTable');
       }
 
@@ -140,7 +138,6 @@ function hufUnpackEncTable(
     } else if (l >= SHORT_ZEROCODE_RUN) {
       const zerun = l - SHORT_ZEROCODE_RUN + 2;
       if (currentIm + zerun > iM + 1) {
-        // biome-ignore lint/security/noSecrets: This is an error message, not a secret
         throw new Error('Something wrong with hufUnpackEncTable');
       }
       let runCount = zerun;
@@ -252,7 +249,6 @@ function getCode(
     currentLc -= 8;
     let cs = currentC >> currentLc;
     const csArray = new Uint8Array([cs]);
-    // biome-ignore lint/style/noNonNullAssertion: Uint8Array([cs]) always has element at 0
     cs = csArray[0]!;
 
     if (outBufferOffset.value + cs > outBufferEndOffset) {
@@ -465,13 +461,11 @@ function hufPackEncTable(hcode: number[], im: number, iM: number, out: number[])
   let currentIm = im;
 
   while (currentIm <= iM) {
-    // biome-ignore lint/style/noNonNullAssertion: currentIm in [im, iM] which are valid hcode indices
     const l = hufLength(hcode[currentIm]!);
 
     if (l === 0) {
       let zerun = 1;
       while (currentIm < iM && zerun < LONGEST_LONG_RUN) {
-        // biome-ignore lint/style/noNonNullAssertion: currentIm+1 <= iM when currentIm < iM
         if (hufLength(hcode[currentIm + 1]!) > 0) break;
         currentIm++;
         zerun++;
@@ -519,7 +513,6 @@ function sendCode(
 function hufEncode(hcode: number[], inData: Uint16Array, ni: number, rlc: number, out: number[]): number {
   const c = { value: 0 };
   const lc = { value: 0 };
-  // biome-ignore-start lint/style/noNonNullAssertion: inData and hcode indices bounds-checked by ni and Huffman table
   let s = inData[0]!;
   let cs = 0;
 
@@ -534,7 +527,6 @@ function hufEncode(hcode: number[], inData: Uint16Array, ni: number, rlc: number
     s = ns;
   }
   sendCode(hcode[s]!, cs, hcode[rlc]!, c, lc, out);
-  // biome-ignore-end lint/style/noNonNullAssertion: inData and hcode indices bounds-checked by ni and Huffman table
 
   if (lc.value > 0) out.push((c.value << (8 - lc.value)) & 0xff);
   return lc.value > 0 ? (out.length - 1) * 8 + lc.value : out.length * 8;
@@ -612,7 +604,6 @@ export function hufUncompress(
   hufUnpackEncTable(uInt8Array, inOffset, ni, im, iM, freq);
 
   if (nBits > 8 * (nCompressed - (inOffset.value - initialInOffset))) {
-    // biome-ignore lint/security/noSecrets: This is an error message, not a secret
     throw new Error('Something wrong with hufUncompress');
   }
 

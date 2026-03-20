@@ -48,12 +48,10 @@ export interface WriteExrScanBlockOptions {
 
 function getChannelValue(data: Float32Array, pixelIndex: number, channelName: string): number {
   const n = channelName.toLowerCase();
-  // biome-ignore-start lint/style/noNonNullAssertion: pixelIndex valid for RGBA data length
   if (n === 'r' || n === 'red') return data[pixelIndex]!;
   if (n === 'g' || n === 'green') return data[pixelIndex + 1]!;
   if (n === 'b' || n === 'blue') return data[pixelIndex + 2]!;
   if (n === 'a' || n === 'alpha') return data[pixelIndex + 3]!;
-  // biome-ignore-end lint/style/noNonNullAssertion: pixelIndex valid for RGBA data length
   return 0;
 }
 

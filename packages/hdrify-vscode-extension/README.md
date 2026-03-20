@@ -2,7 +2,7 @@
 
 ![HDR Image Preview](/packages/hdrify-vscode-extension/images/icon.png)
 
-A VS Code and Cursor extension that adds HDR image conversion and preview for EXR, HDR, and UltraHDR Jpeg files using the [hdrify](https://www.npmjs.com/package/hdrify) library.  No external dependencies (OpenImageIO, OpenEXR, etc) required.
+A VS Code and Cursor extension that adds HDR image conversion and preview for EXR, HDR, and UltraHDR Jpeg files using the [hdrify](https://www.npmjs.com/package/hdrify) library. No external dependencies (OpenImageIO, OpenEXR, etc) required.
 
 **Author:** [Ben Houston](https://benhouston3d.com) | [GitHub](https://github.com/bhouston)
 
@@ -25,19 +25,19 @@ Right-click an EXR, HDR, or UltraHDR Jpeg in the Explorer. A **Convert HDR Image
 
 ## Supported Formats
 
-| Format | Extension | Preview | Convert |
-|--------|-----------|---------|---------|
-| OpenEXR | `.exr` | Default | ✓ |
-| Radiance HDR | `.hdr` | Default | ✓ |
-| UltraHDR Jpeg | `.jpg`, `.jpeg` | Optional | ✓ |
+| Format        | Extension       | Preview  | Convert |
+| ------------- | --------------- | -------- | ------- |
+| OpenEXR       | `.exr`          | Default  | ✓       |
+| Radiance HDR  | `.hdr`          | Default  | ✓       |
+| UltraHDR Jpeg | `.jpg`, `.jpeg` | Optional | ✓       |
 
 ## Configuration
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `hdrify.conversionQuality` | number | 90 | Quality for UltraHDR JPEG output (0–100) |
-| `hdrify.leaveOriginalWhenChangingFormat` | boolean | false | When converting, leave the original file and write to a new file (same name, target extension) |
-| `hdrify.exrCompression` | string | `"piz"` | Compression for EXR output: `none`, `rle`, `zips`, `zip`, `piz`, `pxr24` |
+| Setting                                  | Type    | Default | Description                                                                                    |
+| ---------------------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `hdrify.conversionQuality`               | number  | 90      | Quality for UltraHDR JPEG output (0–100)                                                       |
+| `hdrify.leaveOriginalWhenChangingFormat` | boolean | false   | When converting, leave the original file and write to a new file (same name, target extension) |
+| `hdrify.exrCompression`                  | string  | `"piz"` | Compression for EXR output: `none`, `rle`, `zips`, `zip`, `piz`, `pxr24`                       |
 
 ## Replace vs Save-As Behavior
 

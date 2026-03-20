@@ -105,7 +105,10 @@ function roundtripMessage(
     match: boolean;
     maxAbsoluteDelta?: number;
     mismatchedPixels?: number;
-    mismatchSamples?: Array<{ expected: [number, number, number, number]; actual: [number, number, number, number] }>;
+    mismatchSamples?: Array<{
+      expected: [number, number, number, number];
+      actual: [number, number, number, number];
+    }>;
   },
   channel: string,
   from: string,

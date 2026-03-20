@@ -1,9 +1,9 @@
 {
-  "extends": "./tsconfig.json",
-  "include": ["src"],
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "incremental": false,
-    "sourceMap": false,
-    "esModuleInterop": false
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "typeRoots": ["${configDir}/node_modules/@types", "${configDir}/../../node_modules/@types"]
   }
 }

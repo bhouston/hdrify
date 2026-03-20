@@ -35,7 +35,7 @@ All read functions return `HdrifyImage`, and all write functions accept it. This
 interface HdrifyImage {
   width: number;
   height: number;
-  data: Float32Array;     // RGBA: [R, G, B, A, R, G, B, A, ...]
+  data: Float32Array; // RGBA: [R, G, B, A, R, G, B, A, ...]
   linearColorSpace: LinearColorSpace;
   metadata?: Record<string, unknown>;
 }

@@ -29,7 +29,6 @@ function RRTAndODTFit(v: number): number {
  * Input: linear RGB (callers ensure non-negative finite). Output: linear 0-1.
  */
 function acesFilmicBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
   const m00 = 0.59719,
     m01 = 0.35458,
     m02 = 0.04823;
@@ -67,14 +66,12 @@ function acesFilmicBatch(input: Float32Array, output: Float32Array, pixelCount: 
     output[si + 1] = o10 * r2 + o11 * g2 + o12 * b2;
     output[si + 2] = o20 * r2 + o21 * g2 + o22 * b2;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 /**
  * Reinhard tone mapping: x / (1 + x). Output: linear 0-1.
  */
 function reinhardBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 3;
     const r = input[si]!;
@@ -84,14 +81,12 @@ function reinhardBatch(input: Float32Array, output: Float32Array, pixelCount: nu
     output[si + 1] = g / (1 + g);
     output[si + 2] = b / (1 + b);
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 /**
  * Khronos Neutral tone mapping - https://modelviewer.dev/examples/tone-mapping
  */
 function neutralBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
   const StartCompression = 0.8 - 0.04;
   const Desaturation = 0.15;
 
@@ -130,7 +125,6 @@ function neutralBatch(input: Float32Array, output: Float32Array, pixelCount: num
     output[si + 1] = g0 * (1 - gMix) + newPeak * gMix;
     output[si + 2] = b0 * (1 - gMix) + newPeak * gMix;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 function agxDefaultContrastApprox(x: number): number {
@@ -162,7 +156,6 @@ const agxVecIn: [number, number, number] = [0, 0, 0];
 const agxVecOut: [number, number, number] = [0, 0, 0];
 
 function agxBatch(input: Float32Array, output: Float32Array, pixelCount: number): void {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
   for (let i = 0; i < pixelCount; i++) {
     const si = i * 3;
     agxVecIn[0] = input[si]!;
@@ -213,7 +206,6 @@ function agxBatch(input: Float32Array, output: Float32Array, pixelCount: number)
     output[si + 1] = agxVecOut[1]!;
     output[si + 2] = agxVecOut[2]!;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
 }
 
 const TONE_MAPPING_MAP: Record<ToneMappingType, ToneMappingBatchFn> = {

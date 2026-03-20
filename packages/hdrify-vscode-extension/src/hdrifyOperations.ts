@@ -62,11 +62,8 @@ export async function convertToFormat(
   options?: ConvertOptions,
 ): Promise<void> {
   const config = getConfig();
-  // biome-ignore lint/security/noSecrets: VS Code config key, not a secret
   const quality = Math.max(0, Math.min(100, config.get<number>('conversionQuality', 90) ?? 90));
-  // biome-ignore lint/security/noSecrets: VS Code config key, not a secret
   const leaveOriginal = config.get<boolean>('leaveOriginalWhenChangingFormat', false);
-  // biome-ignore lint/security/noSecrets: VS Code config key, not a secret
   const exrCompressionStr = config.get<string>('exrCompression', 'piz') ?? 'piz';
   const exrCompression = EXR_COMPRESSION_MAP[exrCompressionStr.toLowerCase()] ?? PIZ_COMPRESSION;
 

@@ -12,7 +12,6 @@
 export function applyExrPredictor(src: Uint8Array): void {
   const size = src.length;
   if (size < 2) return;
-  // biome-ignore-start lint/style/noNonNullAssertion: size and indices checked
   if ((size & 1) === 0) {
     src[1] = (src[1]! + (src[0]! ^ 0x80)) & 0xff;
   }
@@ -23,7 +22,6 @@ export function applyExrPredictor(src: Uint8Array): void {
     src[i + 1] = (src[i + 1]! + a) & 0xff;
     src[i] = (a ^ 0x80) & 0xff;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: size and indices checked
 }
 
 /**
@@ -35,10 +33,8 @@ export function reorderExrPixels(dst: Uint8Array, src: Uint8Array): void {
   const halfSize = Math.floor(src.length / 2);
   const t1 = src.subarray(0, halfSize);
   const t2 = src.subarray(halfSize, halfSize * 2);
-  // biome-ignore-start lint/style/noNonNullAssertion: i < halfSize ensures valid indices
   for (let i = 0; i < halfSize; i++) {
     dst[i * 2] = t1[i]!;
     dst[i * 2 + 1] = t2[i]!;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: i < halfSize ensures valid indices
 }

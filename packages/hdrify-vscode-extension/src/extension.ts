@@ -41,7 +41,6 @@ async function runConvert(uris: vscode.Uri[], format: 'exr' | 'hdr' | 'jpeg'): P
         const increment = 100 / uris.length;
         for (const u of uris) {
           try {
-            // biome-ignore lint/performance/noAwaitInLoops: sequential for progress reporting
             await convertToFormat(u, format, { silent: true });
           } catch {
             // Error already shown by convertToFormat
@@ -53,7 +52,6 @@ async function runConvert(uris: vscode.Uri[], format: 'exr' | 'hdr' | 'jpeg'): P
   } else {
     for (const u of uris) {
       try {
-        // biome-ignore lint/performance/noAwaitInLoops: sequential for single-file toast
         await convertToFormat(u, format);
       } catch {
         // Error already shown
@@ -72,7 +70,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const convertFormats = ['exr', 'hdr', 'jpeg'] as const;
   for (const format of convertFormats) {
-    // biome-ignore lint/security/noSecrets: VS Code command ID, not a secret
     const command = `hdrify.convertTo${format === 'exr' ? 'Exr' : format === 'hdr' ? 'Hdr' : 'UltraHdrJpeg'}` as const;
     context.subscriptions.push(
       vscode.commands.registerCommand(command, async (uri: vscode.Uri, selectedResources?: vscode.Uri[]) => {
@@ -89,18 +86,14 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      // biome-ignore lint/security/noSecrets: VS Code command ID, not a secret
-      'hdrify.openHdrPreview',
-      async (uri: vscode.Uri) => {
-        const resource = uri ?? getSelectedFileUri();
-        if (!resource) {
-          vscode.window.showErrorMessage('HDRify: No file selected. Right-click a JPEG in the Explorer.');
-          return;
-        }
-        await vscode.commands.executeCommand('vscode.openWith', resource, 'hdrify.hdrPreview');
-      },
-    ),
+    vscode.commands.registerCommand('hdrify.openHdrPreview', async (uri: vscode.Uri) => {
+      const resource = uri ?? getSelectedFileUri();
+      if (!resource) {
+        vscode.window.showErrorMessage('HDRify: No file selected. Right-click a JPEG in the Explorer.');
+        return;
+      }
+      await vscode.commands.executeCommand('vscode.openWith', resource, 'hdrify.hdrPreview');
+    }),
   );
 }
 

@@ -305,11 +305,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
             lineOffset + 1 * width * bytesPerChannel + x * bytesPerChannel,
             primaryChannel.pixelType,
           );
-          channelValues.b = readChannelValue(
-            blockDataView,
-            lineOffset + 0 * width * bytesPerChannel + x * bytesPerChannel,
-            primaryChannel.pixelType,
-          );
+          channelValues.b = readChannelValue(blockDataView, lineOffset + x * bytesPerChannel, primaryChannel.pixelType);
         } else {
           for (let c = 0; c < channels.length; c++) {
             const channel = channels[c];

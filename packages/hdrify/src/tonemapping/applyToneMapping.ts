@@ -40,7 +40,6 @@ export function applyToneMapping(
   const ldrData = new Uint8Array(totalPixels * 3);
 
   // Fill linearRgbBuffer with exposure-adjusted RGB from RGBA input
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   for (let i = 0; i < totalPixels; i++) {
     const srcIdx = i * 4;
     const dstIdx = i * 3;
@@ -64,7 +63,6 @@ export function applyToneMapping(
     ldrData[dstIdx + 1] = Math.max(0, Math.min(255, g * 255 + 0.5));
     ldrData[dstIdx + 2] = Math.max(0, Math.min(255, b * 255 + 0.5));
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
 
   return ldrData;
 }

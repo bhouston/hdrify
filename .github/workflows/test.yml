@@ -33,13 +33,19 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run type check
-        run: pnpm tsgo
+        run: pnpm tsc
+
+      - name: Run build
+        run: pnpm build
 
       - name: Run linter
-        run: pnpm check
+        run: pnpm lint
+
+      - name: Run format check
+        run: pnpm format
 
       - name: Run tests
-        run: pnpm vitest
+        run: pnpm test
 
       - name: Run tests with coverage
         run: pnpm vitest run --coverage

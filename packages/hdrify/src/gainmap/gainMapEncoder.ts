@@ -13,7 +13,6 @@ const defaultGamma = [1, 1, 1] as [number, number, number];
  */
 function findMaxHdrValue(data: Float32Array): number {
   let max = 0;
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i]!;
     const g = data[i + 1]!;
@@ -21,7 +20,6 @@ function findMaxHdrValue(data: Float32Array): number {
     const m = Math.max(r, g, b);
     if (m > max) max = m;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by data.length loop
   return max;
 }
 
@@ -38,7 +36,6 @@ function findMaxContentBoostFromGains(
   offsetHdr: [number, number, number],
   exposure: number,
 ): number {
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   for (let i = 0; i < totalPixels; i++) {
     const srcIdx = i * 4;
     const dstIdx = i * 3;
@@ -69,7 +66,6 @@ function findMaxContentBoostFromGains(
     const m = Math.max(gainR, gainG, gainB);
     if (m > maxGain) maxGain = m;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   return maxGain;
 }
 
@@ -124,7 +120,6 @@ export function encodeGainMap(image: HdrifyImage, options: GainMapEncodingOption
   const sdr = new Uint8ClampedArray(totalPixels * 4);
   const gainMap = new Uint8ClampedArray(totalPixels * 4);
 
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   for (let i = 0; i < totalPixels; i++) {
     const srcIdx = i * 4;
     const dstIdx = i * 3;
@@ -176,7 +171,6 @@ export function encodeGainMap(image: HdrifyImage, options: GainMapEncodingOption
     gainMap[idx + 2] = Math.round(255 * clampedB ** gamma[2]);
     gainMap[idx + 3] = 255;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
 
   const gainMapMinLog = [minLog2, minLog2, minLog2] as [number, number, number];
   const gainMapMaxLog = [maxLog2, maxLog2, maxLog2] as [number, number, number];
@@ -261,7 +255,6 @@ export function encodeGainMapToFloat(image: HdrifyImage, options: GainMapEncodin
   const sdrFloat = new Float32Array(totalPixels * 4);
   const gainMapFloat = new Float32Array(totalPixels * 4);
 
-  // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by totalPixels loop
   for (let i = 0; i < totalPixels; i++) {
     const srcIdx = i * 4;
     const dstIdx = i * 3;
@@ -309,7 +302,6 @@ export function encodeGainMapToFloat(image: HdrifyImage, options: GainMapEncodin
     gainMapFloat[idx + 2] = clampedB ** gamma[2];
     gainMapFloat[idx + 3] = 1;
   }
-  // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by totalPixels * 4
 
   const gainMapMinLogFloat = [minLog2Float, minLog2Float, minLog2Float] as [number, number, number];
   const gainMapMaxLogFloat = [maxLog2Float, maxLog2Float, maxLog2Float] as [number, number, number];

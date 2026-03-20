@@ -1,38 +1,45 @@
 {
   "name": "hdrify-cli",
   "version": "0.12.1",
-  "type": "module",
   "description": "CLI tool for converting between EXR and HDR and Ultra JPEG-R formats",
-  "license": "MIT",
-  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
   "keywords": [
-    "exr",
-    "openexr",
-    "hdr",
-    "radiance",
-    "rgbe",
-    "gainmap",
-    "jpeg-r",
-    "ultra-hdr",
-    "image",
-    "format",
-    "parser",
-    "writer",
     "cli",
     "command-line",
-    "tool"
+    "exr",
+    "format",
+    "gainmap",
+    "hdr",
+    "image",
+    "jpeg-r",
+    "openexr",
+    "parser",
+    "radiance",
+    "rgbe",
+    "tool",
+    "ultra-hdr",
+    "writer"
   ],
-  "main": "dist/index.js",
-  "bin": {
-    "hdrify": "dist/index.js"
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
   },
+  "license": "MIT",
+  "author": "Ben Houston <neuralsoft@gmail.com> (https://benhouston3d.com)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bhouston/hdrify.git",
     "directory": "packages/cli"
   },
-  "bugs": {
-    "url": "https://github.com/bhouston/hdrify/issues"
+  "bin": {
+    "hdrify": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "tsgo",
@@ -50,12 +57,5 @@
     "@types/node": "^24",
     "@types/yargs": "^17.0.33",
     "@typescript/native-preview": "7.0.0-dev.20251202.1"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }

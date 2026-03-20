@@ -1,4 +1,3 @@
-// biome-ignore-all lint/security/noSecrets: EXR attribute names (displayWindow, pixelAspectRatio, etc.) are spec strings, not secrets
 /**
  * EXR header builder for writing
  * Builds header bytes from options. Output parses correctly via parseExrHeader.

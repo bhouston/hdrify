@@ -9,6 +9,12 @@ jobs:
   deploy:
     name: Deploy hdrify to Cloud Run
     runs-on: ubuntu-latest
+    env:
+      GAR_HOSTNAME: us-central1-docker.pkg.dev # Artifact Registry hostname
+      PROJECT_ID: bhouston-general-hosting # Your GCP project ID
+      REGION: us-central1 # Cloud Run region
+      SERVICE: hdrify # Cloud Run service name
+      DOCKER_REGISTRY: shared-docker-registry
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,10 +30,10 @@ jobs:
           skip_install: true
 
       - name: Configure Docker
-        run: gcloud auth configure-docker ${{ vars.GAR_HOSTNAME }}
+        run: gcloud auth configure-docker ${{ env.GAR_HOSTNAME }}
 
       - name: Set image path
-        run: echo "IMAGE_PATH=${{ vars.GAR_HOSTNAME }}/${{ vars.PROJECT_ID }}/shared-docker-registry/hdrify:${{ github.sha }}" >> $GITHUB_ENV
+        run: echo "IMAGE_PATH=${{ env.GAR_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.DOCKER_REGISTRY }}/${{ env.SERVICE }}:${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Build and Push Container
         uses: docker/build-push-action@v6
@@ -41,7 +47,7 @@ jobs:
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: hdrify
-          region: ${{ vars.REGION }}
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
           image: ${{ env.IMAGE_PATH }}
           flags: '--allow-unauthenticated'

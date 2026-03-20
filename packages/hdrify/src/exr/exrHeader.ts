@@ -65,7 +65,6 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
 
   // Read header attributes
   const header: Record<string, unknown> = {};
-  // biome-ignore lint/nursery/noUnnecessaryConditions: Loop breaks when empty string is read
   while (true) {
     const attributeName = readNullTerminatedString(exrBuffer, offset);
     offset += attributeName.length + 1;

@@ -44,7 +44,13 @@ describe('tonemapping continuity', () => {
   });
 
   it('preserves continuity for zero-crossing gradient -0.1→0.1 with Reinhard', () => {
-    const img = createGradientImage({ width: 256, height: 1, mode: 'horizontal', min: -0.1, max: 0.1 });
+    const img = createGradientImage({
+      width: 256,
+      height: 1,
+      mode: 'horizontal',
+      min: -0.1,
+      max: 0.1,
+    });
     const result = applyToneMapping(img.data, img.width, img.height, { toneMapping: 'reinhard' });
 
     for (let i = 0; i < 255; i++) {

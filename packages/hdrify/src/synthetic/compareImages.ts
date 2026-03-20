@@ -65,10 +65,8 @@ export function compareImages(a: HdrifyImage, b: HdrifyImage, options?: CompareI
 
     for (let c = 0; c < 4; c++) {
       const i = p * 4 + c;
-      // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
       const va = a.data[i]!;
       const vb = b.data[i]!;
-      // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount*4 loop
       const diff = Math.abs(va - vb);
       const delta = va - vb;
 
@@ -97,13 +95,11 @@ export function compareImages(a: HdrifyImage, b: HdrifyImage, options?: CompareI
       }
     }
 
-    // biome-ignore lint/nursery/noUnnecessaryConditions: pixelMismatch set in inner loop when values differ
     if (pixelMismatch) {
       mismatchedPixels++;
       if (maxSamples > 0 && mismatchSamples.length < maxSamples) {
         const x = p % width;
         const y = Math.floor(p / width);
-        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
         mismatchSamples.push({
           pixelIndex: p,
           x,
@@ -111,7 +107,6 @@ export function compareImages(a: HdrifyImage, b: HdrifyImage, options?: CompareI
           expected: [a.data[p * 4]!, a.data[p * 4 + 1]!, a.data[p * 4 + 2]!, a.data[p * 4 + 3]!],
           actual: [b.data[p * 4]!, b.data[p * 4 + 1]!, b.data[p * 4 + 2]!, b.data[p * 4 + 3]!],
         });
-        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by pixelCount loop
       }
     }
   }

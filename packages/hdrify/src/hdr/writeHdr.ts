@@ -31,11 +31,9 @@ export function writeHdr(hdrifyImage: HdrifyImage): Uint8Array {
   let pixelOffset = headerBytes.length;
   for (let i = 0; i < width * height; i++) {
     const dataIndex = i * 4; // RGBA format
-    // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width*height*4 loop
     const r = data[dataIndex]!;
     const g = data[dataIndex + 1]!;
     const b = data[dataIndex + 2]!;
-    // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width*height*4 loop
 
     // Convert to RGBE
     const { r: re, g: ge, b: be, e } = floatToRGBE(r, g, b);

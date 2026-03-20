@@ -6,11 +6,7 @@ export {
   getCanvasColorSpaceForDisplay,
 } from './color/canvasColorSpace.js';
 // Color space and conversion
-export {
-  CHROMATICITIES_P3,
-  CHROMATICITIES_REC709,
-  CHROMATICITIES_REC2020,
-} from './color/chromaticities.js';
+export { CHROMATICITIES_P3, CHROMATICITIES_REC709, CHROMATICITIES_REC2020 } from './color/chromaticities.js';
 export {
   chromaticitiesToLinearColorSpace,
   DISPLAY_COLOR_SPACES,
@@ -63,17 +59,10 @@ export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
 export { writeHdr } from './hdr/writeHdr.js';
 export { ensureNonNegativeFinite, type HdrifyImage } from './hdrifyImage.js';
 export { addRangeMetadata } from './rangeMetadata.js';
-export type {
-  CompareImagesOptions,
-  CompareImagesResult,
-  MismatchSample,
-} from './synthetic/compareImages.js';
+export type { CompareImagesOptions, CompareImagesResult, MismatchSample } from './synthetic/compareImages.js';
 // Synthetic test images
 export { compareImages } from './synthetic/compareImages.js';
-export type {
-  CieWedgeChannel,
-  CreateCieColorWedgeImageOptions,
-} from './synthetic/createCieColorWedgeImage.js';
+export type { CieWedgeChannel, CreateCieColorWedgeImageOptions } from './synthetic/createCieColorWedgeImage.js';
 export { createCieColorWedgeImage } from './synthetic/createCieColorWedgeImage.js';
 export type { CreateGradientImageOptions, GradientChannel, GradientMode } from './synthetic/createGradientImage.js';
 export { createGradientImage } from './synthetic/createGradientImage.js';

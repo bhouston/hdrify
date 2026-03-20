@@ -298,7 +298,6 @@ function Index() {
     <div className="flex flex-1 flex-col p-4">
       <p className="mb-4 text-sm text-muted-foreground">
         This is a web demo of the{' '}
-        {/** biome-ignore assist/source/useSortedAttributes: anchor attribute order preferred for readability */}
         <a
           href="https://github.com/bhouston/hdrify"
           target="_blank"

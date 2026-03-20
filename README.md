@@ -38,10 +38,10 @@ All read functions return `HdrifyImage`, and all write functions accept it (or d
 
 ```ts
 interface HdrifyImage {
-  width: number;           // Image width in pixels
-  height: number;          // Image height in pixels
-  data: Float32Array;     // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]
-  metadata?: Record<string, unknown>;  // Format-specific header metadata (e.g. compression, exposure)
+  width: number; // Image width in pixels
+  height: number; // Image height in pixels
+  data: Float32Array; // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]
+  metadata?: Record<string, unknown>; // Format-specific header metadata (e.g. compression, exposure)
 }
 ```
 
@@ -128,11 +128,11 @@ The **hdrify-cli** package is a companion command-line tool for converting and i
 pnpm add -g hdrify-cli
 ```
 
-| Command | Description |
-| ------- | ----------- |
+| Command                           | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
 | `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
-| `hdrify info <file>` | Display metadata (format, dimensions, compression) |
-| `hdrify reference <output>` | Create synthetic reference test images |
+| `hdrify info <file>`              | Display metadata (format, dimensions, compression)           |
+| `hdrify reference <output>`       | Create synthetic reference test images                       |
 
 ```bash
 hdrify convert input.exr output.hdr
@@ -158,32 +158,17 @@ pnpm dev
 
 Open http://localhost:3000 and drag-and-drop EXR or HDR files.
 
-## Developer (for Contributors)
+## Development
 
-Check out [this git project](https://github.com/bhouston/hdrify) and run:
-
-```sh
-# install dependencies
+```bash
 pnpm install
-
-# build packages (hdrify, hdrify-cli)
+pnpm dev
+pnpm tsc # typescript-native
 pnpm build
-
-# run tests
-pnpm test
-
-# type-check
-pnpm tsgo
-
-# lint
-pnpm check
-
-# clean build artifacts
-pnpm clean
-
-# publish the npm packages
-pnpm make-release:hdrify
-pnpm make-release:hdrify-cli
+pnpm lint # oxlint
+pnpm lint:fix
+pnpm format # oxfmt
+pnpm test # vitest
 ```
 
 ## License
@@ -198,9 +183,9 @@ MIT
 
 This project would not have been possible without these two projects which were used a reference:
 
-* [Three.js](https://github.com/mrdoob/three.js) - tone mapping, UltraHDR loader, EXR loader, example images.
-* [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - Ultra HDR loading, saving, XMP metadata structure and JPEG-R assembly (reference implementation).
-* [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) - EXR encoding/decoding for all the various compression formats, example images.
+- [Three.js](https://github.com/mrdoob/three.js) - tone mapping, UltraHDR loader, EXR loader, example images.
+- [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - Ultra HDR loading, saving, XMP metadata structure and JPEG-R assembly (reference implementation).
+- [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) - EXR encoding/decoding for all the various compression formats, example images.
 
 [npm]: https://img.shields.io/npm/v/hdrify
 [npm-url]: https://www.npmjs.com/package/hdrify

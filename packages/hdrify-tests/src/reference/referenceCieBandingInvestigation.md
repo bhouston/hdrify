@@ -39,7 +39,7 @@ Our reader (`readHdr.ts`, `RGBEByteToRGBFloat`):
 
 ```ts
 const scale = 2.0 ** (e - 128.0) / 255.0;
-destArray[destOffset + 0] = sourceArray[sourceOffset + 0]! * scale;  // no +0.5
+destArray[destOffset + 0] = sourceArray[sourceOffset + 0]! * scale; // no +0.5
 ```
 
 So we use floor restoration. The article reports:

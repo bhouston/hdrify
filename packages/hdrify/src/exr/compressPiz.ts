@@ -66,12 +66,10 @@ export function bitmapFromData(
     const v = data[i];
     if (v !== undefined) {
       const bi = v >> 3;
-      // biome-ignore lint/style/noNonNullAssertion: bi in [0, BITMAP_SIZE-1] for v in [0, 65535]
       bitmap[bi] = bitmap[bi]! | (1 << (v & 7));
     }
   }
 
-  // biome-ignore lint/style/noNonNullAssertion: index 0 always valid
   bitmap[0] = bitmap[0]! & ~1;
 
   let mnnz = BITMAP_SIZE - 1;
@@ -92,7 +90,6 @@ export function bitmapFromData(
 export function forwardLutFromBitmap(bitmap: Uint8Array, lut: Uint16Array): number {
   let k = 0;
   for (let i = 0; i < USHORT_RANGE; i++) {
-    // biome-ignore lint/style/noNonNullAssertion: i>>3 in [0, BITMAP_SIZE-1] for i in USHORT_RANGE
     if (i === 0 || bitmap[i >> 3]! & (1 << (i & 7))) {
       lut[i] = k++;
     } else {
@@ -291,7 +288,6 @@ export function compressPizBlock(
   const pixelsPerChannel = width * blockHeight;
   const primaryChannel = channels[0];
   if (!primaryChannel) {
-    // biome-ignore lint/security/noSecrets: not a secret
     throw new Error('compressPizBlock: no channels');
   }
   const isFloat = primaryChannel.pixelType === FLOAT;

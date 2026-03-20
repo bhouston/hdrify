@@ -30,7 +30,6 @@ export function compressRLE(rawData: Uint8Array): Uint8Array {
 
     if (runEnd - runStart >= MIN_RUN_LENGTH) {
       out.push((runEnd - runStart - 1) & 0xff);
-      // biome-ignore lint/style/noNonNullAssertion: runStart < rawData.length
       out.push(rawData[runStart]!);
       i = runEnd;
     } else {
@@ -45,11 +44,9 @@ export function compressRLE(rawData: Uint8Array): Uint8Array {
         runEnd++;
       }
       out.push((runStart - runEnd) & 0xff);
-      // biome-ignore-start lint/style/noNonNullAssertion: j in [runStart, runEnd) within rawData.length
       for (let j = runStart; j < runEnd; j++) {
         out.push(rawData[j]!);
       }
-      // biome-ignore-end lint/style/noNonNullAssertion: j in [runStart, runEnd) within rawData.length
       i = runEnd;
     }
   }

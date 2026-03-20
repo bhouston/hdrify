@@ -108,7 +108,6 @@ export function decompressPxr24(
       for (let x = 0; x < width; x++) {
         const s = lineStart + x;
         const byteOff = x * chBytesPerSample;
-        // biome-ignore-start lint/style/noNonNullAssertion: indices bounds-checked by width*chBytesPerSample and accum init
         let diff: number;
         if (channel.pixelType === HALF) {
           // OpenEXR/C++ store delta high byte first in segment; after untranspose we have [high, low] per sample
@@ -134,7 +133,6 @@ export function decompressPxr24(
           accum[c] = (accum[c]! + diff) >>> 0;
           chView.setUint32(s * outBytesPerSample, accum[c]!, true);
         }
-        // biome-ignore-end lint/style/noNonNullAssertion: indices bounds-checked by width*chBytesPerSample and accum init
       }
     }
   }
@@ -155,7 +153,6 @@ export function decompressPxr24(
       for (let x = 0; x < width; x++) {
         const srcOffset = chLineStart + x * bs;
         for (let b = 0; b < bs; b++) {
-          // biome-ignore lint/style/noNonNullAssertion: index bounds-checked by channel layout
           output[writeOffset++] = values[srcOffset + b]!;
         }
       }

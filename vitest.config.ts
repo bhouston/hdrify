@@ -14,12 +14,7 @@ export default defineConfig({
     isolate: false,
     ...(isProfiling && {
       fileParallelism: false,
-      execArgv: [
-        '--cpu-prof',
-        '--cpu-prof-dir=./profile-output',
-        '--heap-prof',
-        '--heap-prof-dir=./profile-output',
-      ],
+      execArgv: ['--cpu-prof', '--cpu-prof-dir=./profile-output', '--heap-prof', '--heap-prof-dir=./profile-output'],
     }),
     coverage: {
       provider: 'v8',
@@ -38,8 +33,7 @@ export default defineConfig({
         '**/vitest.config.ts',
         '**/vitest.config.js',
         '**/publish',
-      ]
-    }
+      ],
+    },
   },
-  
 });
