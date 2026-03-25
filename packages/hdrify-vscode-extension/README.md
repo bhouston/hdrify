@@ -4,7 +4,7 @@
 
 A VS Code and Cursor extension that adds HDR image conversion and preview for EXR, HDR, and UltraHDR Jpeg files using the [hdrify](https://www.npmjs.com/package/hdrify) library. No external dependencies (OpenImageIO, OpenEXR, etc) required.
 
-**Author:** [Ben Houston](https://benhouston3d.com) | [GitHub](https://github.com/bhouston)
+**Author:** [Ben Houston](https://ben3d.ca) | [GitHub](https://github.com/bhouston)
 
 ## HDR Image Preview
 

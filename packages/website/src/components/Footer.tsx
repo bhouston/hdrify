@@ -8,7 +8,7 @@ export default function Footer() {
       by{' '}
       <a
         className="underline hover:text-foreground transition-colors"
-        href="https://benhouston3d.com"
+        href="https://ben3d.ca"
         rel="noopener noreferrer"
         target="_blank"
       >

@@ -1,6 +1,6 @@
 # hdrify-cli
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -11,7 +11,7 @@ CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe
 
 **Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
 
-An **online demo** is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
+An **online demo** is available at **[https://hdrify.ben3d.ca](https://hdrify.ben3d.ca)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
 
 ## Installation
 
@@ -62,7 +62,7 @@ MIT
 
 ## Author
 
-[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
 
 [npm]: https://img.shields.io/npm/v/hdrify-cli
 [npm-url]: https://www.npmjs.com/package/hdrify-cli

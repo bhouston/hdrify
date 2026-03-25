@@ -1,6 +1,6 @@
 # hdrify-react
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -11,7 +11,7 @@ React component for displaying HDR images from [hdrify](https://www.npmjs.com/pa
 
 **Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool)
 
-An **online demo** is available at **[https://hdrify.benhouston3d.com](https://hdrify.benhouston3d.com)** — HDR, EXR, and Ultra HDR viewer and converter built with this component; try it in your browser.
+An **online demo** is available at **[https://hdrify.ben3d.ca](https://hdrify.ben3d.ca)** — HDR, EXR, and Ultra HDR viewer and converter built with this component; try it in your browser.
 
 ## Installation
 
@@ -46,7 +46,7 @@ MIT
 
 ## Author
 
-[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
 
 [npm]: https://img.shields.io/npm/v/hdrify-react
 [npm-url]: https://www.npmjs.com/package/hdrify-react

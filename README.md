@@ -1,6 +1,6 @@
 # HDRify
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -9,7 +9,7 @@
 
 HDRify implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
-**→ [Online demo](https://hdrify.benhouston3d.com)** — HDR, EXR, Adobe Gain Maps & UltraHDR viewer and converter (the `packages/website` app from this repo). Try it in your browser.
+**→ [Online demo](https://hdrify.ben3d.ca)** — HDR, EXR, Adobe Gain Maps & UltraHDR viewer and converter (the `packages/website` app from this repo). Try it in your browser.
 
 ## Features
 
@@ -20,7 +20,7 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 - Full TypeScript support
 - No DOM or Node.js dependencies (works in browser, web workers, and node.js)
 - Written in a functional style to support tree-shaking
-- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.benhouston3d.com
+- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.ben3d.ca
 - [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
 - [HDRify VS Code Extension](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) — for [VS Code](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) and [Cursor](https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension)
 
@@ -177,7 +177,7 @@ MIT
 
 ## Author
 
-[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
 
 ## Acknowledgements
 

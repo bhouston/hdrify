@@ -1,6 +1,6 @@
 # hdrify
 
-<img src="https://hdrify.benhouston3d.com/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -91,7 +91,7 @@ MIT
 
 ## Author
 
-[Ben Houston](https://benhouston3d.com), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
 
 [npm]: https://img.shields.io/npm/v/hdrify
 [npm-url]: https://www.npmjs.com/package/hdrify
