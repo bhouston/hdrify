@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
     "composite": true,
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "typeRoots": [
       "${configDir}/node_modules/@types",
       "${configDir}/../../node_modules/@types",
