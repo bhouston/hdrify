@@ -13,7 +13,21 @@ const config = defineConfig({
     },
     tsconfigPaths: true,
   },
-  plugins: [nitro(), tailwindcss(), tanstackStart(), viteReact()],
+  plugins: [
+    nitro({
+      preset: 'node-server',
+      routeRules: {
+        '/assets/**': {
+          headers: {
+            'cache-control': 'public, max-age=31536000, immutable',
+          },
+        },
+      },
+    }),
+    tailwindcss(),
+    tanstackStart(),
+    viteReact(),
+  ],
 });
 
 export default config;
