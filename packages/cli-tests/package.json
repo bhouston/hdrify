@@ -11,6 +11,6 @@
     "@types/node": "^24",
     "hdrify": "workspace:*",
     "sharp": "^0.34.5",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.5"
   }
 }

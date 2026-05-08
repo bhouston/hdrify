@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
-import viteReact from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
+import viteReact, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'url';
 
 import tailwindcss from '@tailwindcss/vite';
@@ -15,11 +16,13 @@ const config = defineConfig({
   },
   plugins: [
     nitro({
-      preset: 'node-server',
-      routeRules: {
-        '/assets/**': {
-          headers: {
-            'cache-control': 'public, max-age=31536000, immutable',
+      config: {
+        preset: 'node-server',
+        routeRules: {
+          '/assets/**': {
+            headers: {
+              'cache-control': 'public, max-age=31536000, immutable',
+            },
           },
         },
       },
@@ -27,6 +30,7 @@ const config = defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
+    babel({ presets: [reactCompilerPreset()] }),
   ],
 });
 

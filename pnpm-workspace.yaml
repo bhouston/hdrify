@@ -1,4 +1,11 @@
 packages:
   - packages/*
 
+allowBuilds:
+  '@vscode/vsce-sign': true
+  esbuild: true
+  exifreader: true
+  keytar: true
+  sharp: true
+
 link-workspace-packages: true
