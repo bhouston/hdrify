@@ -2,16 +2,3 @@ packages:
   - packages/*
 
 link-workspace-packages: true
-
-minimumReleaseAge: 10080
-minimumReleaseAgeExclude:
-  - tanstack-router-ga4
-  - hdrify*
-  - yargs-file-commands
-  - humanize-units
-  - fastify-file-router
-  - fastify-http-exceptions
-  - bhouston-profiler
-  - bhouston-markdown
-  - axios-eventsource
-  - vite-file-commands
