@@ -6,3 +6,4 @@ tsconfig.tsbuildinfo
 coverage
 profile-output
 .vsix
+packages/hdrify-vscode-extension/media
