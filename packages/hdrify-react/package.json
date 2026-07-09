@@ -33,9 +33,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsgo",
-    "tsgo": "tsgo",
-    "dev": "tsgo --watch"
+    "build": "tsc",
+    "tsc": "tsc",
+    "dev": "tsc --watch"
   },
   "dependencies": {
     "hdrify": "workspace:*"
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@typescript/native-preview": "7.0.0-dev.20251202.1"
+    "typescript": "^7"
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0",

@@ -163,7 +163,7 @@ Open http://localhost:3000 and drag-and-drop EXR or HDR files.
 ```bash
 pnpm install
 pnpm dev
-pnpm tsc # typescript-native
+pnpm tsc
 pnpm build
 pnpm lint # oxlint
 pnpm lint:fix

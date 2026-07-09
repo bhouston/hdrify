@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "tsgo": "tsgo --noEmit"
+    "tsc": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24",

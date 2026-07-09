@@ -1,4 +1,12 @@
 packages:
   - packages/*
 
+overrides:
+  esbuild: 0.27.3
+
+allowBuilds:
+  '@tailwindcss/oxide': true
+  esbuild: true
+  sharp: true
+
 link-workspace-packages: true

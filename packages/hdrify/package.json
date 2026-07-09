@@ -38,9 +38,9 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "tsgo",
-    "dev": "tsgo --watch",
-    "tsgo": "tsgo",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "tsc": "tsc",
     "test": "vitest"
   },
   "dependencies": {

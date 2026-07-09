@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
-    "tsgo": "tsc --noEmit"
+    "tsc": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24",
     "hdrify": "workspace:*",
-    "typescript": "^5.6.0",
     "vitest": "^2.1.9"
   }
 }

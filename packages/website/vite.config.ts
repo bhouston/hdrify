@@ -4,7 +4,7 @@ import viteReact from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'url';
 
 import tailwindcss from '@tailwindcss/vite';
-import { nitro } from 'nitro/vite';
+import { nitroV2Plugin } from '@tanstack/nitro-v2-vite-plugin';
 
 const config = defineConfig({
   resolve: {
@@ -14,8 +14,13 @@ const config = defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
-    nitro({
+    nitroV2Plugin({
       preset: 'node-server',
+      compatibilityDate: '2025-11-07',
+      compressPublicAssets: {
+        gzip: true,
+        brotli: false,
+      },
       routeRules: {
         '/assets/**': {
           headers: {

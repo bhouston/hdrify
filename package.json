@@ -9,8 +9,7 @@
     "dev": "pnpm -r --parallel dev",
     "clean": "rimraf dist packages/**/dist .nx node_modules packages/**/node_modules",
     "check": "pnpm lint && pnpm format",
-    "tsc": "tsgo -b",
-    "tsgo": "pnpm -r tsgo",
+    "tsc": "tsc -b",
     "test": "pnpm vitest",
     "test:profile": "PROFILE=1 pnpm vitest run --no-coverage",
     "test:profile:main": "node --cpu-prof --cpu-prof-dir=./profile-output ./node_modules/vitest/vitest.mjs run --no-coverage",
@@ -26,7 +25,6 @@
   },
   "devDependencies": {
     "@types/node": "^24",
-    "@typescript/native-preview": "7.0.0-dev.20251229.1",
     "@vitest/coverage-v8": "^2.1.9",
     "chalk": "^5.6.2",
     "fflate": "^0.8.2",
@@ -38,20 +36,11 @@
     "prompt-confirm": "^2.0.4",
     "rimraf": "^6.0.1",
     "semver": "^7.7.3",
+    "typescript": "^7",
     "vitest": "^2.1.9"
   },
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@10.33.0",
-  "pnpm": {
-    "overrides": {
-      "esbuild": "0.27.3"
-    },
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp",
-      "@tailwindcss/oxide"
-    ]
-  }
+  "packageManager": "pnpm@10.33.0"
 }
