@@ -94,41 +94,41 @@ describe('PXR24 output layout for readExr', () => {
   });
 });
 
-describe('PXR24 per-channel vs whole-block transposition', () => {
-  /** Build raw buffer in same order as our encoder: line-major, prev=0 per segment, high byte first. */
-  function compressLineMajorOpenEXRFormat(
-    planar: Uint8Array,
-    width: number,
-    lineCount: number,
-    channels: ExrChannel[],
-  ): Uint8Array {
-    const numChannels = channels.length;
-    const bytesPerSample = 2;
-    const segments: Uint8Array[] = [];
+/** Build raw buffer in same order as our encoder: line-major, prev=0 per segment, high byte first. */
+function compressLineMajorOpenEXRFormat(
+  planar: Uint8Array,
+  width: number,
+  lineCount: number,
+  channels: ExrChannel[],
+): Uint8Array {
+  const numChannels = channels.length;
+  const bytesPerSample = 2;
+  const segments: Uint8Array[] = [];
 
-    for (let ly = 0; ly < lineCount; ly++) {
-      for (let c = 0; c < numChannels; c++) {
-        let prev = 0;
-        const lineDelta: number[] = [];
-        for (let x = 0; x < width; x++) {
-          const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
-          const value = (planar[offset] ?? 0) | ((planar[offset + 1] ?? 0) << 8);
-          const diff = (value - prev) & 0xffff;
-          prev = value;
-          lineDelta.push((diff >> 8) & 0xff, diff & 0xff);
-        }
-        segments.push(transposePxr24Bytes(new Uint8Array(lineDelta), bytesPerSample));
+  for (let ly = 0; ly < lineCount; ly++) {
+    for (let c = 0; c < numChannels; c++) {
+      let prev = 0;
+      const lineDelta: number[] = [];
+      for (let x = 0; x < width; x++) {
+        const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
+        const value = (planar[offset] ?? 0) | ((planar[offset + 1] ?? 0) << 8);
+        const diff = (value - prev) & 0xffff;
+        prev = value;
+        lineDelta.push((diff >> 8) & 0xff, diff & 0xff);
       }
+      segments.push(transposePxr24Bytes(new Uint8Array(lineDelta), bytesPerSample));
     }
-    const raw = new Uint8Array(segments.reduce((s, t) => s + t.length, 0));
-    let off = 0;
-    for (const p of segments) {
-      raw.set(p, off);
-      off += p.length;
-    }
-    return zlibSync(raw, { level: 4 });
   }
+  const raw = new Uint8Array(segments.reduce((s, t) => s + t.length, 0));
+  let off = 0;
+  for (const p of segments) {
+    raw.set(p, off);
+    off += p.length;
+  }
+  return zlibSync(raw, { level: 4 });
+}
 
+describe('PXR24 per-channel vs whole-block transposition', () => {
   it('our compress uses line-major per-segment transposition (OpenEXR format)', () => {
     const width = 2;
     const lineCount = 2;

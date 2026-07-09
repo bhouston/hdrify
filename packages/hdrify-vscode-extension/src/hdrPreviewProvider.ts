@@ -75,7 +75,8 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
     const html = getPreviewHtml(scriptUri);
     webviewPanel.webview.html = html;
 
-    // Send document data to webview
+    // Send document data to webview (VS Code Webview.postMessage has no targetOrigin)
+    /* oxlint-disable unicorn/require-post-message-target-origin */
     if (document.parseError) {
       webviewPanel.webview.postMessage({
         parseError: document.parseError,
@@ -97,6 +98,7 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
       };
       webviewPanel.webview.postMessage(payload);
     }
+    /* oxlint-enable unicorn/require-post-message-target-origin */
   }
 }
 

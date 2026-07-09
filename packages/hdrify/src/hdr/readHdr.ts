@@ -105,6 +105,35 @@ const magic_token_re = /^#\?(\S+)/;
 const resolution_re = /^\s*([-+])([XY])\s+(\d+)\s+([-+])([XY])\s+(\d+)\s*$/;
 const var_assign_re = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/;
 
+function rgbe_error(rgbe_error_code: number, msg?: string): never {
+  const rgbe_read_error = 1;
+  const rgbe_write_error = 2;
+  const rgbe_format_error = 3;
+  const rgbe_memory_error = 4;
+
+  switch (rgbe_error_code) {
+    case rgbe_read_error:
+      throw new Error(`HDR Read Error: ${msg || ''}`);
+    case rgbe_write_error:
+      throw new Error(`HDR Write Error: ${msg || ''}`);
+    case rgbe_format_error:
+      throw new Error(`HDR Bad File Format: ${msg || ''}`);
+    case rgbe_memory_error:
+      throw new Error(`HDR Memory Error: ${msg || ''}`);
+    default:
+      throw new Error(`HDR Memory Error: ${msg || ''}`);
+  }
+}
+
+function parseMetadataValue(val: string): number | string {
+  const trimmed = val.trim();
+  const num = parseFloat(trimmed);
+  if (!Number.isNaN(num) && trimmed === String(num)) {
+    return num;
+  }
+  return trimmed;
+}
+
 /**
  * Read HDR header information
  */
@@ -172,35 +201,6 @@ function RGBE_ReadHeader(
     // No newline found, consume what we read
     offsetRef.offset = p;
     return s.length > 0 ? s : false;
-  }
-
-  function rgbe_error(rgbe_error_code: number, msg?: string): never {
-    const rgbe_read_error = 1;
-    const rgbe_write_error = 2;
-    const rgbe_format_error = 3;
-    const rgbe_memory_error = 4;
-
-    switch (rgbe_error_code) {
-      case rgbe_read_error:
-        throw new Error(`HDR Read Error: ${msg || ''}`);
-      case rgbe_write_error:
-        throw new Error(`HDR Write Error: ${msg || ''}`);
-      case rgbe_format_error:
-        throw new Error(`HDR Bad File Format: ${msg || ''}`);
-      case rgbe_memory_error:
-        throw new Error(`HDR Memory Error: ${msg || ''}`);
-      default:
-        throw new Error(`HDR Memory Error: ${msg || ''}`);
-    }
-  }
-
-  function parseMetadataValue(val: string): number | string {
-    const trimmed = val.trim();
-    const num = parseFloat(trimmed);
-    if (!Number.isNaN(num) && trimmed === String(num)) {
-      return num;
-    }
-    return trimmed;
   }
 
   if (offsetRef.offset >= buffer.byteLength) {
@@ -298,7 +298,7 @@ function RGBE_ReadHeader(
 
 /** Old RLE: illegal pixel has R=G=B=255, exponent = repeat count */
 function isOldRLEPixel(buf: Uint8Array, offset: number): boolean {
-  return buf[offset]! === 255 && buf[offset + 1]! === 255 && buf[offset + 2]! === 255;
+  return buf[offset] === 255 && buf[offset + 1] === 255 && buf[offset + 2] === 255;
 }
 
 function hasOldRLE(buffer: Uint8Array): boolean {

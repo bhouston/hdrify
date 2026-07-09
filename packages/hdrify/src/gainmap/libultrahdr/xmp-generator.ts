@@ -19,6 +19,14 @@ function escapeXml(str: string | number): string {
     .replace(/'/g, '&apos;');
 }
 
+function toScalar(val: number | [number, number, number]): number {
+  if (Array.isArray(val)) {
+    const [a, b, c] = val;
+    return a === b && b === c ? a : (a + b + c) / 3;
+  }
+  return val;
+}
+
 /**
  * Generate XMP metadata for the primary image
  */
@@ -70,14 +78,6 @@ export function generateXmpForSecondaryImage(metadata: GainMapMetadataExtended):
   const lines: string[] = [];
   const hdrCapacityMin = metadata.hdrCapacityMin;
   const hdrCapacityMax = metadata.hdrCapacityMax;
-
-  const toScalar = (val: number | [number, number, number]): number => {
-    if (Array.isArray(val)) {
-      const [a, b, c] = val;
-      return a === b && b === c ? a : (a + b + c) / 3;
-    }
-    return val;
-  };
 
   const gainMapMinScalar = toScalar(metadata.gainMapMin);
   const gainMapMaxScalar = toScalar(metadata.gainMapMax);

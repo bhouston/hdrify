@@ -413,7 +413,7 @@ function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: num
 
     frq[m] = (frq[m] ?? 0) + (frq[mm] ?? 0);
 
-    for (let j = m; ; ) {
+    for (let j = m; ;) {
       const s = (scode[j] ?? 0) + 1;
       scode[j] = s;
       if (s > 58) throw new Error('Huffman code length > 58');
@@ -424,7 +424,7 @@ function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: num
       }
       j = next ?? j;
     }
-    for (let j = mm; ; ) {
+    for (let j = mm; ;) {
       const s = (scode[j] ?? 0) + 1;
       scode[j] = s;
       if (s > 58) throw new Error('Huffman code length > 58');

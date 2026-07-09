@@ -47,6 +47,11 @@ export function writeHdr(hdrifyImage: HdrifyImage): Uint8Array {
   return buffer;
 }
 
+/** Mantissa encode: decode is (byte+0.5)*factor/255 so encode byte = round(v*255/factor - 0.5) */
+function toMantissa(v: number, f: number): number {
+  return Math.round((v / f) * 255 - 0.5);
+}
+
 /**
  * Convert floating point RGB values to RGBE format
  *
@@ -73,9 +78,6 @@ function floatToRGBE(r: number, g: number, b: number): { r: number; g: number; b
   else if (exponent > 255) exponent = 255;
 
   let factor = 2 ** (exponent - 128);
-
-  // Mantissas: same scale for R,G,B; decode is (byte+0.5)*factor/255 so encode byte = round(v*255/factor - 0.5)
-  const toMantissa = (v: number, f: number) => Math.round((v / f) * 255 - 0.5);
 
   let re = toMantissa(r, factor);
   let ge = toMantissa(g, factor);

@@ -184,18 +184,21 @@ describe('exrReader', () => {
       expect(result.data).toBeInstanceOf(Float32Array);
       expect(result.data.length).toBe(result.width * result.height * 4);
 
-      // Luma-only: R = G = B for all pixels; alpha defaults to 1.0 when no alpha channel
+      // Luma-only: R = G = B for all pixels; alpha defaults to 1.0 when no alpha channel.
+      // Avoid per-pixel expect() — 800×800 × 4 asserts is too slow for the default timeout.
       const { width, height, data } = result;
-      for (let i = 0; i < Math.min(width * height * 4, data.length); i += 4) {
+      let badPixel = -1;
+      for (let i = 0; i < width * height * 4; i += 4) {
         const r = data[i] ?? 0;
         const g = data[i + 1] ?? 0;
         const b = data[i + 2] ?? 0;
         const a = data[i + 3] ?? 1;
-        expect(r).toBe(g);
-        expect(g).toBe(b);
-        expect(a).toBeGreaterThanOrEqual(0);
-        expect(a).toBeLessThanOrEqual(1);
+        if (r !== g || g !== b || a < 0 || a > 1) {
+          badPixel = i / 4;
+          break;
+        }
       }
+      expect(badPixel).toBe(-1);
     });
 
     it('should read ZIP-compressed EXR file (example_zip.exr)', () => {
