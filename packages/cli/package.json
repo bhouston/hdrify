@@ -50,11 +50,10 @@
   "dependencies": {
     "hdrify": "workspace:*",
     "sharp": "^0.34.5",
-    "yargs": "^17.7.2",
+    "yargs": "^18.0.0",
     "yargs-file-commands": "^1.2.2"
   },
   "devDependencies": {
-    "@types/node": "^24",
-    "@types/yargs": "^17.0.33"
+    "@types/yargs": "^17.0.35"
   }
 }

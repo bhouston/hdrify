@@ -8,8 +8,6 @@
     "tsc": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/node": "^24",
-    "hdrify": "workspace:*",
-    "vitest": "^2.1.9"
+    "hdrify": "workspace:*"
   }
 }
