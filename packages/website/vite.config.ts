@@ -30,8 +30,8 @@ const config = defineConfig({
       },
     }),
     tailwindcss(),
-    viteReact(),
     tanstackStart(),
+    viteReact(),
   ],
 });
 
