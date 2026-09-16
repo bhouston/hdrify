@@ -12,6 +12,7 @@ export default defineConfig({
     environment: 'node',
     watch: false,
     isolate: false,
+    testTimeout: 30_000, // coverage-instrumented EXR decodes exceed the 5s default in CI
     ...(isProfiling && {
       fileParallelism: false,
       execArgv: ['--cpu-prof', '--cpu-prof-dir=./profile-output', '--heap-prof', '--heap-prof-dir=./profile-output'],
