@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["**/hdrify-vscode-extension/media/preview.js", "**/routeTree.gen.ts"],
+  "ignorePatterns": ["submodule/**", "**/hdrify-vscode-extension/media/preview.js", "**/routeTree.gen.ts"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
