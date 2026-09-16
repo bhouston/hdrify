@@ -65,6 +65,8 @@ export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
 export { writeHdr } from './hdr/writeHdr.js';
 export { ensureNonNegativeFinite, type HdrifyImage } from './hdrifyImage.js';
 export { addRangeMetadata } from './rangeMetadata.js';
+export type { ResizeFilter, ResizeImageOptions } from './resize.js';
+export { RESIZE_FILTERS, resizeImage } from './resize.js';
 export type { CompareImagesOptions, CompareImagesResult, MismatchSample } from './synthetic/compareImages.js';
 // Synthetic test images
 export { compareImages } from './synthetic/compareImages.js';

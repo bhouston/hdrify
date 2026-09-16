@@ -35,6 +35,8 @@ hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, defaul
 hdrify convert input.exr output.jpg --format adobe-gainmap
 hdrify convert input.jpg output.exr    # Read JPEG gain map as input
 hdrify convert input.exr output.webp   # Tonemaps to SDR
+hdrify convert input.exr output.exr --size 1024,512    # Resize (lanczos by default)
+hdrify convert input.exr output.png --size 512 --filter bilinear  # Square, bilinear
 
 # View file metadata
 hdrify info input.exr
@@ -50,7 +52,7 @@ hdrify reference output.hdr --type gradient
 
 ## Options
 
-**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`
+**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`, `--size` (`WIDTH,HEIGHT` or `SIZE` for a square), `--filter` (resize filter: nearest, bilinear, lanczos; default: lanczos)
 
 **reference:** `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient), `--compression`, `--width`, `--height`
 

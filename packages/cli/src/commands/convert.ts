@@ -9,6 +9,8 @@ import {
   readExr,
   readHdr,
   readJpegGainMap,
+  RESIZE_FILTERS,
+  resizeImage,
   writeExr,
   writeHdr,
   writeJpegGainMap,
@@ -29,6 +31,18 @@ function isHdrExtension(ext: string): ext is '.exr' | '.hdr' {
 
 function isJpegGainMapExtension(ext: string): ext is '.jpg' | '.jpeg' {
   return ext === '.jpg' || ext === '.jpeg';
+}
+
+/** Parse "1024,512" (WxH) or "1024" (square) into { width, height }. */
+function parseSize(size: string): { width: number; height: number } {
+  const parts = size.split(',').map((p) => Number(p.trim()));
+  if (parts.some((n) => !Number.isInteger(n) || n < 1)) {
+    throw new Error(`Invalid --size value: ${size}. Expected "WIDTH,HEIGHT" or "SIZE".`);
+  }
+  const [width, height] = parts;
+  if (parts.length === 1) return { width: width!, height: width! };
+  if (parts.length === 2) return { width: width!, height: height! };
+  throw new Error(`Invalid --size value: ${size}. Expected "WIDTH,HEIGHT" or "SIZE".`);
 }
 
 export const command = defineCommand({
@@ -75,9 +89,19 @@ export const command = defineCommand({
         describe: 'JPEG gain map format: ultrahdr (default) or adobe-gainmap (JPEG output only)',
         type: 'string',
         choices: ['ultrahdr', 'adobe-gainmap'],
+      })
+      .option('size', {
+        describe: 'Resize output to WIDTH,HEIGHT (e.g. 1024,512) or SIZE for a square (e.g. 1024)',
+        type: 'string',
+      })
+      .option('filter', {
+        describe: 'Resize filter (used with --size)',
+        type: 'string',
+        choices: RESIZE_FILTERS,
+        default: 'lanczos' as const,
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality, compression, format } = argv;
+    const { input, output, tonemapping, gamma, exposure, quality, compression, format, size, filter } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -125,6 +149,12 @@ export const command = defineCommand({
       }
 
       console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
+
+      if (size !== undefined) {
+        const { width, height } = parseSize(size);
+        imageData = resizeImage(imageData, { width, height, filter: filter as (typeof RESIZE_FILTERS)[number] });
+        console.log(`Resized to: ${imageData.width}x${imageData.height} (${filter})`);
+      }
 
       if (isHdrExtension(outputExt)) {
         // HDR output: convert Rec 2020 to linear sRGB for HDR (Radiance assumes sRGB)

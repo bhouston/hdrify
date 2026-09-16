@@ -140,6 +140,7 @@ hdrify convert input.hdr output.exr
 hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
 hdrify convert input.exr output.jpg --format adobe-gainmap   # Adobe gain map format
 hdrify convert input.jpg output.exr    # Read JPEG gain map as input
+hdrify convert input.exr output.exr --size 1024,512 --filter lanczos   # Resize
 hdrify info input.exr
 hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
 hdrify reference output.exr --compression zip
