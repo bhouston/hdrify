@@ -8,6 +8,8 @@
     "tsc": "tsc --noEmit"
   },
   "devDependencies": {
-    "hdrify": "workspace:*"
+    "@types/three": "0.183.1",
+    "hdrify": "workspace:*",
+    "three": "0.186.0"
   }
 }
