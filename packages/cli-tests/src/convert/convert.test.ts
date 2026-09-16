@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { readExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTempDir, exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
@@ -149,6 +150,25 @@ describe('CLI convert command', () => {
       expect(meta.height).toBeGreaterThan(0);
       expect(meta.compression).toBe('pxr24');
     });
+
+    it('flips with --flip -1,1, mirroring pixels horizontally', async () => {
+      const input = exrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+
+      const result = runCli(['convert', input, output, '--flip', '-1,1']);
+
+      expect(result.exitCode).toBe(0);
+      const original = readExr(new Uint8Array(fs.readFileSync(input)));
+      const flipped = readExr(new Uint8Array(fs.readFileSync(output)));
+      expect(flipped.width).toBe(original.width);
+      expect(flipped.height).toBe(original.height);
+      // Same row, mirrored column, same channel value.
+      const y = Math.floor(original.height / 2);
+      const x = 3;
+      const originalOffset = (y * original.width + x) * 4;
+      const flippedOffset = (y * original.width + (original.width - 1 - x)) * 4;
+      expect(flipped.data[flippedOffset]).toBeCloseTo(original.data[originalOffset]!, 3);
+    });
   });
 
   describe('SDR conversions', () => {
@@ -282,6 +302,14 @@ describe('CLI convert command', () => {
       const result = runCli(['convert', input, output, '--format', 'adobe-gainmap']);
       expect(result.exitCode).toBe(1);
       expect(result.stderr).toContain('--format is only valid for JPEG output');
+    });
+
+    it('fails when --flip has a value other than 1 or -1', () => {
+      const input = hdrFilePaths[0];
+      const output = path.join(tempDir, 'output.exr');
+      const result = runCli(['convert', input, output, '--flip', '2,1']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Invalid --flip value');
     });
   });
 });

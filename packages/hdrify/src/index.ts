@@ -37,6 +37,8 @@ export type { ReadExrOptions } from './exr/readExr.js';
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';
+export type { FlipImageOptions } from './flip.js';
+export { flipImage } from './flip.js';
 export type { DecodeGainMapOptions } from './gainmap/decodeGainMap.js';
 // Gainmap
 export { decodeGainMap, decodeGainMapFromFloatEncoding } from './gainmap/decodeGainMap.js';

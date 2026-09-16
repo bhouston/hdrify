@@ -5,6 +5,7 @@ import {
   convertLinearColorSpace,
   encodeGainMap,
   EXR_COMPRESSIONS,
+  flipImage,
   type HdrifyImage,
   readExr,
   readHdr,
@@ -43,6 +44,16 @@ function parseSize(size: string): { width: number; height: number } {
   if (parts.length === 1) return { width: width!, height: width! };
   if (parts.length === 2) return { width: width!, height: height! };
   throw new Error(`Invalid --size value: ${size}. Expected "WIDTH,HEIGHT" or "SIZE".`);
+}
+
+/** Parse "-1,1" (X,Y) into { x, y }; each must be 1 or -1. */
+function parseFlip(flip: string): { x: 1 | -1; y: 1 | -1 } {
+  const parts = flip.split(',').map((p) => Number(p.trim()));
+  if (parts.length !== 2 || parts.some((n) => n !== 1 && n !== -1)) {
+    throw new Error(`Invalid --flip value: ${flip}. Expected "X,Y" where each is 1 or -1, e.g. "-1,1".`);
+  }
+  const [x, y] = parts as [1 | -1, 1 | -1];
+  return { x, y };
 }
 
 export const command = defineCommand({
@@ -99,9 +110,16 @@ export const command = defineCommand({
         type: 'string',
         choices: RESIZE_FILTERS,
         default: 'lanczos' as const,
+      })
+      .option('flip', {
+        describe: 'Flip the image: X,Y where each is 1 (unchanged) or -1 (mirror that axis), e.g. "-1,1"',
+        type: 'string',
+        // Without this, yargs treats a leading "-1" in the value as a new (unknown) flag rather
+        // than --flip's argument. nargs forces it to always consume exactly one following token.
+        nargs: 1,
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality, compression, format, size, filter } = argv;
+    const { input, output, tonemapping, gamma, exposure, quality, compression, format, size, filter, flip } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -154,6 +172,12 @@ export const command = defineCommand({
         const { width, height } = parseSize(size);
         imageData = resizeImage(imageData, { width, height, filter: filter as (typeof RESIZE_FILTERS)[number] });
         console.log(`Resized to: ${imageData.width}x${imageData.height} (${filter})`);
+      }
+
+      if (flip !== undefined) {
+        const { x, y } = parseFlip(flip);
+        imageData = flipImage(imageData, { x, y });
+        console.log(`Flipped: x=${x}, y=${y}`);
       }
 
       if (isHdrExtension(outputExt)) {

@@ -37,6 +37,8 @@ hdrify convert input.jpg output.exr    # Read JPEG gain map as input
 hdrify convert input.exr output.webp   # Tonemaps to SDR
 hdrify convert input.exr output.exr --size 1024,512    # Resize (lanczos by default)
 hdrify convert input.exr output.png --size 512 --filter bilinear  # Square, bilinear
+hdrify convert input.exr output.exr --flip -1,1        # Mirror horizontally
+hdrify convert input.exr output.exr --flip 1,-1        # Mirror vertically
 
 # View file metadata
 hdrify info input.exr
@@ -52,7 +54,7 @@ hdrify reference output.hdr --type gradient
 
 ## Options
 
-**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`, `--size` (`WIDTH,HEIGHT` or `SIZE` for a square), `--filter` (resize filter: nearest, bilinear, lanczos; default: lanczos)
+**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`, `--size` (`WIDTH,HEIGHT` or `SIZE` for a square), `--filter` (resize filter: nearest, bilinear, lanczos; default: lanczos), `--flip` (`X,Y`, each `1` or `-1`, e.g. `-1,1` to mirror horizontally)
 
 **reference:** `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient), `--compression`, `--width`, `--height`
 

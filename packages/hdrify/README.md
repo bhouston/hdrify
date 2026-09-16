@@ -18,6 +18,7 @@ Universal EXR, HDR, and gain map image library for Node.js and browsers. Read an
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGs (Android compatible)
 - Tone mappers (ACES, Khronos Neutral, AgX, Reinhard)
 - Resize with nearest, bilinear, or lanczos filters
+- Flip horizontally and/or vertically
 - Full TypeScript support
 - No DOM or Node.js dependencies (works in browser, web workers, and Node.js)
 - Written in a functional style to support tree-shaking
@@ -94,6 +95,15 @@ import { readExr, resizeImage, writeExr } from 'hdrify';
 const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
 const resized = resizeImage(image, { width: 1024, height: 512, filter: 'lanczos' }); // filter: 'nearest' | 'bilinear' | 'lanczos' (default)
 fs.writeFileSync('output.exr', writeExr(resized));
+```
+
+### Flipping
+
+```ts
+import { flipImage, readExr } from 'hdrify';
+
+const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
+const flipped = flipImage(image, { y: -1 }); // x/y: 1 (default, unchanged) or -1 (mirror that axis)
 ```
 
 ## License
