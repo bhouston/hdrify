@@ -7,3 +7,4 @@ coverage
 profile-output
 .vsix
 packages/hdrify-vscode-extension/media
+publish
