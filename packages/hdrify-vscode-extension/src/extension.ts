@@ -64,7 +64,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const outputChannel = vscode.window.createOutputChannel('HDRify');
   context.subscriptions.push(outputChannel);
 
-  const previewProvider = new HdrPreviewProvider(context);
+  const previewProvider = new HdrPreviewProvider(context, outputChannel);
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider('hdrify.hdrPreview', previewProvider, {
       // Keep webview JS/canvas state alive when hidden: without this, switching tabs

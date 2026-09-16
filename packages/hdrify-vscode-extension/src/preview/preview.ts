@@ -129,3 +129,7 @@ exposureSlider?.addEventListener('input', () => {
 });
 
 window.addEventListener('message', onMessage);
+
+declare function acquireVsCodeApi(): { postMessage(msg: unknown): void };
+// oxlint-disable-next-line unicorn/require-post-message-target-origin
+acquireVsCodeApi().postMessage({ type: 'ready' });

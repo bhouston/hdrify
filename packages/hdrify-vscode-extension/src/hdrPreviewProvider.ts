@@ -43,9 +43,13 @@ function getInternalFormat(image: HdrifyImage): string {
 }
 
 export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<HdrPreviewDocument> {
-  constructor(private readonly _context: vscode.ExtensionContext) {}
+  constructor(
+    private readonly _context: vscode.ExtensionContext,
+    private readonly _log: vscode.OutputChannel,
+  ) {}
 
   async openCustomDocument(uri: vscode.Uri): Promise<HdrPreviewDocument> {
+    this._log.appendLine(`[open] ${uri.fsPath}`);
     const raw = await vscode.workspace.fs.readFile(uri);
     const buffer = new Uint8Array(raw);
     const fileSize = raw.length;
@@ -57,14 +61,17 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
 
     try {
       image = parseImage(buffer, ext);
+      this._log.appendLine(`[open] parsed ${fileName}: ${image.width}x${image.height}`);
     } catch (err) {
       parseError = err instanceof Error ? err.message : String(err);
+      this._log.appendLine(`[open] parse error for ${fileName}: ${parseError}`);
     }
 
     return new HdrPreviewDocument(uri, fileSize, fileName, image, parseError);
   }
 
   async resolveCustomEditor(document: HdrPreviewDocument, webviewPanel: vscode.WebviewPanel): Promise<void> {
+    this._log.appendLine(`[resolve] ${document.fileName}`);
     webviewPanel.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this._context.extensionUri, 'media')],
@@ -74,33 +81,43 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
       vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.js'),
     );
 
-    const html = getPreviewHtml(scriptUri);
-    webviewPanel.webview.html = html;
+    webviewPanel.webview.html = getPreviewHtml(scriptUri);
 
-    // Send document data to webview (VS Code Webview.postMessage has no targetOrigin)
-    /* oxlint-disable unicorn/require-post-message-target-origin */
-    if (document.parseError) {
-      webviewPanel.webview.postMessage({
-        parseError: document.parseError,
-        fileName: document.fileName,
-      });
-    } else if (document.image) {
-      const img = document.image;
-      const data = img.data.buffer;
-      const payload = {
-        width: img.width,
-        height: img.height,
-        linearColorSpace: img.linearColorSpace,
-        metadata: img.metadata,
-        fileSize: document.fileSize,
-        fileName: document.fileName,
-        fileExt: path.extname(document.uri.fsPath),
-        internalFormat: getInternalFormat(img),
-        data,
-      };
-      webviewPanel.webview.postMessage(payload);
-    }
-    /* oxlint-enable unicorn/require-post-message-target-origin */
+    const send = (): void => {
+      this._log.appendLine(`[send] ${document.fileName} (visible=${webviewPanel.visible})`);
+      // VS Code Webview.postMessage has no targetOrigin
+      /* oxlint-disable unicorn/require-post-message-target-origin */
+      if (document.parseError) {
+        webviewPanel.webview.postMessage({
+          parseError: document.parseError,
+          fileName: document.fileName,
+        });
+      } else if (document.image) {
+        const img = document.image;
+        const payload = {
+          width: img.width,
+          height: img.height,
+          linearColorSpace: img.linearColorSpace,
+          metadata: img.metadata,
+          fileSize: document.fileSize,
+          fileName: document.fileName,
+          fileExt: path.extname(document.uri.fsPath),
+          internalFormat: getInternalFormat(img),
+          data: img.data.buffer,
+        };
+        webviewPanel.webview.postMessage(payload);
+      }
+      /* oxlint-enable unicorn/require-post-message-target-origin */
+    };
+
+    // The webview script may not have attached its message listener yet when this
+    // runs, so wait for it to announce readiness instead of racing a blind postMessage.
+    webviewPanel.webview.onDidReceiveMessage((msg: { type?: string }) => {
+      if (msg?.type === 'ready') {
+        this._log.appendLine(`[ready] ${document.fileName}`);
+        send();
+      }
+    });
   }
 }
 
