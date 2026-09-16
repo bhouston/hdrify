@@ -17,7 +17,9 @@ const MAX_RUN_LENGTH = 127;
  * Reference: slint/exr rle.rs, OpenEXR internal_rle_compress
  */
 export function compressRLE(rawData: Uint8Array): Uint8Array {
-  const out: number[] = [];
+  // Worst case: one control byte per MAX_RUN_LENGTH literal bytes.
+  const out = new Uint8Array(rawData.length + Math.ceil(rawData.length / MAX_RUN_LENGTH) + 1);
+  let n = 0;
   let i = 0;
 
   while (i < rawData.length) {
@@ -29,8 +31,8 @@ export function compressRLE(rawData: Uint8Array): Uint8Array {
     }
 
     if (runEnd - runStart >= MIN_RUN_LENGTH) {
-      out.push((runEnd - runStart - 1) & 0xff);
-      out.push(rawData[runStart]!);
+      out[n++] = (runEnd - runStart - 1) & 0xff;
+      out[n++] = rawData[runStart]!;
       i = runEnd;
     } else {
       while (
@@ -43,15 +45,14 @@ export function compressRLE(rawData: Uint8Array): Uint8Array {
       ) {
         runEnd++;
       }
-      out.push((runStart - runEnd) & 0xff);
-      for (let j = runStart; j < runEnd; j++) {
-        out.push(rawData[j]!);
-      }
+      out[n++] = (runStart - runEnd) & 0xff;
+      out.set(rawData.subarray(runStart, runEnd), n);
+      n += runEnd - runStart;
       i = runEnd;
     }
   }
 
-  return new Uint8Array(out);
+  return out.slice(0, n);
 }
 
 /**

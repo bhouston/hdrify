@@ -7,7 +7,6 @@
 import { zlibSync } from 'fflate';
 import { INT16_SIZE } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import { transposePxr24Bytes } from './pxr24Utils.js';
 
 /**
  * Compress a scanline block using PXR24.
@@ -29,39 +28,25 @@ export function compressPxr24Block(
     throw new Error(`PXR24: input too small (${rawHalfFloatPlanar.length} < ${rawSize})`);
   }
 
-  const segmentSize = width * bytesPerSample;
-  const rawParts: Uint8Array[] = [];
+  const halves = new Uint16Array(rawHalfFloatPlanar.buffer, rawHalfFloatPlanar.byteOffset, rawSize / 2);
+  const raw = new Uint8Array(rawSize);
 
-  // OpenEXR internal_pxr24.c apply_pxr24_impl: for (y) for (c), prevPixel = 0 per segment
+  // OpenEXR internal_pxr24.c apply_pxr24_impl: for (y) for (c), prevPixel = 0 per segment.
+  // Each segment is delta-encoded (MSB first) and byte-transposed: [all high bytes][all low bytes].
+  let inOff = 0;
+  let outOff = 0;
   for (let ly = 0; ly < lineCount; ly++) {
     for (let c = 0; c < numChannels; c++) {
-      const lineDelta = new Uint8Array(segmentSize);
       let p = 0;
-
       for (let x = 0; x < width; x++) {
-        const offset = (ly * numChannels * width + c * width + x) * bytesPerSample;
-        const lo = rawHalfFloatPlanar[offset]!;
-        const hi = rawHalfFloatPlanar[offset + 1]!;
-        const value = lo | (hi << 8);
-        const diff = (value - p) | 0;
+        const value = halves[inOff++]!;
+        const diff = value - p;
         p = value;
-        // OpenEXR/C++ store delta high byte first (before transpose)
-        lineDelta[x * 2] = (diff >> 8) & 0xff;
-        lineDelta[x * 2 + 1] = diff & 0xff;
+        raw[outOff + x] = (diff >> 8) & 0xff;
+        raw[outOff + width + x] = diff & 0xff;
       }
-      rawParts.push(transposePxr24Bytes(lineDelta, bytesPerSample));
+      outOff += width * 2;
     }
-  }
-
-  let totalLen = 0;
-  for (const p of rawParts) {
-    totalLen += p.length;
-  }
-  const raw = new Uint8Array(totalLen);
-  let off = 0;
-  for (const p of rawParts) {
-    raw.set(p, off);
-    off += p.length;
   }
   return zlibSync(raw, { level: 4 });
 }

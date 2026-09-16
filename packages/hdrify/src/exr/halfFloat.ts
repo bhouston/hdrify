@@ -55,3 +55,14 @@ export function decodeFloat16(uint16: number): number {
   const value = 2 ** (exponent - 15) * (1 + mantissa / 1024);
   return sign === 0 ? value : -value;
 }
+
+let halfToFloatLut: Float32Array | null = null;
+
+/** 65536-entry half bits -> float32 table, built once on first use. */
+export function getHalfToFloatLut(): Float32Array {
+  if (halfToFloatLut) return halfToFloatLut;
+  const lut = new Float32Array(65536);
+  for (let i = 0; i < 65536; i++) lut[i] = decodeFloat16(i);
+  halfToFloatLut = lut;
+  return lut;
+}

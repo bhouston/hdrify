@@ -6,7 +6,7 @@
  */
 
 import { chromaticitiesToLinearColorSpace } from '../color/colorSpaces.js';
-import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { decompressB44 } from './decompressB44.js';
 import { decompressDwa } from './decompressDwa.js';
 import { decompressPiz } from './decompressPiz.js';
@@ -19,24 +19,24 @@ import {
   B44_COMPRESSION,
   DWAA_COMPRESSION,
   DWAB_COMPRESSION,
+  FLOAT,
   FLOAT32_SIZE,
+  HALF,
   INT16_SIZE,
   INT32_SIZE,
   NO_COMPRESSION,
   PIZ_COMPRESSION,
   PXR24_COMPRESSION,
   RLE_COMPRESSION,
+  UINT,
   ULONG_SIZE,
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
-import { decodeFloat16 } from './halfFloat.js';
+import { getHalfToFloatLut } from './halfFloat.js';
 
 function getPixelTypeSize(pixelType: number): number {
-  const UINT = 0;
-  const HALF = 1;
-  const FLOAT = 2;
   switch (pixelType) {
     case UINT:
       return INT32_SIZE;
@@ -44,22 +44,6 @@ function getPixelTypeSize(pixelType: number): number {
       return INT16_SIZE;
     case FLOAT:
       return FLOAT32_SIZE;
-    default:
-      throw new Error(`Unknown pixel type: ${pixelType}`);
-  }
-}
-
-function readChannelValue(dataView: DataView, offset: number, pixelType: number): number {
-  const UINT = 0;
-  const HALF = 1;
-  const FLOAT = 2;
-  switch (pixelType) {
-    case UINT:
-      return dataView.getUint32(offset, true);
-    case HALF:
-      return decodeFloat16(dataView.getUint16(offset, true));
-    case FLOAT:
-      return dataView.getFloat32(offset, true);
     default:
       throw new Error(`Unknown pixel type: ${pixelType}`);
   }
@@ -181,15 +165,27 @@ export function readExr(exrBuffer: Uint8Array, options?: ReadExrOptions): Hdrify
   }
   const pixelData = new Float32Array(width * height * 4); // RGBA
 
-  // Raw chunks and every decoder are channel-planar per scanline: for each line, for each
-  // channel in header order, `width` samples of that channel's type.
+  // Every decoded block (and an uncompressed one) is channel-planar per scanline:
+  // for each line, for each channel in header order, `width` samples of that channel's type.
+  // Resolve each channel's output slot (0..3, or -1 to skip) once, not per sample.
   const channelSizes = channels.map((ch) => getPixelTypeSize(ch.pixelType));
   const channelLineOffsets: number[] = [];
+  const channelSlots: number[] = [];
   let bytesPerScanline = 0;
-  for (const size of channelSizes) {
+  let hasAlpha = false;
+  for (let c = 0; c < channels.length; c++) {
+    const sem = getChannelSemanticName(channels[c]!.name);
+    const slot = isRgbMode ? { r: 0, g: 1, b: 2, a: 3 }[sem] : sem === 'luma' ? 0 : sem === 'a' ? 3 : undefined;
+    channelSlots.push(slot ?? -1);
+    if (slot === 3) hasAlpha = true;
     channelLineOffsets.push(bytesPerScanline);
-    bytesPerScanline += width * size;
+    bytesPerScanline += width * channelSizes[c]!;
   }
+  if (!hasAlpha) {
+    for (let i = 3; i < pixelData.length; i += 4) pixelData[i] = 1;
+  }
+  const sanitize = options?.sanitize !== false;
+  const halfLut = getHalfToFloatLut();
 
   for (let blockIdx = 0; blockIdx < blockCount; blockIdx++) {
     const scanlineBlockOffset = scanlineBlockOffsets[blockIdx];
@@ -257,52 +253,50 @@ export function readExr(exrBuffer: Uint8Array, options?: ReadExrOptions): Hdrify
       throw new Error(`Unsupported compression type: ${compression}`);
     }
 
-    // Parse pixel data from decompressed block
-    const blockDataView = new DataView(
-      decompressedData.buffer,
-      decompressedData.byteOffset,
-      decompressedData.byteLength,
-    );
+    // Typed-array row views need an aligned base; only raw-stored chunks (subarrays of the file) can be misaligned.
+    if (decompressedData.byteOffset & 3) decompressedData = decompressedData.slice();
+    const blockBuffer = decompressedData.buffer;
+    const blockBase = decompressedData.byteOffset;
 
     for (let lineInBlock = 0; lineInBlock < linesInBlock; lineInBlock++) {
       const y = firstLineY + lineInBlock;
       if (y >= height) {
         break;
       }
+      const rowBase = blockBase + lineInBlock * bytesPerScanline;
+      const outLine = y * width * 4;
 
-      const lineOffset = lineInBlock * bytesPerScanline;
+      for (let c = 0; c < channels.length; c++) {
+        const slot = channelSlots[c]!;
+        if (slot < 0) continue;
+        const rowOffset = rowBase + channelLineOffsets[c]!;
+        const pixelType = channels[c]!.pixelType;
+        let row: Uint16Array | Uint32Array | Float32Array;
+        if (pixelType === HALF) row = new Uint16Array(blockBuffer, rowOffset, width);
+        else if (pixelType === FLOAT) row = new Float32Array(blockBuffer, rowOffset, width);
+        else row = new Uint32Array(blockBuffer, rowOffset, width);
 
-      for (let x = 0; x < width; x++) {
-        const pixelIndex = (y * width + x) * 4;
-
-        const channelValues: { [key: string]: number } = {};
-        for (let c = 0; c < channels.length; c++) {
-          const channel = channels[c];
-          if (channel === undefined) continue;
-          const value = readChannelValue(
-            blockDataView,
-            lineOffset + channelLineOffsets[c]! + x * channelSizes[c]!,
-            channel.pixelType,
-          );
-          channelValues[getChannelSemanticName(channel.name)] = value;
-        }
-
-        if (isRgbMode) {
-          pixelData[pixelIndex] = channelValues.r ?? 0;
-          pixelData[pixelIndex + 1] = channelValues.g ?? 0;
-          pixelData[pixelIndex + 2] = channelValues.b ?? 0;
+        let o = outLine + slot;
+        if (pixelType === HALF) {
+          for (let x = 0; x < width; x++, o += 4) {
+            const v = halfLut[row[x]!]!;
+            pixelData[o] = sanitize && !(v >= 0 && v < Infinity) ? 0 : v;
+          }
         } else {
-          const luma = channelValues.luma ?? 0;
-          pixelData[pixelIndex] = luma;
-          pixelData[pixelIndex + 1] = luma;
-          pixelData[pixelIndex + 2] = luma;
+          for (let x = 0; x < width; x++, o += 4) {
+            const v = row[x]!;
+            pixelData[o] = sanitize && !(v >= 0 && v < Infinity) ? 0 : v;
+          }
         }
-        pixelData[pixelIndex + 3] = channelValues.a ?? 1.0;
+        if (isLumaMode && slot === 0) {
+          for (let x = 0, p = outLine; x < width; x++, p += 4) {
+            pixelData[p + 1] = pixelData[p]!;
+            pixelData[p + 2] = pixelData[p]!;
+          }
+        }
       }
     }
   }
-
-  if (options?.sanitize !== false) ensureNonNegativeFinite(pixelData);
 
   const chromaticities = header.chromaticities as
     | {

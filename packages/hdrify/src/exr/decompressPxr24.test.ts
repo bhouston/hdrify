@@ -2,9 +2,9 @@ import { zlibSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { compressPxr24Block } from './compressPxr24.js';
 import { decompressPxr24 } from './decompressPxr24.js';
-import { HALF } from './exrConstants.js';
+import { FLOAT, HALF, UINT } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import { transposePxr24Bytes } from './pxr24Utils.js';
+import { f24ToFloat32, float32ToF24, transposePxr24Bytes } from './pxr24Utils.js';
 
 const DEFAULT_CHANNELS: ExrChannel[] = [
   { name: 'R', pixelType: HALF, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
@@ -120,5 +120,35 @@ describe('decompressPxr24', () => {
     const decompressed = decompressPxr24(compressed, width, RGB_CHANNELS, compressed.length, lineCount);
     expect(decompressed[0]).toBe(0xab);
     expect(decompressed[1]).toBe(0xcd);
+  });
+
+  it('decodes FLOAT (24-bit) and UINT channels', () => {
+    const width = 5;
+    const channels: ExrChannel[] = [
+      { name: 'Z', pixelType: FLOAT, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
+      { name: 'id', pixelType: UINT, pLinear: 0, reserved: 0, xSampling: 1, ySampling: 1 },
+    ];
+    const floats = [0, 1.5, -2.25, 1e-3, 65504];
+    const uints = [0, 1, 0xffffffff, 12345, 0x80000000];
+    // Delta-encode (MSB first) then transpose, as OpenEXR does per line and channel.
+    const enc = (values: number[], bytes: number, mask: number) => {
+      const seg = new Uint8Array(width * bytes);
+      let prev = 0;
+      values.forEach((v, x) => {
+        const diff = (v - prev) & mask;
+        prev = v;
+        for (let b = 0; b < bytes; b++) seg[x * bytes + b] = (diff >>> (8 * (bytes - 1 - b))) & 0xff;
+      });
+      return transposePxr24Bytes(seg, bytes);
+    };
+    const raw = new Uint8Array([...enc(floats.map(float32ToF24), 3, 0xffffff), ...enc(uints, 4, 0xffffffff)]);
+    const out = decompressPxr24(zlibSync(raw), width, channels, 0, 1);
+    const f32 = new Float32Array(out.buffer, 0, width);
+    const u32 = new Uint32Array(out.buffer, width * 4, width);
+    floats.forEach((f, x) => {
+      const b = float32ToF24(f);
+      expect(f32[x]).toBe(f24ToFloat32(b & 0xff, (b >> 8) & 0xff, (b >> 16) & 0xff));
+    });
+    expect(Array.from(u32)).toEqual(uints);
   });
 });

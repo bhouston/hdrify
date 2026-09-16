@@ -42,11 +42,12 @@ export function float32ToF24(float: number): number {
  * Convert 24-bit PXR24 value back to 32-bit float.
  * Reverse of float32ToF24: left shift 8 bits, interpret as float32.
  */
+const _f32 = new Float32Array(1);
+const _u32 = new Uint32Array(_f32.buffer);
+
 export function f24ToFloat32(b0: number, b1: number, b2: number): number {
-  const u32 = b0 | (b1 << 8) | (b2 << 16);
-  const buf = new ArrayBuffer(4);
-  new DataView(buf).setUint32(0, u32 << 8, true);
-  return new DataView(buf).getFloat32(0, true);
+  _u32[0] = (b0 | (b1 << 8) | (b2 << 16)) << 8;
+  return _f32[0]!;
 }
 
 /**

@@ -55,7 +55,7 @@ export function decompressB44(
       continue;
     }
 
-    const view = new DataView(scratch.buffer, scratch.byteOffset, scratch.byteLength);
+    const view = new Uint16Array(scratch.buffer);
 
     for (let y = 0; y < blockHeight; y += 4) {
       for (let x = 0; x < width; x += 4) {
@@ -80,7 +80,7 @@ export function decompressB44(
         for (let ry = 0; ry < rowsToWrite; ry++) {
           const lineStart = (y + ry) * width;
           for (let rx = 0; rx < colsToWrite; rx++) {
-            view.setUint16((lineStart + x + rx) * INT16_SIZE, s[ry * 4 + rx]!, true);
+            view[lineStart + x + rx] = s[ry * 4 + rx]!;
           }
         }
       }

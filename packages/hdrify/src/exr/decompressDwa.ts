@@ -14,7 +14,7 @@ import { getLinearLut } from './dwaLuts.js';
 import { applyExrPredictor, reorderExrPixels } from './exrDsp.js';
 import { FLOAT, HALF } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
-import { decodeFloat16, encodeFloat16 } from './halfFloat.js';
+import { decodeFloat16, encodeFloat16, getHalfToFloatLut } from './halfFloat.js';
 import { hufUncompress } from './pizHuffman.js';
 
 export function channelByteSize(pixelType: number): number {
@@ -209,21 +209,22 @@ function decodeLossyDctGroup(
   }
 
   const lut = forceLinear ? getLinearLut() : null;
+  const halfLut = getHalfToFloatLut();
   for (let c = 0; c < numComp; c++) {
     const channel = channels[compIdx[c]!]!;
     const rh = rowsHalf[c]!;
     const outArr = channelOut[compIdx[c]!]!;
-    const outDv = new DataView(outArr.buffer, outArr.byteOffset, outArr.byteLength);
     const n = width * height;
     if (channel.pixelType === FLOAT) {
+      const out32 = new Float32Array(outArr.buffer, outArr.byteOffset, n);
       for (let i = 0; i < n; i++) {
         const h = lut ? lut[rh[i]!]! : rh[i]!;
-        outDv.setFloat32(i * 4, decodeFloat16(h), true);
+        out32[i] = halfLut[h]!;
       }
     } else {
+      const out16 = new Uint16Array(outArr.buffer, outArr.byteOffset, n);
       for (let i = 0; i < n; i++) {
-        const h = lut ? lut[rh[i]!]! : rh[i]!;
-        outDv.setUint16(i * 2, h, true);
+        out16[i] = lut ? lut[rh[i]!]! : rh[i]!;
       }
     }
   }
