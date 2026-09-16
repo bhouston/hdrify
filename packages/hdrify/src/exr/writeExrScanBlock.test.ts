@@ -91,7 +91,7 @@ describe('writeExrScanBlock', () => {
         hdrifyImage: img,
         firstLineY: 0,
         lineCount: 1,
-        compression: 6, // B44 - not implemented
+        compression: 99, // unsupported/unknown compression type
         channels: DEFAULT_CHANNELS,
       }),
     ).toThrow('not implemented');

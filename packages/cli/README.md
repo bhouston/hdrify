@@ -50,7 +50,7 @@ hdrify reference output.hdr --type gradient
 
 ## Options
 
-**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`
+**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`
 
 **reference:** `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient), `--compression`, `--width`, `--height`
 

@@ -31,11 +31,11 @@ Right-click an EXR, HDR, or UltraHDR Jpeg in the Explorer. A **Convert HDR Image
 
 ## Configuration
 
-| Setting                                  | Type    | Default | Description                                                                                    |
-| ---------------------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------- |
-| `hdrify.conversionQuality`               | number  | 90      | Quality for UltraHDR JPEG output (0–100)                                                       |
-| `hdrify.leaveOriginalWhenChangingFormat` | boolean | false   | When converting, leave the original file and write to a new file (same name, target extension) |
-| `hdrify.exrCompression`                  | string  | `"piz"` | Compression for EXR output: `none`, `rle`, `zips`, `zip`, `piz`, `pxr24`                       |
+| Setting                                  | Type    | Default | Description                                                                                             |
+| ---------------------------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `hdrify.conversionQuality`               | number  | 90      | Quality for UltraHDR JPEG output (0–100)                                                                |
+| `hdrify.leaveOriginalWhenChangingFormat` | boolean | false   | When converting, leave the original file and write to a new file (same name, target extension)          |
+| `hdrify.exrCompression`                  | string  | `"piz"` | Compression for EXR output: `none`, `rle`, `zips`, `zip`, `piz`, `pxr24`, `b44`, `b44a`, `dwaa`, `dwab` |
 
 ## Replace vs Save-As Behavior
 

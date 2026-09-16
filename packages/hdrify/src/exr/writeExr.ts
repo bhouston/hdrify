@@ -9,6 +9,10 @@
 import { LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import {
+  B44A_COMPRESSION,
+  B44_COMPRESSION,
+  DWAA_COMPRESSION,
+  DWAB_COMPRESSION,
   HALF,
   PIZ_COMPRESSION,
   PXR24_COMPRESSION,
@@ -39,7 +43,11 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
     compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION
+    compression === PXR24_COMPRESSION ||
+    compression === B44_COMPRESSION ||
+    compression === B44A_COMPRESSION ||
+    compression === DWAA_COMPRESSION ||
+    compression === DWAB_COMPRESSION
   ) {
     return base.map((ch) => ({ ...ch, pixelType: HALF }));
   }
@@ -88,7 +96,11 @@ export function writeExr(hdrifyImage: HdrifyImage, options?: WriteExrOptions): U
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
     compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION;
+    compression === PXR24_COMPRESSION ||
+    compression === B44_COMPRESSION ||
+    compression === B44A_COMPRESSION ||
+    compression === DWAA_COMPRESSION ||
+    compression === DWAB_COMPRESSION;
   const offsetTable = useCompression
     ? buildExrOffsetTableFromBlocks({ offsetTableStart, blocks })
     : buildExrOffsetTable({

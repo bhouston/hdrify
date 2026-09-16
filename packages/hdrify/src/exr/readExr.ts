@@ -7,6 +7,7 @@
 
 import { chromaticitiesToLinearColorSpace } from '../color/colorSpaces.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
+import { decompressB44 } from './decompressB44.js';
 import { decompressDwa } from './decompressDwa.js';
 import { decompressPiz } from './decompressPiz.js';
 import { decompressPxr24 } from './decompressPxr24.js';
@@ -14,6 +15,8 @@ import { decompressRleBlock } from './decompressRle.js';
 import { decompressZip } from './decompressZip.js';
 import { getChannelSemanticName } from './exrChannelSemantics.js';
 import {
+  B44A_COMPRESSION,
+  B44_COMPRESSION,
   DWAA_COMPRESSION,
   DWAB_COMPRESSION,
   FLOAT32_SIZE,
@@ -109,7 +112,10 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
 
   // Determine block height based on compression type (OpenEXR spec: ZIP/PXR24=16, PIZ=32, others=1)
   const blockHeight =
-    compression === PIZ_COMPRESSION || compression === DWAA_COMPRESSION
+    compression === PIZ_COMPRESSION ||
+    compression === DWAA_COMPRESSION ||
+    compression === B44_COMPRESSION ||
+    compression === B44A_COMPRESSION
       ? 32
       : compression === ZIP_COMPRESSION || compression === PXR24_COMPRESSION
         ? 16
@@ -218,7 +224,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       if (looksLikeFormatMismatch) {
         throw new Error(
           `Unsupported or invalid EXR format: scanline block ${blockIdx} has invalid data size (${dataSize} bytes, ${available} available). ` +
-            `This file may use a compression or layout not supported by this reader. Supported: none, RLE, ZIPS, ZIP, PIZ, PXR24, DWAA, DWAB.`,
+            `This file may use a compression or layout not supported by this reader. Supported: none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA, DWAB.`,
         );
       }
       throw new Error(
@@ -237,6 +243,8 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       compression === ZIP_COMPRESSION ||
       compression === ZIPS_COMPRESSION ||
       compression === PXR24_COMPRESSION ||
+      compression === B44_COMPRESSION ||
+      compression === B44A_COMPRESSION ||
       compression === DWAA_COMPRESSION ||
       compression === DWAB_COMPRESSION;
     if (compression === NO_COMPRESSION) {
@@ -275,6 +283,12 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       }
       const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressDwa(compressedData, width, channels, dataSize, linesInBlock);
+    } else if (compression === B44_COMPRESSION || compression === B44A_COMPRESSION) {
+      if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
+        throw new Error(`Invalid B44 data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
+      }
+      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
+      decompressedData = decompressB44(compressedData, width, channels, dataSize, linesInBlock);
     } else {
       throw new Error(`Unsupported compression type: ${compression}`);
     }

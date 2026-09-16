@@ -174,13 +174,20 @@ describe('EXR header parsing - compression', () => {
     expect(header.compression).toBe(5);
   });
 
-  it('throws on unsupported compression (6)', () => {
+  it('accepts B44 compression (6)', () => {
     const buffer = buildExrHeaderForParsing({ compression: 6 });
-    expect(() => parseExrHeader(buffer)).toThrow('Unsupported EXR compression');
+    const { header } = parseExrHeader(buffer);
+    expect(header.compression).toBe(6);
   });
 
-  it('throws on unsupported compression (7)', () => {
+  it('accepts B44A compression (7)', () => {
     const buffer = buildExrHeaderForParsing({ compression: 7 });
+    const { header } = parseExrHeader(buffer);
+    expect(header.compression).toBe(7);
+  });
+
+  it('throws on unsupported compression (99)', () => {
+    const buffer = buildExrHeaderForParsing({ compression: 99 });
     expect(() => parseExrHeader(buffer)).toThrow('Unsupported EXR compression');
   });
 });

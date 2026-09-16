@@ -10,6 +10,10 @@ const ZIPS_COMPRESSION = 2;
 const ZIP_COMPRESSION = 3;
 const PIZ_COMPRESSION = 4;
 const PXR24_COMPRESSION = 5;
+const B44_COMPRESSION = 6;
+const B44A_COMPRESSION = 7;
+const DWAA_COMPRESSION = 8;
+const DWAB_COMPRESSION = 9;
 
 const FORMAT_TO_EXTENSION: Record<string, string> = {
   exr: '.exr',
@@ -24,6 +28,10 @@ const EXR_COMPRESSION_MAP: Record<string, number> = {
   zip: ZIP_COMPRESSION,
   piz: PIZ_COMPRESSION,
   pxr24: PXR24_COMPRESSION,
+  b44: B44_COMPRESSION,
+  b44a: B44A_COMPRESSION,
+  dwaa: DWAA_COMPRESSION,
+  dwab: DWAB_COMPRESSION,
 };
 
 function getConfig() {

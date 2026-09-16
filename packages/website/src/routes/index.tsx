@@ -69,6 +69,8 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/memorial.exr', label: 'Memorial (EXR)' },
   { value: '/examples/memorial.jpg', label: 'Memorial (Ultra HDR)' },
   { value: '/examples/example_halfs.exr', label: 'Example half float (EXR)' },
+  { value: '/examples/example_b44.exr', label: 'Example B44 compression (EXR)' },
+  { value: '/examples/example_dwaa.exr', label: 'Example DWAA compression (EXR)' },
   { value: '/examples/example_piz.exr', label: 'Example PIZ compression (EXR)' },
   { value: '/examples/example_16bit_block_PIZ.exr', label: 'Example 16-bit block PIZ (EXR)' },
   { value: '/examples/example_32bit_block_PIZ.exr', label: 'Example 32-bit block PIZ (EXR)' },
@@ -576,7 +578,7 @@ function Index() {
           </li>
           <li>
             <strong className="text-foreground">EXR compression:</strong> Read and write EXR with no compression, RLE,
-            ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit). Also reads DWAA/DWAB (DCT-based) compression.
+            ZIPS, ZIP, PIZ, PXR24 (Pixar 24-bit), B44/B44A (lossy 4x4 block) and DWAA/DWAB (lossy DCT-based).
           </li>
           <li>
             <strong className="text-foreground">Gain maps:</strong> Read and write both Adobe Gain Map JPEGs and

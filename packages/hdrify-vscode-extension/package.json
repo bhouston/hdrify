@@ -1,7 +1,7 @@
 {
   "name": "hdrify-vscode-extension",
   "displayName": "HDRify",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Convert and preview HDR images (EXR, HDR, UltraHDR Jpeg) using the hdrify library",
   "categories": [
     "Other",
@@ -153,7 +153,11 @@
             "zips",
             "zip",
             "piz",
-            "pxr24"
+            "pxr24",
+            "b44",
+            "b44a",
+            "dwaa",
+            "dwab"
           ],
           "description": "Compression for EXR output when converting to EXR"
         }

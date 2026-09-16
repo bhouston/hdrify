@@ -401,15 +401,44 @@ function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: num
   fHeap.push(iM.value);
   nf++;
 
-  const FHeapCompare = (a: number, b: number) =>
-    (frq[a] ?? 0) > (frq[b] ?? 0) || ((frq[a] ?? 0) === (frq[b] ?? 0) && a > b);
-  fHeap.sort((a, b) => (FHeapCompare(a, b) ? 1 : -1));
+  // Binary min-heap ordered by (frq, index); same total order as the original sort-based
+  // version so output is byte-identical, but O(n log n) instead of a full re-sort per merge.
+  const less = (a: number, b: number) => (frq[a] ?? 0) < (frq[b] ?? 0) || ((frq[a] ?? 0) === (frq[b] ?? 0) && a < b);
+  const siftDown = (start: number): void => {
+    let i = start;
+    for (;;) {
+      const l = 2 * i + 1;
+      if (l >= fHeap.length) return;
+      const r = l + 1;
+      const c = r < fHeap.length && less(fHeap[r]!, fHeap[l]!) ? r : l;
+      if (!less(fHeap[c]!, fHeap[i]!)) return;
+      [fHeap[i], fHeap[c]] = [fHeap[c]!, fHeap[i]!];
+      i = c;
+    }
+  };
+  const heapPop = (): number => {
+    const top = fHeap[0]!;
+    const last = fHeap.pop()!;
+    if (fHeap.length > 0) {
+      fHeap[0] = last;
+      siftDown(0);
+    }
+    return top;
+  };
+  const heapPush = (v: number): void => {
+    let i = fHeap.push(v) - 1;
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!less(fHeap[i]!, fHeap[parent]!)) break;
+      [fHeap[i], fHeap[parent]] = [fHeap[parent]!, fHeap[i]!];
+      i = parent;
+    }
+  };
+  for (let i = (fHeap.length >> 1) - 1; i >= 0; i--) siftDown(i);
 
   while (nf > 1) {
-    const mm = fHeap.shift();
-    const m = fHeap[0];
-    if (mm === undefined || m === undefined) break;
-    fHeap.splice(0, 1);
+    const mm = heapPop();
+    const m = heapPop();
 
     frq[m] = (frq[m] ?? 0) + (frq[mm] ?? 0);
 
@@ -433,8 +462,7 @@ function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: num
       j = next ?? j;
     }
 
-    fHeap.push(m);
-    fHeap.sort((a, b) => (FHeapCompare(a, b) ? 1 : -1));
+    heapPush(m);
     nf--;
   }
 

@@ -8,19 +8,21 @@
  */
 
 import { unzlibSync } from 'fflate';
+import { computeDwaChannelGroups } from './dwaClassify.js';
 import { decompressRLE } from './decompressRle.js';
+import { getLinearLut } from './dwaLuts.js';
 import { applyExrPredictor, reorderExrPixels } from './exrDsp.js';
-import { FLOAT, HALF, UINT } from './exrConstants.js';
+import { FLOAT, HALF } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { decodeFloat16, encodeFloat16 } from './halfFloat.js';
 import { hufUncompress } from './pizHuffman.js';
 
-function channelByteSize(pixelType: number): number {
+export function channelByteSize(pixelType: number): number {
   return pixelType === HALF ? 2 : 4;
 }
 
 // Zig-zag scan order for an 8x8 DCT block (src index for each normal-order dst index).
-const ZIGZAG = [
+export const ZIGZAG = [
   0, 1, 5, 6, 14, 15, 27, 28, 2, 4, 7, 13, 16, 26, 29, 42, 3, 8, 12, 17, 25, 30, 41, 43, 9, 11, 18, 24, 31, 40, 44, 53,
   10, 19, 23, 32, 39, 45, 52, 54, 20, 22, 33, 38, 46, 51, 55, 60, 21, 34, 37, 47, 50, 56, 59, 61, 35, 36, 48, 49, 57,
   58, 62, 63,
@@ -130,28 +132,6 @@ function csc709Inverse64(y: Float64Array, cb: Float64Array, cr: Float64Array): v
 // precomputed candidate list) the representable value with fewest bits set that's still
 // within the per-component error bound, so decode just inverse-DCTs the stored values as-is.
 
-// Perceptual nonlinear <-> linear half-float LUT (see ImfDwaCompressor.cpp for the
-// rationale: gamma 2.2 below 1.0, blended into a log curve above 1.0).
-let linearLut: Uint16Array | null = null;
-function getLinearLut(): Uint16Array {
-  if (linearLut) return linearLut;
-  const lut = new Uint16Array(65536);
-  for (let i = 0; i < 65536; i++) {
-    if (i === 0 || (i & 0x7c00) === 0x7c00) {
-      lut[i] = 0;
-      continue;
-    }
-    const f0 = decodeFloat16(i);
-    const sign = f0 < 0 ? -1 : 1;
-    const f = Math.abs(f0);
-    const px = f <= 1 ? f : 9.02501329156;
-    const py = f <= 1 ? 2.2 : f - 1;
-    lut[i] = encodeFloat16(sign * Math.pow(px, py));
-  }
-  linearLut = lut;
-  return lut;
-}
-
 function unRleAc(acRaw: Uint16Array, cursor: { value: number }, halfZig: Uint16Array): void {
   let dctComp = 1;
   while (dctComp < 64) {
@@ -165,50 +145,6 @@ function unRleAc(acRaw: Uint16Array, cursor: { value: number }, halfZig: Uint16A
       dctComp++;
     }
   }
-}
-
-function findSuffix(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot >= 0 ? name.slice(dot + 1) : name;
-}
-
-type Scheme = 'DCT' | 'RLE' | 'UNKNOWN';
-
-const DEFAULT_RULES: { suffix: string; scheme: Scheme; types: number[]; cscIdx: number }[] = [
-  { suffix: 'R', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 0 },
-  { suffix: 'G', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 1 },
-  { suffix: 'B', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 2 },
-  { suffix: 'Y', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'BY', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'RY', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'A', scheme: 'RLE', types: [UINT, HALF, FLOAT], cscIdx: -1 },
-];
-
-const LEGACY_RULES: { suffix: string; scheme: Scheme; types: number[]; cscIdx: number }[] = [
-  { suffix: 'r', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 0 },
-  { suffix: 'red', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 0 },
-  { suffix: 'g', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 1 },
-  { suffix: 'grn', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 1 },
-  { suffix: 'green', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 1 },
-  { suffix: 'b', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 2 },
-  { suffix: 'blu', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 2 },
-  { suffix: 'blue', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: 2 },
-  { suffix: 'y', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'by', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'ry', scheme: 'DCT', types: [HALF, FLOAT], cscIdx: -1 },
-  { suffix: 'a', scheme: 'RLE', types: [UINT, HALF, FLOAT], cscIdx: -1 },
-];
-
-function classifyChannel(name: string, pixelType: number, legacy: boolean): { scheme: Scheme; cscIdx: number } {
-  const suffix = findSuffix(name);
-  const rules = legacy ? LEGACY_RULES : DEFAULT_RULES;
-  const matchSuffix = legacy ? suffix.toLowerCase() : suffix;
-  for (const rule of rules) {
-    if (rule.suffix === matchSuffix && rule.types.includes(pixelType)) {
-      return { scheme: rule.scheme, cscIdx: rule.cscIdx };
-    }
-  }
-  return { scheme: 'UNKNOWN', cscIdx: -1 };
 }
 
 function decodeLossyDctGroup(
@@ -397,41 +333,7 @@ export function decompressDwa(
 
   // Classify channels and find CSC-groupable RGB triplets (matches
   // DwaCompressor_classifyChannels: same suffix/type rules, grouped by name prefix).
-  const classes = channels.map((ch) => classifyChannel(ch.name, ch.pixelType, legacy));
-  const prefixMap = new Map<string, [number, number, number]>();
-  for (let i = 0; i < channels.length; i++) {
-    const cls = classes[i]!;
-    if (cls.scheme !== 'DCT' || cls.cscIdx < 0) continue;
-    const channel = channels[i]!;
-    const suffix = findSuffix(channel.name);
-    const prefix = channel.name.slice(0, channel.name.length - suffix.length);
-    let entry = prefixMap.get(prefix);
-    if (!entry) {
-      entry = [-1, -1, -1];
-      prefixMap.set(prefix, entry);
-    }
-    entry[cls.cscIdx] = i;
-  }
-
-  const cscGroups: [number, number, number][] = [];
-  const grouped = new Set<number>();
-  for (const [r, g, b] of prefixMap.values()) {
-    if (r < 0 || g < 0 || b < 0) continue;
-    const rc = channels[r]!;
-    const gc = channels[g]!;
-    const bc = channels[b]!;
-    if (
-      rc.xSampling === gc.xSampling &&
-      rc.xSampling === bc.xSampling &&
-      rc.ySampling === gc.ySampling &&
-      rc.ySampling === bc.ySampling
-    ) {
-      cscGroups.push([r, g, b]);
-      grouped.add(r);
-      grouped.add(g);
-      grouped.add(b);
-    }
-  }
+  const { classes, cscGroups, grouped } = computeDwaChannelGroups(channels, legacy);
 
   const bpeArr = channels.map((ch) => channelByteSize(ch.pixelType));
   const channelOut: Uint8Array[] = channels.map((_, i) => new Uint8Array(width * blockHeight * bpeArr[i]!));

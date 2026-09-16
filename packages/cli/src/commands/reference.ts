@@ -11,12 +11,16 @@ import {
 } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
-const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz', 'pxr24'] as const;
+const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz', 'pxr24', 'b44', 'b44a', 'dwaa', 'dwab'] as const;
 const COMPRESSION_MAP: Record<(typeof REFERENCE_COMPRESSION_CHOICES)[number], number> = {
   rle: 1,
   zip: 3,
   piz: 4,
   pxr24: 5,
+  b44: 6,
+  b44a: 7,
+  dwaa: 8,
+  dwab: 9,
 };
 
 export const command = defineCommand({

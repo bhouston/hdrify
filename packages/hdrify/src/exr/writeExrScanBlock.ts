@@ -4,11 +4,17 @@
  */
 
 import type { HdrifyImage } from '../hdrifyImage.js';
+import { compressB44Block } from './compressB44.js';
+import { compressDwaBlock } from './compressDwa.js';
 import { compressPizBlock } from './compressPiz.js';
 import { compressPxr24Block } from './compressPxr24.js';
 import { compressRleBlock } from './compressRle.js';
 import { compressZipBlock } from './compressZip.js';
 import {
+  B44A_COMPRESSION,
+  B44_COMPRESSION,
+  DWAA_COMPRESSION,
+  DWAB_COMPRESSION,
   FLOAT,
   FLOAT32_SIZE,
   HALF,
@@ -71,7 +77,11 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     compression === ZIP_COMPRESSION ||
     compression === ZIPS_COMPRESSION ||
     compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION;
+    compression === PXR24_COMPRESSION ||
+    compression === B44_COMPRESSION ||
+    compression === B44A_COMPRESSION ||
+    compression === DWAA_COMPRESSION ||
+    compression === DWAB_COMPRESSION;
 
   if (useCompression) {
     const pixelsPerBlock = width * lineCount;
@@ -126,6 +136,16 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
       case RLE_COMPRESSION:
         pixelData = compressRleBlock(interleaved);
         break;
+      case DWAA_COMPRESSION:
+      case DWAB_COMPRESSION:
+        pixelData = compressDwaBlock(interleaved, width, lineCount, channels);
+        break;
+      case B44_COMPRESSION:
+        pixelData = compressB44Block(interleaved, width, lineCount, channels, false);
+        break;
+      case B44A_COMPRESSION:
+        pixelData = compressB44Block(interleaved, width, lineCount, channels, true);
+        break;
       default:
         pixelData = compressZipBlock(interleaved); // ZIP and ZIPS both use zlib
     }
@@ -140,7 +160,9 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   }
 
   if (compression !== NO_COMPRESSION) {
-    throw new Error(`Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ, PXR24.`);
+    throw new Error(
+      `Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ, PXR24, B44, B44A, DWAA, DWAB.`,
+    );
   }
 
   const bytesPerChannel = getPixelTypeSize(channels[0]?.pixelType ?? FLOAT);
