@@ -129,6 +129,10 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
         );
     }
 
+    // OpenEXR identifies raw chunks by their uncompressed size. Only store
+    // encoded bytes when strictly smaller, including for lossy codecs.
+    if (pixelData.length >= interleaved.length) pixelData = interleaved;
+
     const blockSize = INT32_SIZE + INT32_SIZE + pixelData.length;
     const result = new Uint8Array(blockSize);
     const view = new DataView(result.buffer, result.byteOffset, result.byteLength);
