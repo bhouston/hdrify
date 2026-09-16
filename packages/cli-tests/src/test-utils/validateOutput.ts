@@ -1,22 +1,11 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readExr, readHdr } from 'hdrify';
+import { EXR_COMPRESSION_NAMES, readExr, readHdr } from 'hdrify';
 import sharp from 'sharp';
 
 function toUint8Array(buf: Buffer): Uint8Array {
   return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
 }
-
-const EXR_COMPRESSION_NAMES: Record<number, string> = {
-  0: 'NO_COMPRESSION',
-  1: 'RLE',
-  2: 'ZIPS',
-  3: 'ZIP',
-  4: 'PIZ',
-  5: 'PXR24',
-  6: 'B44',
-  7: 'B44A',
-};
 
 export interface Metadata {
   width: number;

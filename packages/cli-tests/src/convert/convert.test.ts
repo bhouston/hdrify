@@ -64,7 +64,7 @@ describe('CLI convert command', () => {
       const meta = await validateExrOutput(output);
       expect(meta.width).toBeGreaterThan(0);
       expect(meta.height).toBeGreaterThan(0);
-      expect(meta.compression).toBe('ZIP');
+      expect(meta.compression).toBe('zip');
     });
 
     it('round-trips EXR -> HDR -> EXR', async () => {
@@ -147,7 +147,7 @@ describe('CLI convert command', () => {
       const meta = await validateExrOutput(output);
       expect(meta.width).toBeGreaterThan(0);
       expect(meta.height).toBeGreaterThan(0);
-      expect(meta.compression).toBe('PXR24');
+      expect(meta.compression).toBe('pxr24');
     });
   });
 

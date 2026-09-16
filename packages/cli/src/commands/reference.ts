@@ -6,22 +6,11 @@ import {
   createCieColorWedgeImage,
   createHsvRainbowImage,
   createSdfGradientImage,
+  EXR_COMPRESSIONS,
   writeExr,
   writeHdr,
 } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
-
-const REFERENCE_COMPRESSION_CHOICES = ['rle', 'zip', 'piz', 'pxr24', 'b44', 'b44a', 'dwaa', 'dwab'] as const;
-const COMPRESSION_MAP: Record<(typeof REFERENCE_COMPRESSION_CHOICES)[number], number> = {
-  rle: 1,
-  zip: 3,
-  piz: 4,
-  pxr24: 5,
-  b44: 6,
-  b44a: 7,
-  dwaa: 8,
-  dwab: 9,
-};
 
 export const command = defineCommand({
   command: 'reference <output>',
@@ -62,7 +51,7 @@ export const command = defineCommand({
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
-        choices: REFERENCE_COMPRESSION_CHOICES,
+        choices: EXR_COMPRESSIONS,
       }),
   handler: async (argv) => {
     const { output, type, width, height, value, intensity, compression } = argv;
@@ -99,8 +88,7 @@ export const command = defineCommand({
 
       let buffer: Uint8Array;
       if (ext === '.exr') {
-        const compressionOpt = compression !== undefined ? { compression: COMPRESSION_MAP[compression] } : undefined;
-        buffer = writeExr(imageData, compressionOpt);
+        buffer = writeExr(imageData, { compression });
       } else {
         buffer = writeHdr(imageData);
       }

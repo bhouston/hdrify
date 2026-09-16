@@ -1,37 +1,22 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { encodeGainMap, readExr, readHdr, readJpegGainMap, writeExr, writeHdr, writeJpegGainMap } from 'hdrify';
+import {
+  encodeGainMap,
+  EXR_COMPRESSION_CODES,
+  type ExrCompression,
+  readExr,
+  readHdr,
+  readJpegGainMap,
+  writeExr,
+  writeHdr,
+  writeJpegGainMap,
+} from 'hdrify';
 import * as vscode from 'vscode';
-
-// EXR compression constants (OpenEXR standard)
-const NO_COMPRESSION = 0;
-const RLE_COMPRESSION = 1;
-const ZIPS_COMPRESSION = 2;
-const ZIP_COMPRESSION = 3;
-const PIZ_COMPRESSION = 4;
-const PXR24_COMPRESSION = 5;
-const B44_COMPRESSION = 6;
-const B44A_COMPRESSION = 7;
-const DWAA_COMPRESSION = 8;
-const DWAB_COMPRESSION = 9;
 
 const FORMAT_TO_EXTENSION: Record<string, string> = {
   exr: '.exr',
   hdr: '.hdr',
   jpeg: '.jpg',
-};
-
-const EXR_COMPRESSION_MAP: Record<string, number> = {
-  none: NO_COMPRESSION,
-  rle: RLE_COMPRESSION,
-  zips: ZIPS_COMPRESSION,
-  zip: ZIP_COMPRESSION,
-  piz: PIZ_COMPRESSION,
-  pxr24: PXR24_COMPRESSION,
-  b44: B44_COMPRESSION,
-  b44a: B44A_COMPRESSION,
-  dwaa: DWAA_COMPRESSION,
-  dwab: DWAB_COMPRESSION,
 };
 
 function getConfig() {
@@ -72,8 +57,9 @@ export async function convertToFormat(
   const config = getConfig();
   const quality = Math.max(0, Math.min(100, config.get<number>('conversionQuality', 90) ?? 90));
   const leaveOriginal = config.get<boolean>('leaveOriginalWhenChangingFormat', false);
-  const exrCompressionStr = config.get<string>('exrCompression', 'piz') ?? 'piz';
-  const exrCompression = EXR_COMPRESSION_MAP[exrCompressionStr.toLowerCase()] ?? PIZ_COMPRESSION;
+  const exrCompressionStr = (config.get<string>('exrCompression', 'piz') ?? 'piz').toLowerCase();
+  const exrCompression: ExrCompression =
+    exrCompressionStr in EXR_COMPRESSION_CODES ? (exrCompressionStr as ExrCompression) : 'piz';
 
   const inputPath = uri.fsPath;
   const outputPath = getOutputPathForConvert(inputPath, targetFormat);

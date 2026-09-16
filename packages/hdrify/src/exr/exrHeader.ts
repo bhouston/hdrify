@@ -4,14 +4,14 @@
  */
 
 import {
-  COMPRESSION_NAMES,
+  EXR_COMPRESSION_NAMES,
+  EXR_COMPRESSIONS,
   EXR_MAGIC,
   FLOAT32_SIZE,
   INT8_SIZE,
   INT16_SIZE,
   INT32_SIZE,
   NO_COMPRESSION,
-  SUPPORTED_COMPRESSION,
 } from './exrConstants.js';
 import type { ExrBox2i, ExrChannel, ParsedExrHeader } from './exrTypes.js';
 
@@ -210,9 +210,10 @@ export function parseExrHeader(exrBuffer: Uint8Array): { header: ParsedExrHeader
   const channels = header.channels as ExrChannel[] | undefined;
   const compression = (header.compression as number) ?? NO_COMPRESSION;
 
-  if (!SUPPORTED_COMPRESSION.includes(compression)) {
-    const name = COMPRESSION_NAMES[compression] ?? `unknown (${compression})`;
-    throw new Error(`Unsupported EXR compression: ${name}. This reader supports: none, RLE, ZIPS, ZIP, PIZ, PXR24.`);
+  if (!(compression in EXR_COMPRESSION_NAMES)) {
+    throw new Error(
+      `Unsupported EXR compression: unknown (${compression}). This reader supports: ${EXR_COMPRESSIONS.join(', ')}.`,
+    );
   }
 
   // Check if required attributes exist and are valid

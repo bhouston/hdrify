@@ -24,9 +24,9 @@ import {
   PIZ_COMPRESSION,
   PXR24_COMPRESSION,
   RLE_COMPRESSION,
-  UINT,
   ZIP_COMPRESSION,
   ZIPS_COMPRESSION,
+  UINT,
 } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { encodeFloat16 } from './halfFloat.js';
@@ -72,16 +72,7 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
   const { width, height, data } = hdrifyImage;
 
   const numChannels = channels.length;
-  const useCompression =
-    compression === RLE_COMPRESSION ||
-    compression === ZIP_COMPRESSION ||
-    compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION ||
-    compression === B44_COMPRESSION ||
-    compression === B44A_COMPRESSION ||
-    compression === DWAA_COMPRESSION ||
-    compression === DWAB_COMPRESSION;
+  const useCompression = compression !== NO_COMPRESSION;
 
   if (useCompression) {
     const pixelsPerBlock = width * lineCount;
@@ -146,8 +137,14 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
       case B44A_COMPRESSION:
         pixelData = compressB44Block(interleaved, width, lineCount, channels, true);
         break;
-      default:
+      case ZIP_COMPRESSION:
+      case ZIPS_COMPRESSION:
         pixelData = compressZipBlock(interleaved); // ZIP and ZIPS both use zlib
+        break;
+      default:
+        throw new Error(
+          `Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ, PXR24, B44, B44A, DWAA, DWAB.`,
+        );
     }
 
     const blockSize = INT32_SIZE + INT32_SIZE + pixelData.length;
@@ -157,12 +154,6 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     view.setUint32(4, pixelData.length, true);
     result.set(pixelData, 8);
     return result;
-  }
-
-  if (compression !== NO_COMPRESSION) {
-    throw new Error(
-      `Compression ${compression} not implemented. Supported: none, RLE, ZIP, ZIPS, PIZ, PXR24, B44, B44A, DWAA, DWAB.`,
-    );
   }
 
   const bytesPerChannel = getPixelTypeSize(channels[0]?.pixelType ?? FLOAT);

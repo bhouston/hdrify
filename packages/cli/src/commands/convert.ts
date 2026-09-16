@@ -4,6 +4,7 @@ import {
   applyToneMapping,
   convertLinearColorSpace,
   encodeGainMap,
+  EXR_COMPRESSIONS,
   type HdrifyImage,
   readExr,
   readHdr,
@@ -17,20 +18,6 @@ import { defineCommand } from 'yargs-file-commands';
 
 const SDR_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'] as const;
 const HDR_EXTENSIONS = ['.exr', '.hdr'] as const;
-
-const EXR_COMPRESSION_CHOICES = ['none', 'rle', 'zip', 'zips', 'piz', 'pxr24', 'b44', 'b44a', 'dwaa', 'dwab'] as const;
-const COMPRESSION_MAP: Record<(typeof EXR_COMPRESSION_CHOICES)[number], number> = {
-  none: 0,
-  rle: 1,
-  zip: 3,
-  zips: 2,
-  piz: 4,
-  pxr24: 5,
-  b44: 6,
-  b44a: 7,
-  dwaa: 8,
-  dwab: 9,
-};
 
 function isSdrExtension(ext: string): ext is (typeof SDR_EXTENSIONS)[number] {
   return SDR_EXTENSIONS.includes(ext as (typeof SDR_EXTENSIONS)[number]);
@@ -82,7 +69,7 @@ export const command = defineCommand({
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
-        choices: EXR_COMPRESSION_CHOICES,
+        choices: EXR_COMPRESSIONS,
       })
       .option('format', {
         describe: 'JPEG gain map format: ultrahdr (default) or adobe-gainmap (JPEG output only)',
@@ -148,9 +135,7 @@ export const command = defineCommand({
 
         let outputBuffer: Uint8Array;
         if (outputExt === '.exr') {
-          const compressionOption =
-            compression !== undefined ? { compression: COMPRESSION_MAP[compression] } : undefined;
-          outputBuffer = writeExr(dataToWrite, compressionOption);
+          outputBuffer = writeExr(dataToWrite, { compression });
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }

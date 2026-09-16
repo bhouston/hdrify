@@ -72,7 +72,7 @@ describe('CLI reference command', () => {
     const meta = await validateExrOutput(output);
     expect(meta.width).toBe(8);
     expect(meta.height).toBe(8);
-    expect(meta.compression).toBe('ZIP');
+    expect(meta.compression).toBe('zip');
   });
 
   it('creates EXR with --compression rle', async () => {
@@ -84,7 +84,7 @@ describe('CLI reference command', () => {
     const meta = await validateExrOutput(output);
     expect(meta.width).toBe(8);
     expect(meta.height).toBe(8);
-    expect(meta.compression).toBe('RLE');
+    expect(meta.compression).toBe('rle');
   });
 
   it('creates EXR with --compression zip', async () => {
@@ -96,7 +96,7 @@ describe('CLI reference command', () => {
     const meta = await validateExrOutput(output);
     expect(meta.width).toBe(8);
     expect(meta.height).toBe(8);
-    expect(meta.compression).toBe('ZIP');
+    expect(meta.compression).toBe('zip');
   });
 
   it('creates EXR with --compression pxr24', async () => {
@@ -108,7 +108,7 @@ describe('CLI reference command', () => {
     const meta = await validateExrOutput(output);
     expect(meta.width).toBe(16);
     expect(meta.height).toBe(8);
-    expect(meta.compression).toBe('PXR24');
+    expect(meta.compression).toBe('pxr24');
   });
 
   it('rejects --compression when output is HDR', () => {

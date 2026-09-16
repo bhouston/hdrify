@@ -3,23 +3,12 @@
  *
  * Writes EXR files from HdrifyImage.
  * Orchestrates header builder, offset table, and scan block modules.
- * Supports NO_COMPRESSION, RLE, ZIP, ZIPS.
+ * Supports every codec in EXR_COMPRESSION_CODES.
  */
 
 import { LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
-import {
-  B44A_COMPRESSION,
-  B44_COMPRESSION,
-  DWAA_COMPRESSION,
-  DWAB_COMPRESSION,
-  HALF,
-  PIZ_COMPRESSION,
-  PXR24_COMPRESSION,
-  RLE_COMPRESSION,
-  ZIP_COMPRESSION,
-  ZIPS_COMPRESSION,
-} from './exrConstants.js';
+import { EXR_COMPRESSION_CODES, type ExrCompression, HALF, NO_COMPRESSION, ZIP_COMPRESSION } from './exrConstants.js';
 import { buildExrHeader, buildMagicAndVersion, DEFAULT_CHANNELS } from './exrHeaderBuilder.js';
 import type { ExrChannel } from './exrTypes.js';
 import { concatUint8Arrays } from './exrUtils.js';
@@ -32,26 +21,15 @@ import {
 import { writeExrScanBlock } from './writeExrScanBlock.js';
 
 export interface WriteExrOptions {
-  /** Compression: 0=none, 1=RLE, 2=ZIPS, 3=ZIP, 4=PIZ, 5=PXR24 */
-  compression?: number;
+  /** Compression name (see EXR_COMPRESSIONS) or OpenEXR compression code. Default: zip. */
+  compression?: ExrCompression | number;
 }
 
 function getChannelsForCompression(compression: number): ExrChannel[] {
-  const base = [...DEFAULT_CHANNELS];
-  if (
-    compression === RLE_COMPRESSION ||
-    compression === ZIP_COMPRESSION ||
-    compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION ||
-    compression === B44_COMPRESSION ||
-    compression === B44A_COMPRESSION ||
-    compression === DWAA_COMPRESSION ||
-    compression === DWAB_COMPRESSION
-  ) {
-    return base.map((ch) => ({ ...ch, pixelType: HALF }));
-  }
-  return base;
+  // All compressed codecs write HALF; uncompressed keeps the default (FLOAT) channels
+  return compression === NO_COMPRESSION
+    ? [...DEFAULT_CHANNELS]
+    : DEFAULT_CHANNELS.map((ch) => ({ ...ch, pixelType: HALF }));
 }
 
 /**
@@ -64,7 +42,8 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
 export function writeExr(hdrifyImage: HdrifyImage, options?: WriteExrOptions): Uint8Array {
   ensureNonNegativeFinite(hdrifyImage.data);
   const { width, height } = hdrifyImage;
-  const compression = options?.compression ?? ZIP_COMPRESSION;
+  const c = options?.compression ?? ZIP_COMPRESSION;
+  const compression = typeof c === 'string' ? EXR_COMPRESSION_CODES[c] : c;
   const channels = getChannelsForCompression(compression);
   // OpenEXR requires channels to be sorted alphabetically
   channels.sort((a, b) => a.name.localeCompare(b.name));
@@ -91,16 +70,7 @@ export function writeExr(hdrifyImage: HdrifyImage, options?: WriteExrOptions): U
     blocks.push(block);
   }
 
-  const useCompression =
-    compression === RLE_COMPRESSION ||
-    compression === ZIP_COMPRESSION ||
-    compression === ZIPS_COMPRESSION ||
-    compression === PIZ_COMPRESSION ||
-    compression === PXR24_COMPRESSION ||
-    compression === B44_COMPRESSION ||
-    compression === B44A_COMPRESSION ||
-    compression === DWAA_COMPRESSION ||
-    compression === DWAB_COMPRESSION;
+  const useCompression = compression !== NO_COMPRESSION;
   const offsetTable = useCompression
     ? buildExrOffsetTableFromBlocks({ offsetTableStart, blocks })
     : buildExrOffsetTable({

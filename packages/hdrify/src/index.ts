@@ -27,6 +27,12 @@ export {
 // Color (sRGB ↔ linear, IEC 61966-2-1; use on float [0,1] after bytes→float)
 export { linearTosRGB, sRGBToLinear } from './color/srgb.js';
 // EXR
+export {
+  EXR_COMPRESSION_CODES,
+  EXR_COMPRESSION_NAMES,
+  EXR_COMPRESSIONS,
+  type ExrCompression,
+} from './exr/exrConstants.js';
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';

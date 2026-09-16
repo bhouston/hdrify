@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { addRangeMetadata, type HdrifyImage, readExr, readHdr, readJpegGainMap } from 'hdrify';
+import { addRangeMetadata, EXR_COMPRESSION_NAMES, type HdrifyImage, readExr, readHdr, readJpegGainMap } from 'hdrify';
 import { defineCommand } from 'yargs-file-commands';
 
 function yamlStringNeedsEscape(s: string): boolean {
@@ -10,19 +10,6 @@ function yamlStringNeedsEscape(s: string): boolean {
   }
   return false;
 }
-
-const COMPRESSION_NAMES: Record<number, string> = {
-  0: 'NO_COMPRESSION',
-  1: 'RLE',
-  2: 'ZIPS',
-  3: 'ZIP',
-  4: 'PIZ',
-  5: 'PXR24',
-  6: 'B44',
-  7: 'B44A',
-  8: 'DWAA',
-  9: 'DWAB',
-};
 
 interface InfoOutput {
   format: string;
@@ -103,7 +90,7 @@ function buildInfoOutput(imageData: HdrifyImage, ext: string): InfoOutput {
   if (ext === '.exr' && imageData.metadata) {
     const compression = imageData.metadata.compression as number | undefined;
     if (compression !== undefined) {
-      output.compression = COMPRESSION_NAMES[compression] ?? `UNKNOWN (${compression})`;
+      output.compression = EXR_COMPRESSION_NAMES[compression] ?? `UNKNOWN (${compression})`;
     }
   }
 

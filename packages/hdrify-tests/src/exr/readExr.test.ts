@@ -14,7 +14,6 @@ const exampleRlePath = path.join(assetsDir, 'example_rle.exr');
 const gammaChartPath = path.join(assetsDir, 'example_pxr24.exr');
 const exampleNonRgbPath = path.join(assetsDir, 'example_nonRGB.exr');
 const exampleHalfsPath = path.join(assetsDir, 'example_halfs.exr');
-const exampleB44Path = path.join(assetsDir, 'example_b44.exr');
 const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
 const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
 const example16bitBlockPizPath = path.join(assetsDir, 'example_16bit_block_PIZ.exr');
@@ -98,7 +97,7 @@ describe('exrReader', () => {
     });
 
     it('should throw clear error for unsupported compression type', () => {
-      // Create a copy and change compression from PIZ (4) to B44 (6) - unsupported
+      // Create a copy and change compression from PIZ (4) to 10 (beyond any known OpenEXR code)
       const modified = new Uint8Array(exrBuffer!);
       const pattern = new TextEncoder().encode('compression\0compression\0');
       let idx = -1;
@@ -111,11 +110,11 @@ describe('exrReader', () => {
       if (idx >= 0) {
         const sizeOffset = idx + pattern.length;
         const valueOffset = sizeOffset + 4; // skip 4-byte size
-        modified[valueOffset] = 6; // B44 (unsupported)
+        modified[valueOffset] = 10; // unknown code
       }
 
       expect(() => readExr(modified)).toThrow('Unsupported EXR compression');
-      expect(() => readExr(modified)).toThrow('none, RLE, ZIPS, ZIP, PIZ, PXR24');
+      expect(() => readExr(modified)).toThrow('none, rle, zips, zip, piz, pxr24, b44, b44a, dwaa, dwab');
     });
 
     it('should read PXR24-compressed EXR file (example_pxr24.exr) with sane pixel values', () => {
@@ -164,14 +163,6 @@ describe('exrReader', () => {
 
       expect(() => readExr(buffer)).toThrow(/Multi-part, tiled, and deep data/);
       expect(() => readExr(buffer)).toThrow(/single-part scanline/);
-    });
-
-    it('should throw for B44-compressed EXR (example_b44.exr - compression not supported)', () => {
-      const buf = fs.readFileSync(exampleB44Path);
-      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
-
-      expect(() => readExr(buffer)).toThrow('Unsupported EXR compression');
-      expect(() => readExr(buffer)).toThrow(/none, RLE, ZIPS, ZIP, PIZ, PXR24/);
     });
 
     it('should read non-RGB EXR with luminance channel (example_nonRGB.exr)', () => {

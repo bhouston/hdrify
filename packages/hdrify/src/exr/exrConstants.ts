@@ -41,31 +41,29 @@ export const B44A_COMPRESSION = 7;
 export const DWAA_COMPRESSION = 8;
 export const DWAB_COMPRESSION = 9;
 
-export const SUPPORTED_COMPRESSION = [
-  NO_COMPRESSION,
-  RLE_COMPRESSION,
-  ZIPS_COMPRESSION,
-  ZIP_COMPRESSION,
-  PIZ_COMPRESSION,
-  PXR24_COMPRESSION,
-  B44_COMPRESSION,
-  B44A_COMPRESSION,
-  DWAA_COMPRESSION,
-  DWAB_COMPRESSION,
-];
+/** EXR compression name → OpenEXR compression code. Single source of truth for all packages. */
+export const EXR_COMPRESSION_CODES = {
+  none: NO_COMPRESSION,
+  rle: RLE_COMPRESSION,
+  zips: ZIPS_COMPRESSION,
+  zip: ZIP_COMPRESSION,
+  piz: PIZ_COMPRESSION,
+  pxr24: PXR24_COMPRESSION,
+  b44: B44_COMPRESSION,
+  b44a: B44A_COMPRESSION,
+  dwaa: DWAA_COMPRESSION,
+  dwab: DWAB_COMPRESSION,
+} as const;
 
-export const COMPRESSION_NAMES: Record<number, string> = {
-  [NO_COMPRESSION]: 'none',
-  [RLE_COMPRESSION]: 'RLE',
-  [ZIPS_COMPRESSION]: 'ZIPS',
-  [ZIP_COMPRESSION]: 'ZIP',
-  [PIZ_COMPRESSION]: 'PIZ',
-  [PXR24_COMPRESSION]: 'PXR24',
-  [B44_COMPRESSION]: 'B44',
-  [B44A_COMPRESSION]: 'B44A',
-  [DWAA_COMPRESSION]: 'DWAA',
-  [DWAB_COMPRESSION]: 'DWAB',
-};
+export type ExrCompression = keyof typeof EXR_COMPRESSION_CODES;
+
+/** All supported EXR compression names, in OpenEXR code order. */
+export const EXR_COMPRESSIONS = Object.keys(EXR_COMPRESSION_CODES) as ExrCompression[];
+
+/** OpenEXR compression code → name */
+export const EXR_COMPRESSION_NAMES: Record<number, ExrCompression> = Object.fromEntries(
+  EXR_COMPRESSIONS.map((name) => [EXR_COMPRESSION_CODES[name], name]),
+);
 
 // Pixel types
 export const UINT = 0;

@@ -4,6 +4,7 @@ import type { HdrifyImage } from 'hdrify';
 import {
   addRangeMetadata,
   encodeGainMap,
+  EXR_COMPRESSION_NAMES,
   readExr,
   readHdr,
   readJpegGainMap,
@@ -33,20 +34,6 @@ export const Route = createFileRoute('/')({
   component: Index,
   validateSearch: zodValidator(indexSearchSchema),
 });
-
-/** EXR compression type → display name (matches OpenEXR standard) */
-const EXR_COMPRESSION_NAMES: Record<number, string> = {
-  0: 'none',
-  1: 'RLE',
-  2: 'ZIPS',
-  3: 'ZIP',
-  4: 'PIZ',
-  5: 'PXR24',
-  6: 'B44',
-  7: 'B44A',
-  8: 'DWAA',
-  9: 'DWAB',
-};
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [
   { value: '/examples/blouberg_sunrise_2_1k.hdr', label: 'Blouberg Sunrise 1k (HDR)' },

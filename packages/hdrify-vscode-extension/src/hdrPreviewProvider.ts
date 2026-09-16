@@ -1,21 +1,8 @@
 import * as path from 'node:path';
 import type { HdrifyImage } from 'hdrify';
-import { readExr, readHdr, readJpegGainMap } from 'hdrify';
+import { EXR_COMPRESSION_NAMES, readExr, readHdr, readJpegGainMap } from 'hdrify';
 import * as vscode from 'vscode';
 import { HdrPreviewDocument } from './hdrPreviewDocument.js';
-
-const EXR_COMPRESSION_NAMES: Record<number, string> = {
-  0: 'none',
-  1: 'RLE',
-  2: 'ZIPS',
-  3: 'ZIP',
-  4: 'PIZ',
-  5: 'PXR24',
-  6: 'B44',
-  7: 'B44A',
-  8: 'DWAA',
-  9: 'DWAB',
-};
 
 function parseImage(buffer: Uint8Array, ext: string): HdrifyImage {
   const lower = ext.toLowerCase();
