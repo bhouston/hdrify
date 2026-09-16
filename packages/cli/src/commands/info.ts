@@ -20,6 +20,8 @@ const COMPRESSION_NAMES: Record<number, string> = {
   5: 'PXR24',
   6: 'B44',
   7: 'B44A',
+  8: 'DWAA',
+  9: 'DWAB',
 };
 
 interface InfoOutput {

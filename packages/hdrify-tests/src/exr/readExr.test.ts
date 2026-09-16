@@ -19,6 +19,7 @@ const exampleTilesPath = path.join(assetsDir, 'example_tiles.exr');
 const singlepartZipsPath = path.join(assetsDir, 'example_zips.exr');
 const example16bitBlockPizPath = path.join(assetsDir, 'example_16bit_block_PIZ.exr');
 const example32bitBlockPizPath = path.join(assetsDir, 'example_32bit_block_PIZ.exr');
+const exampleDwaaNormalMapPath = path.join(assetsDir, 'aerial_asphalt_01_nor_gl_2k.exr');
 
 const TOLERANCE = { toleranceRelative: 0.01 };
 
@@ -349,6 +350,48 @@ describe('exrReader', () => {
       // The last scanline block should look like the rest of the frame, not blue/black garbage.
       expect(tailAverage).toBeLessThan(median * 1.3);
       expect(tailMax).toBeLessThan(median * 1.6);
+    });
+
+    it('reads a real-world DWAA-compressed EXR (RGB half normal map) with plausible pixel values', () => {
+      const buf = fs.readFileSync(exampleDwaaNormalMapPath);
+      const buffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+
+      const result = readExr(buffer);
+      expect(result.width).toBe(2048);
+      expect(result.height).toBe(2048);
+      expect(result.metadata?.compression).toBe(8); // DWAA
+
+      // Scan without per-pixel `expect()` calls (each has real overhead over 4M pixels).
+      let allFinite = true;
+      let minR = Infinity;
+      let maxR = -Infinity;
+      let minG = Infinity;
+      let maxG = -Infinity;
+      let minB = Infinity;
+      let maxB = -Infinity;
+      const n = result.width * result.height;
+      for (let i = 0; i < n; i++) {
+        const r = result.data[i * 4]!;
+        const g = result.data[i * 4 + 1]!;
+        const b = result.data[i * 4 + 2]!;
+        if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) allFinite = false;
+        minR = Math.min(minR, r);
+        maxR = Math.max(maxR, r);
+        minG = Math.min(minG, g);
+        maxG = Math.max(maxG, g);
+        minB = Math.min(minB, b);
+        maxB = Math.max(maxB, b);
+      }
+
+      expect(allFinite).toBe(true);
+      // A tangent-space normal map's R/G/B channels should stay within a plausible
+      // [0,1]-ish range (encoded normal component), and never collapse to garbage/NaN.
+      expect(minR).toBeGreaterThan(-0.5);
+      expect(maxR).toBeLessThan(1.5);
+      expect(minG).toBeGreaterThan(-0.5);
+      expect(maxG).toBeLessThan(1.5);
+      expect(minB).toBeGreaterThan(-0.5);
+      expect(maxB).toBeLessThan(1.5);
     });
 
     it('throws for no valid scanline block offsets', () => {

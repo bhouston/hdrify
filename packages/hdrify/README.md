@@ -13,7 +13,7 @@ Universal EXR, HDR, and gain map image library for Node.js and browsers. Read an
 
 ## Features
 
-- Read and write RGB EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression)
+- Read and write RGB EXR files (PIZ, PXR24, ZIP, ZIPS, and RLE compression; DWAA/DWAB read-only)
 - Read and write HDR (Radiance RGBE) files
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGs (Android compatible)
 - Tone mappers (ACES, Khronos Neutral, AgX, Reinhard)

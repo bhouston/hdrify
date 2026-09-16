@@ -61,10 +61,15 @@ async function runConvert(uris: vscode.Uri[], format: 'exr' | 'hdr' | 'jpeg'): P
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  const outputChannel = vscode.window.createOutputChannel('HDRify');
+  context.subscriptions.push(outputChannel);
+
   const previewProvider = new HdrPreviewProvider(context);
   context.subscriptions.push(
     vscode.window.registerCustomEditorProvider('hdrify.hdrPreview', previewProvider, {
-      webviewOptions: { retainContextWhenHidden: false },
+      // Keep webview JS/canvas state alive when hidden: without this, switching tabs
+      // tears down the webview and it never re-renders (no re-send on becoming visible).
+      webviewOptions: { retainContextWhenHidden: true },
     }),
   );
 

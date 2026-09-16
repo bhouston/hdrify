@@ -44,6 +44,8 @@ const EXR_COMPRESSION_NAMES: Record<number, string> = {
   5: 'PXR24',
   6: 'B44',
   7: 'B44A',
+  8: 'DWAA',
+  9: 'DWAB',
 };
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [
@@ -574,7 +576,7 @@ function Index() {
           </li>
           <li>
             <strong className="text-foreground">EXR compression:</strong> Read and write EXR with no compression, RLE,
-            ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit).
+            ZIPS, ZIP, PIZ, and PXR24 (Pixar 24-bit). Also reads DWAA/DWAB (DCT-based) compression.
           </li>
           <li>
             <strong className="text-foreground">Gain maps:</strong> Read and write both Adobe Gain Map JPEGs and

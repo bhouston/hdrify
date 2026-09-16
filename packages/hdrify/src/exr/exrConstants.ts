@@ -38,6 +38,8 @@ export const PIZ_COMPRESSION = 4;
 export const PXR24_COMPRESSION = 5;
 export const B44_COMPRESSION = 6;
 export const B44A_COMPRESSION = 7;
+export const DWAA_COMPRESSION = 8;
+export const DWAB_COMPRESSION = 9;
 
 export const SUPPORTED_COMPRESSION = [
   NO_COMPRESSION,
@@ -46,6 +48,8 @@ export const SUPPORTED_COMPRESSION = [
   ZIP_COMPRESSION,
   PIZ_COMPRESSION,
   PXR24_COMPRESSION,
+  DWAA_COMPRESSION,
+  DWAB_COMPRESSION,
 ];
 
 export const COMPRESSION_NAMES: Record<number, string> = {
@@ -57,6 +61,8 @@ export const COMPRESSION_NAMES: Record<number, string> = {
   [PXR24_COMPRESSION]: 'PXR24',
   [B44_COMPRESSION]: 'B44',
   [B44A_COMPRESSION]: 'B44A',
+  [DWAA_COMPRESSION]: 'DWAA',
+  [DWAB_COMPRESSION]: 'DWAB',
 };
 
 // Pixel types
