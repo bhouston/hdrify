@@ -286,24 +286,20 @@ export function decompressPiz(
   const result = new Uint8Array(resultSize);
   const resultView = new DataView(result.buffer, result.byteOffset, result.byteLength);
 
+  // Output is scanline-major, channel-major-per-scanline (same convention as every other codec).
   for (let y = 0; y < blockHeight; y++) {
-    for (let x = 0; x < width; x++) {
-      const pixelIndex = y * width + x;
-      const resultPixelOffset = (y * width + x) * numChannels * bytesPerChannel;
-      for (let c = 0; c < numChannels; c++) {
-        const base = c * u16sPerChannel + pixelIndex * u16sPerChannelValue;
+    for (let c = 0; c < numChannels; c++) {
+      const lineOffset = (y * numChannels + c) * width * bytesPerChannel;
+      for (let x = 0; x < width; x++) {
+        const base = c * u16sPerChannel + (y * width + x) * u16sPerChannelValue;
         if (bytesPerChannel === INT16_SIZE) {
-          const value = outputBuffer[base];
-          if (value !== undefined) {
-            resultView.setUint16(resultPixelOffset + c * INT16_SIZE, value, true);
-          }
+          resultView.setUint16(lineOffset + x * INT16_SIZE, outputBuffer[base]!, true);
         } else {
-          const lo = outputBuffer[base];
-          const hi = outputBuffer[base + 1];
-          if (lo !== undefined && hi !== undefined) {
-            const bits = (hi << 16) | lo;
-            resultView.setUint32(resultPixelOffset + c * FLOAT32_SIZE, bits, true);
-          }
+          resultView.setUint32(
+            lineOffset + x * FLOAT32_SIZE,
+            (outputBuffer[base + 1]! << 16) | outputBuffer[base]!,
+            true,
+          );
         }
       }
     }

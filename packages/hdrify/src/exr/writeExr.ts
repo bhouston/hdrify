@@ -23,6 +23,8 @@ import { writeExrScanBlock } from './writeExrScanBlock.js';
 export interface WriteExrOptions {
   /** Compression name (see EXR_COMPRESSIONS) or OpenEXR compression code. Default: zip. */
   compression?: ExrCompression | number;
+  /** Replace negative and non-finite values with 0 before writing (default true). Set false for normal, depth or disparity data. */
+  sanitize?: boolean;
 }
 
 function getChannelsForCompression(compression: number): ExrChannel[] {
@@ -40,7 +42,7 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
  * @returns Uint8Array containing EXR file data
  */
 export function writeExr(hdrifyImage: HdrifyImage, options?: WriteExrOptions): Uint8Array {
-  ensureNonNegativeFinite(hdrifyImage.data);
+  if (options?.sanitize !== false) ensureNonNegativeFinite(hdrifyImage.data);
   const { width, height } = hdrifyImage;
   const c = options?.compression ?? ZIP_COMPRESSION;
   const compression = typeof c === 'string' ? EXR_COMPRESSION_CODES[c] : c;

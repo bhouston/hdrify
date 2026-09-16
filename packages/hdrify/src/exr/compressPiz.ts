@@ -211,8 +211,8 @@ function wav2Encode(buffer: Uint16Array, j: number, nx: number, ox: number, ny: 
 }
 
 /**
- * Rearrange scanline-interleaved half-float bytes to channel-planar uint16.
- * Input: [ch0, ch1, ch2, ...] per pixel in header channel order (writer sends channels[c]).
+ * Rearrange scanline-major, channel-major-per-scanline half-float bytes to whole-block channel-planar uint16.
+ * Input: for each scanline, for each channel (header order), width values.
  * Output: [ch0..ch0(n-1), ch1.., ch2.., ...] so planar index c = channel c for PIZ stream.
  */
 function rearrangeToChannelPlanar(
@@ -230,9 +230,8 @@ function rearrangeToChannelPlanar(
   for (let y = 0; y < blockHeight; y++) {
     for (let x = 0; x < width; x++) {
       const pixelIndex = y * width + x;
-      const srcOffset = (y * width + x) * numChannels * INT16_SIZE;
       for (let c = 0; c < numChannels; c++) {
-        out[c * pixelsPerChannel + pixelIndex] = view.getUint16(srcOffset + c * INT16_SIZE, true);
+        out[c * pixelsPerChannel + pixelIndex] = view.getUint16(((y * numChannels + c) * width + x) * INT16_SIZE, true);
       }
     }
   }
@@ -240,7 +239,7 @@ function rearrangeToChannelPlanar(
 }
 
 /**
- * Rearrange scanline-interleaved float32 bytes to channel-planar uint16 (low/high 16 bits per float).
+ * Rearrange scanline-major, channel-major-per-scanline float32 bytes to whole-block channel-planar uint16 (low/high 16 bits per float).
  * Output layout per channel: [lo0, hi0, lo1, hi1, ...] for wavelet with stride 2.
  */
 function rearrangeFloat32ToChannelPlanarU16(
@@ -258,9 +257,8 @@ function rearrangeFloat32ToChannelPlanarU16(
   for (let y = 0; y < blockHeight; y++) {
     for (let x = 0; x < width; x++) {
       const pixelIndex = y * width + x;
-      const srcOffset = (y * width + x) * numChannels * FLOAT32_SIZE;
       for (let c = 0; c < numChannels; c++) {
-        const bits = view.getUint32(srcOffset + c * FLOAT32_SIZE, true);
+        const bits = view.getUint32(((y * numChannels + c) * width + x) * FLOAT32_SIZE, true);
         const lo = bits & 0xffff;
         const hi = (bits >> 16) & 0xffff;
         const base = c * u16sPerChannel + pixelIndex * 2;
@@ -273,8 +271,8 @@ function rearrangeFloat32ToChannelPlanarU16(
 }
 
 /**
- * Compress interleaved block using PIZ (16-bit half or 32-bit float per channel).
- * Input: scanline-interleaved bytes in header channel order.
+ * Compress a scanline block using PIZ (16-bit half or 32-bit float per channel).
+ * Input: scanline-major, channel-major-per-scanline bytes (same convention as every other codec).
  * - For HALF channels: 2 bytes per channel value (raw half-float bytes).
  * - For FLOAT channels: 4 bytes per channel value (raw float32, little-endian).
  */

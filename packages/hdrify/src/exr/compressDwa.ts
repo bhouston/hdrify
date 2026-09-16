@@ -15,7 +15,7 @@
 import { zlibSync } from 'fflate';
 import { compressRLE } from './compressRle.js';
 import { channelByteSize, ZIGZAG } from './decompressDwa.js';
-import { computeDwaChannelGroups } from './dwaClassify.js';
+import { computeDwaChannelGroups, DEFAULT_RULES, serializeDwaRules } from './dwaClassify.js';
 import { getNonlinearLut } from './dwaLuts.js';
 import { applyExrPredictorEncode, reorderForWriting } from './exrDspWrite.js';
 import { FLOAT, ULONG_SIZE } from './exrConstants.js';
@@ -184,7 +184,6 @@ export function compressDwaBlock(
   blockHeight: number,
   channels: ExrChannel[],
 ): Uint8Array {
-  const legacy = false; // always write version 2 (current format)
   const bpeArr = channels.map((ch) => channelByteSize(ch.pixelType));
 
   // Split scanline-major/channel-major-per-scanline input into channel-planar, line-major
@@ -200,7 +199,7 @@ export function compressDwaBlock(
     }
   }
 
-  const { classes, cscGroups, grouped } = computeDwaChannelGroups(channels, legacy);
+  const { classes, cscGroups, grouped } = computeDwaChannelGroups(channels, DEFAULT_RULES);
 
   const dcValues: number[] = [];
   const acValues: number[] = [];
@@ -284,8 +283,9 @@ export function compressDwaBlock(
 
   const HEADER_FIELDS = 11;
   const headerSize = HEADER_FIELDS * ULONG_SIZE;
-  const ruleSize = 2; // no per-channel rule overrides needed: all channels match default rules
-  const totalSize = headerSize + ruleSize + unknownBuf.length + acBuf.length + dcBuf.length + rleBuf.length;
+  // Version 2 chunks carry the classification rules the decoder must apply to these channels.
+  const ruleBlock = serializeDwaRules(channels);
+  const totalSize = headerSize + ruleBlock.length + unknownBuf.length + acBuf.length + dcBuf.length + rleBuf.length;
 
   const result = new Uint8Array(totalSize);
   const dv = new DataView(result.buffer);
@@ -302,8 +302,8 @@ export function compressDwaBlock(
   writeU64(dv, 10 * ULONG_SIZE, 0); // acCompression: 0 = static Huffman
 
   let pos = headerSize;
-  dv.setUint16(pos, ruleSize, true);
-  pos += ruleSize;
+  result.set(ruleBlock, pos);
+  pos += ruleBlock.length;
   result.set(unknownBuf, pos);
   pos += unknownBuf.length;
   result.set(acBuf, pos);

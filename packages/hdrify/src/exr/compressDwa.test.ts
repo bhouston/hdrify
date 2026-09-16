@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compressDwaBlock } from './compressDwa.js';
 import { decompressDwa } from './decompressDwa.js';
+import { parseDwaRules } from './dwaClassify.js';
 import { FLOAT, HALF } from './exrConstants.js';
 import type { ExrChannel } from './exrTypes.js';
 import { decodeFloat16, encodeFloat16 } from './halfFloat.js';
@@ -233,14 +234,21 @@ describe('compressDwaBlock + decompressDwa (single-channel DCT path, non-CSC)', 
 });
 
 describe('compressDwaBlock chunk format', () => {
-  it('writes a valid version-2 header with an empty (no-override) channel rule block', () => {
+  it('writes a version-2 header followed by the classification rules used for these channels', () => {
     const raw = buildRaw(8, 8, RGBA_HALF, (_x, _y, c) => (c === 3 ? 1 : 0.3));
     const compressed = compressDwaBlock(raw, 8, 8, RGBA_HALF);
     const dv = new DataView(compressed.buffer, compressed.byteOffset, compressed.byteLength);
-    const version = Number(dv.getBigUint64(0, true));
-    expect(version).toBe(2);
-    const ruleSize = dv.getUint16(11 * 8, true);
-    expect(ruleSize).toBe(2); // no per-channel overrides: R/G/B/A all match the default rules
+    expect(Number(dv.getBigUint64(0, true))).toBe(2);
+    // The reference decoder classifies channels from these rules; an empty block would make every
+    // channel UNKNOWN and the chunk unreadable by OpenEXR. Each rule is suffix\0 + flags + type.
+    const { rules, size } = parseDwaRules(compressed.subarray(11 * 8));
+    expect(size).toBe(2 + 4 * 4);
+    expect(rules.map((r) => `${r.suffix}:${r.scheme}:${r.cscIdx}:${r.types[0]}`)).toEqual([
+      'R:DCT:0:1',
+      'G:DCT:1:1',
+      'B:DCT:2:1',
+      'A:RLE:-1:1',
+    ]);
   });
 
   it('produces smaller output for smoother/more compressible data', () => {

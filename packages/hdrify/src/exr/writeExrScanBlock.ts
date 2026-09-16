@@ -63,7 +63,7 @@ function getChannelValue(data: Float32Array, pixelIndex: number, channelName: st
 
 /**
  * Write a single scan line block.
- * For NO_COMPRESSION: pixel-interleaved layout (R,G,B,A per pixel, left to right).
+ * For NO_COMPRESSION: FLOAT, channel-planar per scanline (for each line: all R, all G, ...), like every codec.
  * For RLE/ZIP: half-float, reorder + predictor + compress.
  * Block layout: y coordinate (4) + pixel data size (4) + pixel data.
  */
@@ -78,40 +78,20 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     const pixelsPerBlock = width * lineCount;
     const interleaved = new Uint8Array(pixelsPerBlock * numChannels * 2);
 
-    if (compression === PIZ_COMPRESSION) {
-      // PIZ: scanline-interleaved [R0,G0,B0,A0, R1,G1,B1,A1, ...] per scanline
-      let outOffset = 0;
-      for (let ly = 0; ly < lineCount; ly++) {
-        const y = firstLineY + ly;
-        if (y >= height) break;
+    // Per scanline, channel-major: the raw layout every codec consumes.
+    let outOffset = 0;
+    for (let ly = 0; ly < lineCount; ly++) {
+      const y = firstLineY + ly;
+      if (y >= height) break;
+      for (let c = 0; c < numChannels; c++) {
+        const ch = channels[c];
+        if (!ch) continue;
         for (let x = 0; x < width; x++) {
           const pixelIndex = (y * width + x) * 4;
-          for (let c = 0; c < numChannels; c++) {
-            const ch = channels[c];
-            if (!ch) continue;
-            const value = getChannelValue(data, pixelIndex, ch.name);
-            const half = encodeFloat16(value);
-            interleaved[outOffset++] = half & 0xff;
-            interleaved[outOffset++] = (half >> 8) & 0xff;
-          }
-        }
-      }
-    } else {
-      // RLE/ZIP/PXR24: per scanline, channel-major
-      let outOffset = 0;
-      for (let ly = 0; ly < lineCount; ly++) {
-        const y = firstLineY + ly;
-        if (y >= height) break;
-        for (let c = 0; c < numChannels; c++) {
-          const ch = channels[c];
-          if (!ch) continue;
-          for (let x = 0; x < width; x++) {
-            const pixelIndex = (y * width + x) * 4;
-            const value = getChannelValue(data, pixelIndex, ch.name);
-            const half = encodeFloat16(value);
-            interleaved[outOffset++] = half & 0xff;
-            interleaved[outOffset++] = (half >> 8) & 0xff;
-          }
+          const value = getChannelValue(data, pixelIndex, ch.name);
+          const half = encodeFloat16(value);
+          interleaved[outOffset++] = half & 0xff;
+          interleaved[outOffset++] = (half >> 8) & 0xff;
         }
       }
     }
@@ -176,12 +156,11 @@ export function writeExrScanBlock(options: WriteExrScanBlockOptions): Uint8Array
     const y = firstLineY + ly;
     if (y >= height) break;
 
-    for (let x = 0; x < width; x++) {
-      const pixelIndex = (y * width + x) * 4;
-      for (let c = 0; c < numChannels; c++) {
-        const ch = channels[c];
-        if (!ch) continue;
-        const value = getChannelValue(data, pixelIndex, ch.name);
+    for (let c = 0; c < numChannels; c++) {
+      const ch = channels[c];
+      if (!ch) continue;
+      for (let x = 0; x < width; x++) {
+        const value = getChannelValue(data, (y * width + x) * 4, ch.name);
         view.setFloat32(offset, value, true);
         offset += FLOAT32_SIZE;
       }

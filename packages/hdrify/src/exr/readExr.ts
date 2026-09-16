@@ -31,7 +31,6 @@ import {
   ZIPS_COMPRESSION,
 } from './exrConstants.js';
 import { parseExrHeader } from './exrHeader.js';
-import type { ExrChannel } from './exrTypes.js';
 import { decodeFloat16 } from './halfFloat.js';
 
 function getPixelTypeSize(pixelType: number): number {
@@ -72,7 +71,12 @@ function readChannelValue(dataView: DataView, offset: number, pixelType: number)
  * @param exrBuffer - Uint8Array containing EXR file data
  * @returns Parsed EXR image data with dimensions and pixel data as HdrifyImage
  */
-export function readExr(exrBuffer: Uint8Array): HdrifyImage {
+export interface ReadExrOptions {
+  /** Replace negative and non-finite values with 0 after reading (default true). Set false for normal, depth or disparity data. */
+  sanitize?: boolean;
+}
+
+export function readExr(exrBuffer: Uint8Array, options?: ReadExrOptions): HdrifyImage {
   const dataView = new DataView(exrBuffer.buffer, exrBuffer.byteOffset, exrBuffer.byteLength);
   const { header: parsedHeader, offset } = parseExrHeader(exrBuffer);
 
@@ -94,21 +98,6 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       'Non-RGB EXR files are not supported. This reader requires R, G, and B channels, or a luminance (Y/L/luma) channel.',
     );
   }
-
-  const rChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'r') : undefined;
-  const gChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'g') : undefined;
-  const bChannel = isRgbMode ? channels.find((ch) => getChannelSemanticName(ch.name) === 'b') : undefined;
-
-  const primaryChannelOrUndef: ExrChannel | undefined =
-    isRgbMode && rChannel
-      ? rChannel
-      : (channels.find((ch) => getChannelSemanticName(ch.name) === 'luma') ?? channels[0]);
-  if (!primaryChannelOrUndef) {
-    throw new Error('Invalid EXR file: no usable channel for pixel type.');
-  }
-  const primaryChannel = primaryChannelOrUndef;
-
-  const numChannels = channels.length;
 
   // Determine block height based on compression type (OpenEXR spec: ZIP/PXR24=16, PIZ=32, others=1)
   const blockHeight =
@@ -192,6 +181,16 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
   }
   const pixelData = new Float32Array(width * height * 4); // RGBA
 
+  // Raw chunks and every decoder are channel-planar per scanline: for each line, for each
+  // channel in header order, `width` samples of that channel's type.
+  const channelSizes = channels.map((ch) => getPixelTypeSize(ch.pixelType));
+  const channelLineOffsets: number[] = [];
+  let bytesPerScanline = 0;
+  for (const size of channelSizes) {
+    channelLineOffsets.push(bytesPerScanline);
+    bytesPerScanline += width * size;
+  }
+
   for (let blockIdx = 0; blockIdx < blockCount; blockIdx++) {
     const scanlineBlockOffset = scanlineBlockOffsets[blockIdx];
     if (scanlineBlockOffset === undefined) {
@@ -234,60 +233,25 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
 
     const linesInBlock = Math.min(actualBlockHeightFinal, height - firstLineY);
 
-    const expectedUncompressedSize = linesInBlock * width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
+    const expectedUncompressedSize = linesInBlock * bytesPerScanline;
+    const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
 
-    // Decompress block data
     let decompressedData: Uint8Array;
-    let isPlanarBlock =
-      compression === RLE_COMPRESSION ||
-      compression === ZIP_COMPRESSION ||
-      compression === ZIPS_COMPRESSION ||
-      compression === PXR24_COMPRESSION ||
-      compression === B44_COMPRESSION ||
-      compression === B44A_COMPRESSION ||
-      compression === DWAA_COMPRESSION ||
-      compression === DWAB_COMPRESSION;
-    if (compression === NO_COMPRESSION) {
-      decompressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
+    if (compression === NO_COMPRESSION || dataSize === expectedUncompressedSize) {
+      // OpenEXR stores a chunk raw (any codec) when compressing it would not make it smaller.
+      decompressedData = compressedData;
     } else if (compression === ZIP_COMPRESSION || compression === ZIPS_COMPRESSION) {
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressZip(compressedData);
     } else if (compression === RLE_COMPRESSION) {
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressRleBlock(compressedData, expectedUncompressedSize);
     } else if (compression === PIZ_COMPRESSION) {
-      if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
-        throw new Error(`Invalid PIZ data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
-      }
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
-      // OpenEXR may store raw packed scanlines for a PIZ chunk if compression is not beneficial.
-      // In that case, packed_size == unpacked_size and payload is already channel-planar scanline data.
-      if (dataSize === expectedUncompressedSize) {
-        decompressedData = compressedData;
-        isPlanarBlock = true;
-      } else {
-        // PIZ decode must use this chunk's exact line count (last chunk may be shorter than block size).
-        decompressedData = decompressPiz(compressedData, width, channels, dataSize, linesInBlock);
-      }
+      // Decoders must use this chunk's exact line count (the last chunk may be shorter than the block size).
+      decompressedData = decompressPiz(compressedData, width, channels, dataSize, linesInBlock);
     } else if (compression === PXR24_COMPRESSION) {
-      if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
-        throw new Error(
-          `Invalid PXR24 data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`,
-        );
-      }
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressPxr24(compressedData, width, channels, dataSize, linesInBlock);
     } else if (compression === DWAA_COMPRESSION || compression === DWAB_COMPRESSION) {
-      if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
-        throw new Error(`Invalid DWA data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
-      }
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressDwa(compressedData, width, channels, dataSize, linesInBlock);
     } else if (compression === B44_COMPRESSION || compression === B44A_COMPRESSION) {
-      if (dataSize <= 0 || scanlinePos + dataSize > exrBuffer.length) {
-        throw new Error(`Invalid B44 data size: ${dataSize} at offset ${scanlinePos} (file size: ${exrBuffer.length})`);
-      }
-      const compressedData = new Uint8Array(exrBuffer.buffer, exrBuffer.byteOffset + scanlinePos, dataSize);
       decompressedData = decompressB44(compressedData, width, channels, dataSize, linesInBlock);
     } else {
       throw new Error(`Unsupported compression type: ${compression}`);
@@ -300,49 +264,27 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
       decompressedData.byteLength,
     );
 
-    const bytesPerScanline = width * numChannels * getPixelTypeSize(primaryChannel.pixelType);
-    const bytesPerChannel = getPixelTypeSize(primaryChannel.pixelType);
-
     for (let lineInBlock = 0; lineInBlock < linesInBlock; lineInBlock++) {
       const y = firstLineY + lineInBlock;
       if (y >= height) {
         break;
       }
 
-      const lineOffset = compression === NO_COMPRESSION ? 0 : lineInBlock * bytesPerScanline;
+      const lineOffset = lineInBlock * bytesPerScanline;
 
       for (let x = 0; x < width; x++) {
         const pixelIndex = (y * width + x) * 4;
 
         const channelValues: { [key: string]: number } = {};
-
-        // PXR24 with 3 channels (RGB mode): decoder outputs in header order (e.g. B, G, R). Map to R,G,B by
-        // semantic: block 0 = first in header (e.g. B), block 1 = G, block 2 = R. So R=block2, G=block1, B=block0.
-        const usePxr24RgbBlockOrder =
-          isRgbMode && isPlanarBlock && compression === PXR24_COMPRESSION && numChannels === 3;
-
-        if (usePxr24RgbBlockOrder && rChannel && gChannel && bChannel) {
-          channelValues.r = readChannelValue(
+        for (let c = 0; c < channels.length; c++) {
+          const channel = channels[c];
+          if (channel === undefined) continue;
+          const value = readChannelValue(
             blockDataView,
-            lineOffset + 2 * width * bytesPerChannel + x * bytesPerChannel,
-            primaryChannel.pixelType,
+            lineOffset + channelLineOffsets[c]! + x * channelSizes[c]!,
+            channel.pixelType,
           );
-          channelValues.g = readChannelValue(
-            blockDataView,
-            lineOffset + 1 * width * bytesPerChannel + x * bytesPerChannel,
-            primaryChannel.pixelType,
-          );
-          channelValues.b = readChannelValue(blockDataView, lineOffset + x * bytesPerChannel, primaryChannel.pixelType);
-        } else {
-          for (let c = 0; c < channels.length; c++) {
-            const channel = channels[c];
-            if (channel === undefined) continue;
-            const pixelOffset = isPlanarBlock
-              ? lineOffset + c * width * bytesPerChannel + x * bytesPerChannel
-              : lineOffset + x * numChannels * bytesPerChannel + c * bytesPerChannel;
-            const value = readChannelValue(blockDataView, pixelOffset, channel.pixelType);
-            channelValues[getChannelSemanticName(channel.name)] = value;
-          }
+          channelValues[getChannelSemanticName(channel.name)] = value;
         }
 
         if (isRgbMode) {
@@ -360,7 +302,7 @@ export function readExr(exrBuffer: Uint8Array): HdrifyImage {
     }
   }
 
-  ensureNonNegativeFinite(pixelData);
+  if (options?.sanitize !== false) ensureNonNegativeFinite(pixelData);
 
   const chromaticities = header.chromaticities as
     | {

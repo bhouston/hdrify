@@ -8,7 +8,7 @@
  */
 
 import { unzlibSync } from 'fflate';
-import { computeDwaChannelGroups } from './dwaClassify.js';
+import { computeDwaChannelGroups, LEGACY_RULES, parseDwaRules } from './dwaClassify.js';
 import { decompressRLE } from './decompressRle.js';
 import { getLinearLut } from './dwaLuts.js';
 import { applyExrPredictor, reorderExrPixels } from './exrDsp.js';
@@ -264,11 +264,11 @@ export function decompressDwa(
   const legacy = version < 2;
 
   let pos = headerSize;
+  let rules = LEGACY_RULES;
   if (!legacy) {
-    if (pos + 2 > compressedData.length) throw new Error('DWA: truncated channel rule block');
-    const ruleSize = dv.getUint16(pos, true);
-    if (ruleSize < 2) throw new Error('DWA: invalid channel rule size');
-    pos += ruleSize;
+    const parsed = parseDwaRules(compressedData.subarray(pos));
+    rules = parsed.rules;
+    pos += parsed.size;
   }
 
   if (pos + unknownCompressedSize + acCompressedSize + dcCompressedSize + rleCompressedSize > compressedData.length) {
@@ -333,7 +333,7 @@ export function decompressDwa(
 
   // Classify channels and find CSC-groupable RGB triplets (matches
   // DwaCompressor_classifyChannels: same suffix/type rules, grouped by name prefix).
-  const { classes, cscGroups, grouped } = computeDwaChannelGroups(channels, legacy);
+  const { classes, cscGroups, grouped } = computeDwaChannelGroups(channels, rules);
 
   const bpeArr = channels.map((ch) => channelByteSize(ch.pixelType));
   const channelOut: Uint8Array[] = channels.map((_, i) => new Uint8Array(width * blockHeight * bpeArr[i]!));

@@ -33,6 +33,7 @@ export {
   EXR_COMPRESSIONS,
   type ExrCompression,
 } from './exr/exrConstants.js';
+export type { ReadExrOptions } from './exr/readExr.js';
 export { readExr } from './exr/readExr.js';
 export type { WriteExrOptions } from './exr/writeExr.js';
 export { writeExr } from './exr/writeExr.js';

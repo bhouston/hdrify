@@ -55,16 +55,14 @@ describe('writeExrScanBlock', () => {
     expect(view.getInt32(0, true)).toBe(0);
     expect(view.getUint32(4, true)).toBe(2 * 16);
 
-    // Pixel (0,0): R=0, G=0.5, B=0.75, A=1
+    // Channel-planar per scanline (OpenEXR layout): R0 R1 | G0 G1 | B0 B1 | A0 A1
     expect(view.getFloat32(8, true)).toBeCloseTo(0);
-    expect(view.getFloat32(12, true)).toBe(0.5);
-    expect(view.getFloat32(16, true)).toBe(0.75);
-    expect(view.getFloat32(20, true)).toBe(1.0);
-
-    // Pixel (1,0): R=0.25, G=0.5, B=0.75, A=1
-    expect(view.getFloat32(24, true)).toBeCloseTo(0.25);
-    expect(view.getFloat32(28, true)).toBe(0.5);
-    expect(view.getFloat32(32, true)).toBe(0.75);
+    expect(view.getFloat32(12, true)).toBeCloseTo(0.25);
+    expect(view.getFloat32(16, true)).toBe(0.5);
+    expect(view.getFloat32(20, true)).toBe(0.5);
+    expect(view.getFloat32(24, true)).toBe(0.75);
+    expect(view.getFloat32(28, true)).toBe(0.75);
+    expect(view.getFloat32(32, true)).toBe(1.0);
     expect(view.getFloat32(36, true)).toBe(1.0);
   });
 
