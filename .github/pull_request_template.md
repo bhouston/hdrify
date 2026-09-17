@@ -12,4 +12,4 @@ List checks run and their results, including any limitations.
 
 Describe compatibility changes; use `!` in the title and a `BREAKING CHANGE:` footer for breaking changes.
 
-<!-- Feature PRs target dev. Only dev → main release PRs target main. Preserve feature commits with a merge commit for release PRs. -->
+<!-- PRs target main. Merging does not publish; releases are triggered separately via `gh workflow run release.yml --ref main`. -->

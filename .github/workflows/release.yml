@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate and preview the release without publishing'
+        type: boolean
+        default: false
 
 concurrency:
   group: npm-release
@@ -12,7 +16,16 @@ permissions:
   contents: read
 
 jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require dispatch against main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Release must be dispatched with ref=main (got ${{ github.ref }})."
+          exit 1
   checks:
+    needs: guard
     uses: ./.github/workflows/ci.yml
     secrets: inherit
   release:
@@ -37,6 +50,9 @@ jobs:
         run: git rev-parse --verify refs/tags/v1.1.4
       - run: pnpm build
       - name: Release packages and changelog
-        run: pnpm release
+        run: pnpm release ${{ inputs.dry_run && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Summary
+        if: inputs.dry_run
+        run: echo "Dry run complete — no packages were published, no tag was created." >> "$GITHUB_STEP_SUMMARY"

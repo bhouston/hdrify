@@ -1,14 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-export function checkPullRequest(pr, repository) {
-  if (pr.base.ref === 'main') {
-    if (pr.head.ref !== 'dev' || pr.head.repo.full_name !== repository) {
-      throw new Error('Release PRs must come from this repository’s dev branch.');
-    }
-    return;
-  }
-  if (pr.base.ref !== 'dev') throw new Error('Contribution PRs must target dev.');
+export function checkPullRequest(pr) {
+  if (pr.base.ref !== 'main') throw new Error('Contribution PRs must target main.');
   const branch = /^(?:feature|fix|chore|docs|refactor|test)\/(\d+)-[a-z0-9]+(?:-[a-z0-9]+)*$/.exec(pr.head.ref);
   if (!branch) throw new Error('Use a branch such as feature/42-batch-export.');
   const closing = new RegExp(`\\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\\s+#${branch[1]}\\b`, 'i');
@@ -17,5 +11,5 @@ export function checkPullRequest(pr, repository) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
-  checkPullRequest(event.pull_request, process.env.GITHUB_REPOSITORY);
+  checkPullRequest(event.pull_request);
 }
