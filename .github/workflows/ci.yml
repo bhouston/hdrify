@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
-    branches: [main, dev]
+    branches: [main]
     types: [opened, synchronize, reopened, edited, ready_for_review]
   workflow_call:
 
@@ -66,7 +66,6 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
       - name: Lint feature commits
-        if: github.base_ref == 'dev'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}

@@ -1,5 +1,15 @@
 # Releases
 
+## Running a release
+
+Releases are never triggered by pushes or merges to `main`. When ready to publish, the maintainer dispatches the workflow:
+
+```sh
+gh workflow run release.yml --ref main
+```
+
+Add `-f dry_run=true` to validate versioning, the changelog, and staged packages without publishing or tagging. The workflow refuses to run against any ref other than `main`. If there are no release-worthy commits since the last tag, the run succeeds as a no-op and says so in the run summary.
+
 ## One-time activation
 
 The workflow is installed in `.github/workflows/release.yml`. Publishing is disabled until the repository Actions variable `NPM_RELEASE_ENABLED` is set to `true`.
@@ -22,8 +32,8 @@ The workflow is installed in `.github/workflows/release.yml`. Publishing is disa
    git push origin v1.1.4
    ```
 
-3. `dev` was created during setup. Both `dev` and `main` are protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. The PR policy rejects any source other than this repository’s `dev` for `main`. Keep `main` as the default branch so GitHub closes delivered issues on release.
-4. Merge this setup PR to `dev`, then a release PR from `dev` to `main` with a **merge commit**. Configure the npm publishers before activation. Set `gh variable set NPM_RELEASE_ENABLED --body true` when ready. The next push to main runs the release; if setup already reached main, rerun its Release workflow after activation.
+3. `main` is protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. `main` is the default branch so GitHub closes delivered issues on merge. `dev` predates this workflow, is no longer targeted by contributor PRs or CI, and is kept around unused rather than deleted.
+4. Configure the npm publishers before activation, then set `gh variable set NPM_RELEASE_ENABLED --body true`. Dispatch `Release` on `main` (see above) when ready to publish.
 5. Configure the repository `CODECOV_TOKEN` secret from Codecov for reliable coverage publishing. Coverage thresholds themselves do not depend on Codecov.
 
 ## Versioning and artifacts
@@ -34,13 +44,13 @@ Semantic-release analyzes Conventional Commits since the last `v*` tag. `feat` p
 
 Each GitHub Release contains generated release notes, a `CHANGELOG.md` for that release, and all three npm tarballs. [GitHub Releases](https://github.com/bhouston/hdrify/releases) is the cumulative changelog. The generated file is not committed back to source.
 
-The release job waits for the complete reusable CI suite. Releases are serialized and never cancel an in-progress publish. No workflow on `dev` publishes packages.
+The release job waits for the complete reusable CI suite and only runs from a manual dispatch against `main`. Releases are serialized and never cancel an in-progress publish.
 
 ## Validation and recovery
 
-`pnpm release:check` tests release analysis and staging without publishing. After building, inspect tarballs with `npm pack --dry-run` in a staged package directory. `semantic-release --dry-run` requires GitHub access and deliberately skips preparation and publishing, so it cannot prove OIDC trust; the first enabled CI release verifies that.
+`pnpm release:check` tests release analysis and staging without publishing. Dispatching `release.yml` with `dry_run=true` runs the full workflow — including CI — and previews what semantic-release would do, without publishing or tagging. After building, inspect tarballs with `npm pack --dry-run` in a staged package directory.
 
-npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit with the same staged manifests through trusted CI, then complete the GitHub Release. Resolve failures before merging another release.
+npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit with the same staged manifests through trusted CI, then complete the GitHub Release. Resolve failures before dispatching another release.
 
 ## Reusing the standard
 
