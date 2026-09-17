@@ -22,7 +22,7 @@ The workflow is installed in `.github/workflows/release.yml`. Publishing is disa
    git push origin v1.1.4
    ```
 
-3. `dev` was created during setup. Protect `dev` and `main` by requiring PRs and passing CI. Require `ci` and `contribution` checks for PRs (select their actual check names after the first run). Disable force pushes and deletion. Leave merge commits enabled; do not require linear history on `main`. The PR policy rejects any source other than this repository’s `dev` for `main`. Keep `main` as the default branch so GitHub closes delivered issues on release.
+3. `dev` was created during setup. Both `dev` and `main` are protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. The PR policy rejects any source other than this repository’s `dev` for `main`. Keep `main` as the default branch so GitHub closes delivered issues on release.
 4. Merge this setup PR to `dev`, then a release PR from `dev` to `main` with a **merge commit**. Configure the npm publishers before activation. Set `gh variable set NPM_RELEASE_ENABLED --body true` when ready. The next push to main runs the release; if setup already reached main, rerun its Release workflow after activation.
 5. Configure the repository `CODECOV_TOKEN` secret from Codecov for reliable coverage publishing. Coverage thresholds themselves do not depend on Codecov.
 
