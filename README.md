@@ -161,6 +161,8 @@ Open http://localhost:3000 and drag-and-drop EXR or HDR files.
 
 ## Development
 
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting a change. Release setup and npm trusted publishing are documented in [RELEASING.md](RELEASING.md).
+
 ```bash
 pnpm install
 pnpm dev
@@ -192,7 +194,7 @@ This project would not have been possible without these two projects which were 
 [npm-url]: https://www.npmjs.com/package/hdrify
 [npm-downloads]: https://img.shields.io/npm/dw/hdrify
 [npmtrends-url]: https://www.npmtrends.com/hdrify
-[tests-badge]: https://github.com/bhouston/hdrify/workflows/Tests/badge.svg
-[tests-url]: https://github.com/bhouston/hdrify/actions/workflows/test.yml
+[tests-badge]: https://github.com/bhouston/hdrify/actions/workflows/ci.yml/badge.svg
+[tests-url]: https://github.com/bhouston/hdrify/actions/workflows/ci.yml
 [coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
 [coverage-url]: https://codecov.io/gh/bhouston/hdrify

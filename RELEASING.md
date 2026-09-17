@@ -1,0 +1,47 @@
+# Releases
+
+## One-time activation
+
+The workflow is installed in `.github/workflows/release.yml`. Publishing is disabled until the repository Actions variable `NPM_RELEASE_ENABLED` is set to `true`.
+
+1. On npmjs.com, open Settings → Trusted Publisher for **each** package: `hdrify`, `hdrify-cli`, and `hdrify-react`. Select GitHub Actions and enter:
+
+   | Field                | Value         |
+   | -------------------- | ------------- |
+   | Organization or user | `bhouston`    |
+   | Repository           | `hdrify`      |
+   | Workflow filename    | `release.yml` |
+   | Environment name     | Leave blank   |
+
+   These are package settings, not repository secrets. No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is needed. GitHub-hosted Ubuntu runners use Node 24 and npm ≥11.5.1 with `id-token: write`; npm supplies automatic provenance. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+
+2. The existing release baseline was created during setup. For reference, the bootstrap commands are below; do not rerun them when the tag already exists. The migration baseline is `v1.1.4` at `ff4c3bef6f058a6232749806c1e20d52dd623671`, the main commit at setup; npm already contains hdrify and hdrify-cli 1.1.4 and hdrify-react 1.1.3. This is a version floor for the shared release series, not a claim that hdrify-react 1.1.4 was published. Never move this tag after activation.
+
+   ```sh
+   git tag v1.1.4 ff4c3bef6f058a6232749806c1e20d52dd623671
+   git push origin v1.1.4
+   ```
+
+3. `dev` was created during setup. Both `dev` and `main` are protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. The PR policy rejects any source other than this repository’s `dev` for `main`. Keep `main` as the default branch so GitHub closes delivered issues on release.
+4. Merge this setup PR to `dev`, then a release PR from `dev` to `main` with a **merge commit**. Configure the npm publishers before activation. Set `gh variable set NPM_RELEASE_ENABLED --body true` when ready. The next push to main runs the release; if setup already reached main, rerun its Release workflow after activation.
+5. Configure the repository `CODECOV_TOKEN` secret from Codecov for reliable coverage publishing. Coverage thresholds themselves do not depend on Codecov.
+
+## Versioning and artifacts
+
+Semantic-release analyzes Conventional Commits since the last `v*` tag. `feat` produces a minor, `fix`/`perf` a patch, and `!` or `BREAKING CHANGE:` a major. The highest change wins. A docs/chore-only integration produces no npm release.
+
+`hdrify`, `hdrify-cli`, and `hdrify-react` share one version and publish in dependency order. The website and VS Code Marketplace extension retain their existing delivery paths. Source package versions are development snapshots; the authoritative released version is the Git tag/npm version. CI stages manifests with the computed version and matching internal dependency ranges, retaining built JS, declarations, README, and LICENSE. It does not write version commits to protected branches.
+
+Each GitHub Release contains generated release notes, a `CHANGELOG.md` for that release, and all three npm tarballs. [GitHub Releases](https://github.com/bhouston/hdrify/releases) is the cumulative changelog. The generated file is not committed back to source.
+
+The release job waits for the complete reusable CI suite. Releases are serialized and never cancel an in-progress publish. No workflow on `dev` publishes packages.
+
+## Validation and recovery
+
+`pnpm release:check` tests release analysis and staging without publishing. After building, inspect tarballs with `npm pack --dry-run` in a staged package directory. `semantic-release --dry-run` requires GitHub access and deliberately skips preparation and publishing, so it cannot prove OIDC trust; the first enabled CI release verifies that.
+
+npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit with the same staged manifests through trusted CI, then complete the GitHub Release. Resolve failures before merging another release.
+
+## Reusing the standard
+
+After a successful real release, extract CONTRIBUTING.md, SECURITY.md, the agent pointers, templates, commitlint/Husky setup, CI, and release configuration into a dedicated template repository. Keep each repository’s own LICENSE. Adapt repository names, package paths, version baseline, coverage and bundle budgets, then install matching dependencies. This monorepo’s package staging and cloud deployment configuration are repository-specific; copying them unchanged into other projects is not appropriate.
