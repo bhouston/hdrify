@@ -19,6 +19,7 @@ export default defineConfig({
     }),
     coverage: {
       provider: 'v8',
+      thresholds: { statements: 89, branches: 72, functions: 93, lines: 89 },
       include: ['packages/hdrify/src/**/*.ts'],
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
