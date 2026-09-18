@@ -12,7 +12,7 @@ Add `-f dry_run=true` to validate versioning, the changelog, and staged packages
 
 ## One-time activation
 
-The workflow is installed in `.github/workflows/release.yml`. Publishing is disabled until the repository Actions variable `NPM_RELEASE_ENABLED` is set to `true`.
+The workflow is installed in `.github/workflows/release.yml`.
 
 1. On npmjs.com, open Settings → Trusted Publisher for **each** package: `hdrify`, `hdrify-cli`, and `hdrify-react`. Select GitHub Actions and enter:
 
@@ -33,7 +33,7 @@ The workflow is installed in `.github/workflows/release.yml`. Publishing is disa
    ```
 
 3. `main` is protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. `main` is the default branch so GitHub closes delivered issues on merge. `dev` predates this workflow, is no longer targeted by contributor PRs or CI, and is kept around unused rather than deleted.
-4. Configure the npm publishers before activation, then set `gh variable set NPM_RELEASE_ENABLED --body true`. Dispatch `Release` on `main` (see above) when ready to publish.
+4. Configure the npm publishers before activation. Dispatch `Release` on `main` (see above) when ready to publish.
 5. Configure the repository `CODECOV_TOKEN` secret from Codecov for reliable coverage publishing. Coverage thresholds themselves do not depend on Codecov.
 6. Configure the repository `VSCE_PAT` (Azure DevOps personal access token for the `benhouston3d` publisher) and `OVSX_PAT` (Open VSX access token) secrets so the release job can publish the VS Code extension.
 
