@@ -3,6 +3,7 @@ packages:
 
 overrides:
   esbuild: 0.27.3
+  conventional-changelog-conventionalcommits: 9.3.1
 
 allowBuilds:
   '@parcel/watcher': false
