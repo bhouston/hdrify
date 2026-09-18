@@ -40,14 +40,13 @@ for (const [message, expected] of [
   });
 }
 
-test('PR policy enforces issue, branch, and integration target', () => {
+test('PR policy enforces issue link and integration target, not branch name', () => {
   const pr = {
     base: { ref: 'main' },
-    head: { ref: 'feature/42-batch-export', repo: { full_name: 'bhouston/hdrify' } },
+    head: { ref: 'whatever-branch-name-i-want', repo: { full_name: 'bhouston/hdrify' } },
     body: 'Closes #42',
   };
   assert.doesNotThrow(() => checkPullRequest(pr));
-  assert.throws(() => checkPullRequest({ ...pr, body: 'Closes #420' }));
+  assert.throws(() => checkPullRequest({ ...pr, body: 'no issue reference' }));
   assert.throws(() => checkPullRequest({ ...pr, base: { ref: 'dev' } }));
-  assert.throws(() => checkPullRequest({ ...pr, head: { ...pr.head, ref: 'not-a-valid-branch' } }));
 });
