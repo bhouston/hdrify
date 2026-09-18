@@ -41,12 +41,12 @@ for (const [message, expected] of [
   });
 }
 
-test('VS Code extension publish is skipped (not thrown) when VSCE_PAT/OVSX_PAT are unset', () => {
+test('VS Code extension publish fails fast with a clear error when VSCE_PAT/OVSX_PAT are unset', () => {
   const { VSCE_PAT, OVSX_PAT } = process.env;
   delete process.env.VSCE_PAT;
   delete process.env.OVSX_PAT;
   try {
-    assert.doesNotThrow(() => publishExtension());
+    assert.throws(() => publishExtension(), /VSCE_PAT and OVSX_PAT are not set/);
   } finally {
     if (VSCE_PAT !== undefined) process.env.VSCE_PAT = VSCE_PAT;
     if (OVSX_PAT !== undefined) process.env.OVSX_PAT = OVSX_PAT;
