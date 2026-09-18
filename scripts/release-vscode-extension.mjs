@@ -18,8 +18,16 @@ export function setVersion(version) {
 
 // Build, package, and publish the extension to both the VS Code Marketplace
 // and Open VSX (the registry Cursor and other VS Code-compatible editors
-// use). Requires VSCE_PAT / OVSX_PAT in the environment.
+// use). VSCE_PAT / OVSX_PAT are optional: until they're configured as repo
+// secrets, publishing to that registry is skipped with a warning rather than
+// failing the whole semantic-release run (which would otherwise also block
+// the already-published npm packages from getting a GitHub Release).
 export function publish() {
+  if (!process.env.VSCE_PAT && !process.env.OVSX_PAT) {
+    console.warn('VSCE_PAT and OVSX_PAT are not set; skipping VS Code extension publish.');
+    return;
+  }
+
   execFileSync('pnpm', ['--filter', 'hdrify-vscode-extension', 'run', 'build'], { stdio: 'inherit' });
   execFileSync('pnpm', ['--filter', 'hdrify-vscode-extension', 'exec', 'vsce', 'package', '--no-dependencies'], {
     stdio: 'inherit',
@@ -28,22 +36,30 @@ export function publish() {
     extensionPath,
     `hdrify-vscode-extension-${JSON.parse(readFileSync(resolve(extensionPath, 'package.json'), 'utf8')).version}.vsix`,
   );
-  execFileSync(
-    'pnpm',
-    [
-      '--filter',
-      'hdrify-vscode-extension',
-      'exec',
-      'vsce',
-      'publish',
-      '--packagePath',
-      vsix,
-      '--pat',
-      process.env.VSCE_PAT,
-    ],
-    {
-      stdio: 'inherit',
-    },
-  );
-  execFileSync('npx', ['ovsx', 'publish', vsix, '--pat', process.env.OVSX_PAT], { stdio: 'inherit' });
+
+  if (process.env.VSCE_PAT) {
+    execFileSync(
+      'pnpm',
+      [
+        '--filter',
+        'hdrify-vscode-extension',
+        'exec',
+        'vsce',
+        'publish',
+        '--packagePath',
+        vsix,
+        '--pat',
+        process.env.VSCE_PAT,
+      ],
+      { stdio: 'inherit' },
+    );
+  } else {
+    console.warn('VSCE_PAT is not set; skipping VS Code Marketplace publish.');
+  }
+
+  if (process.env.OVSX_PAT) {
+    execFileSync('npx', ['ovsx', 'publish', vsix, '--pat', process.env.OVSX_PAT], { stdio: 'inherit' });
+  } else {
+    console.warn('OVSX_PAT is not set; skipping Open VSX publish.');
+  }
 }

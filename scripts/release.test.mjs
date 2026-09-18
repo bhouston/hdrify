@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import test from 'node:test';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { checkPullRequest } from './check-pr.mjs';
+import { publish as publishExtension } from './release-vscode-extension.mjs';
 
 // Published via pnpm publish directly (see release.config.js): pnpm rewrites
 // workspace:* deps and packs the `files` field natively, so these packages
@@ -39,6 +40,18 @@ for (const [message, expected] of [
     );
   });
 }
+
+test('VS Code extension publish is skipped (not thrown) when VSCE_PAT/OVSX_PAT are unset', () => {
+  const { VSCE_PAT, OVSX_PAT } = process.env;
+  delete process.env.VSCE_PAT;
+  delete process.env.OVSX_PAT;
+  try {
+    assert.doesNotThrow(() => publishExtension());
+  } finally {
+    if (VSCE_PAT !== undefined) process.env.VSCE_PAT = VSCE_PAT;
+    if (OVSX_PAT !== undefined) process.env.OVSX_PAT = OVSX_PAT;
+  }
+});
 
 test('PR policy enforces issue link and integration target, not branch name', () => {
   const pr = {
