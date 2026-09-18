@@ -23,7 +23,7 @@ The workflow is installed in `.github/workflows/release.yml`. Publishing is disa
    | Workflow filename    | `release.yml` |
    | Environment name     | Leave blank   |
 
-   These are package settings, not repository secrets. No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is needed. GitHub-hosted Ubuntu runners use Node 24 and npm ≥11.5.1 with `id-token: write`; npm supplies automatic provenance. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+   These are package settings, not repository secrets. No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is needed. The release job publishes with `pnpm` (pinned to `packageManager` in `package.json`, ≥11.1.3 for reliable OIDC publishing in GitHub Actions) with `id-token: write`; npm supplies automatic provenance for trusted-publisher packages. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
 
 2. The existing release baseline was created during setup. For reference, the bootstrap commands are below; do not rerun them when the tag already exists. The migration baseline is `v1.1.4` at `ff4c3bef6f058a6232749806c1e20d52dd623671`, the main commit at setup; npm already contains hdrify and hdrify-cli 1.1.4 and hdrify-react 1.1.3. This is a version floor for the shared release series, not a claim that hdrify-react 1.1.4 was published. Never move this tag after activation.
 
@@ -40,7 +40,7 @@ The workflow is installed in `.github/workflows/release.yml`. Publishing is disa
 
 Semantic-release analyzes Conventional Commits since the last `v*` tag. `feat` produces a minor, `fix`/`perf` a patch, and `!` or `BREAKING CHANGE:` a major. The highest change wins. A docs/chore-only integration produces no npm release.
 
-`hdrify`, `hdrify-cli`, and `hdrify-react` share one version and publish in dependency order. The website and VS Code Marketplace extension retain their existing delivery paths. Source package versions are development snapshots; the authoritative released version is the Git tag/npm version. CI stages manifests with the computed version and matching internal dependency ranges, retaining built JS, declarations, README, and LICENSE. It does not write version commits to protected branches.
+`hdrify`, `hdrify-cli`, and `hdrify-react` share one version and publish in dependency order via `pnpm publish` (through `@anolilab/semantic-release-pnpm`, one plugin instance per package), which updates each `package.json` version and rewrites any `workspace:*` internal dependency to a resolved semver range natively. The website and VS Code Marketplace extension retain their existing delivery paths. Source package versions are development snapshots; the authoritative released version is the Git tag/npm version. Each package's `files` field ships built JS and declarations, and npm/pnpm packing conventions include the package's own README and LICENSE automatically. It does not write version commits to protected branches.
 
 Each GitHub Release contains generated release notes, a `CHANGELOG.md` for that release, and all three npm tarballs. [GitHub Releases](https://github.com/bhouston/hdrify/releases) is the cumulative changelog. The generated file is not committed back to source.
 
@@ -48,9 +48,9 @@ The release job waits for the complete reusable CI suite and only runs from a ma
 
 ## Validation and recovery
 
-`pnpm release:check` tests release analysis and staging without publishing. Dispatching `release.yml` with `dry_run=true` runs the full workflow — including CI — and previews what semantic-release would do, without publishing or tagging. After building, inspect tarballs with `npm pack --dry-run` in a staged package directory.
+`pnpm release:check` tests release analysis and each package's publish readiness (a real LICENSE and a `files` field that ships `dist`) without publishing. Dispatching `release.yml` with `dry_run=true` runs the full workflow — including CI — and previews what semantic-release would do, without publishing or tagging. After building, inspect tarball contents with `pnpm pack --dry-run` in each package directory (`packages/hdrify`, `packages/cli`, `packages/hdrify-react`).
 
-npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit with the same staged manifests through trusted CI, then complete the GitHub Release. Resolve failures before dispatching another release.
+npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit through trusted CI, then complete the GitHub Release. Resolve failures before dispatching another release.
 
 ## Reusing the standard
 

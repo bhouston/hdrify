@@ -28,7 +28,7 @@ Do not manually bump versions or write changelog entries. The three npm packages
 
 ## Development and CI
 
-Use Node 24 and the pinned pnpm version in `package.json`, then run `pnpm install --frozen-lockfile`.
+Use Node 26 and the pinned pnpm version in `package.json`, then run `pnpm install --frozen-lockfile`.
 
 CI checks builds, types, lint, release tooling tests, bundle budgets, and tests with coverage. The core library coverage floors are 89% statements, 72% branches, 93% functions, and 89% lines. Budgets are in `package.json`; change them only with an explanation in the PR. Dependency audit findings appear as warnings so existing advisories remain visible without preventing unrelated fixes. Coverage is uploaded as an artifact and to Codecov; configure `CODECOV_TOKEN` for reliable uploads and the README badge.
 
