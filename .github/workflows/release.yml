@@ -30,8 +30,6 @@ jobs:
     secrets: inherit
   release:
     needs: checks
-    # Enable only after all three npm trusted publishers and the baseline tag exist.
-    if: vars.NPM_RELEASE_ENABLED == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
