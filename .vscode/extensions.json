@@ -3,6 +3,7 @@
     "vitest.explorer",
     "oxc.oxc-vscode",
     "github.vscode-github-actions",
-    "typescriptteam.native-preview"
+    "typescriptteam.native-preview",
+    "benhouston3d.hdrify-vscode-extension"
   ]
 }

@@ -41,9 +41,6 @@
     "declaration": true,
     "declarationMap": true,
 
-    "incremental": true,
-    "tsBuildInfoFile": "${configDir}/dist/.tsbuildinfo",
-
     "outDir": "${configDir}/dist",
     "rootDir": "${configDir}/src"
   },

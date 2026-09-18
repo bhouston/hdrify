@@ -10,19 +10,8 @@
   "editor.codeActionsOnPaste": {
     "source.fixAll.oxc": "explicit"
   },
-
   "workbench.editor.enablePreview": false,
   "oxc.typeAware": true,
   "oxc.useExecPath": true,
-
-  "files.watcherExclude": {
-    "**/routeTree.gen.ts": true
-  },
-  "search.exclude": {
-    "**/routeTree.gen.ts": true
-  },
-  "files.readonlyInclude": {
-    "**/routeTree.gen.ts": true
-  },
   "editor.formatOnSaveMode": "file"
 }
