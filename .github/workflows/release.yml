@@ -53,6 +53,8 @@ jobs:
         run: pnpm release ${{ inputs.dry_run && '--dry-run' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
       - name: Summary
         if: inputs.dry_run
         run: echo "Dry run complete — no packages were published, no tag was created." >> "$GITHUB_STEP_SUMMARY"

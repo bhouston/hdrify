@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { publish as publishExtension, setVersion as setExtensionVersion } from './scripts/release-vscode-extension.mjs';
 
 // Packages published to npm, in dependency order (hdrify first; cli and
 // hdrify-react depend on it via workspace:*, which pnpm publish rewrites
@@ -22,7 +23,7 @@ export default {
     // below, once all three packages have their final bumped version.
     ...packages.map((path) => ['@anolilab/semantic-release-pnpm', { pkgRoot: path }]),
     {
-      prepare: () => {
+      prepare: (_pluginConfig, { nextRelease }) => {
         // Absolute destination: `pnpm --dir <path>` changes pnpm's cwd, so a
         // relative destination would land inside each package instead of
         // the repo-root `release-artifacts` that @semantic-release/github
@@ -33,6 +34,15 @@ export default {
             stdio: 'inherit',
           });
         }
+
+        // Not an npm package (excluded from the @anolilab/semantic-release-pnpm
+        // plugins above, so it's never `npm publish`'d), but it shares the
+        // same version stream. Pin its package.json here; publishing to the
+        // VS Code Marketplace and Open VSX happens below in `publish`.
+        setExtensionVersion(nextRelease.version);
+      },
+      publish: () => {
+        publishExtension();
       },
     },
     [
