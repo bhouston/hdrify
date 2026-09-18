@@ -1,13 +1,11 @@
 {
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
-    "composite": true,
     "typeRoots": [
       "${configDir}/node_modules/@types",
       "${configDir}/../../node_modules/@types",
       "${configDir}/../../node_modules/@webgpu/types"
     ]
   },
-  "include": ["src"],
-  "references": [{ "path": "../hdrify" }]
+  "include": ["src"]
 }

@@ -1,17 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true
-  },
   "files": [],
-  "include": [],
-  "references": [
-    { "path": "./packages/hdrify" },
-    { "path": "./packages/cli" },
-    { "path": "./packages/hdrify-react" },
-    { "path": "./packages/hdrify-tests" },
-    { "path": "./packages/cli-tests" },
-    { "path": "./packages/website" },
-    { "path": "./packages/hdrify-vscode-extension" }
-  ]
+  "include": []
 }

@@ -2,7 +2,6 @@
   "extends": "../../tsconfig.node.json",
   "include": ["**/*.ts", "**/*.tsx"],
   "compilerOptions": {
-    "composite": true,
     "noEmit": true,
     "rootDir": ".",
     "jsx": "react-jsx",
@@ -13,6 +12,5 @@
     "paths": {
       "@/*": ["./src/*"]
     }
-  },
-  "references": [{ "path": "../hdrify" }, { "path": "../hdrify-react" }]
+  }
 }

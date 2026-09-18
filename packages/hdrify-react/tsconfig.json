@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
-    "composite": true,
     "jsx": "react-jsx",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "typeRoots": [
@@ -10,6 +9,5 @@
       "${configDir}/../../node_modules/@webgpu/types"
     ]
   },
-  "include": ["src"],
-  "references": [{ "path": "../hdrify" }]
+  "include": ["src"]
 }

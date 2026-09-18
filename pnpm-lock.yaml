@@ -84,7 +84,7 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
       typescript:
-        specifier: ^7
+        specifier: ^7.0.2
         version: 7.0.2
       vitest:
         specifier: ^4.1.10
@@ -11857,7 +11857,7 @@ snapshots:
       lodash.isstring: 4.0.1
       lodash.once: 4.1.1
       ms: 2.1.3
-      semver: 7.7.4
+      semver: 7.8.5
 
   jwa@2.0.1:
     dependencies:
