@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import test from 'node:test';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
-import { packages, stagePackages } from './release-packages.mjs';
 import { checkPullRequest } from './check-pr.mjs';
+
+// Published via pnpm publish directly (see release.config.js): pnpm rewrites
+// workspace:* deps and packs the `files` field natively, so these packages
+// just need a real LICENSE and a `files` field that ships `dist`.
+const packages = ['packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
+
+for (const path of packages) {
+  test(`${path} is ready for pnpm publish`, () => {
+    assert.ok(existsSync(resolve(path, 'LICENSE')), `${path}/LICENSE is missing`);
+    const pkg = JSON.parse(readFileSync(resolve(path, 'package.json'), 'utf8'));
+    assert.ok(pkg.files?.includes('dist'), `${path}/package.json files must include "dist"`);
+  });
+}
 
 const logger = { log() {} };
 for (const [message, expected] of [
@@ -28,42 +39,6 @@ for (const [message, expected] of [
     );
   });
 }
-
-test('stage all packages at one version with installable dependencies and license', () => {
-  const cwd = mkdtempSync(join(tmpdir(), 'hdrify-release-'));
-  try {
-    writeFileSync(join(cwd, 'LICENSE'), 'MIT');
-    for (const [index, path] of packages.entries()) {
-      mkdirSync(join(cwd, path, 'dist'), { recursive: true });
-      writeFileSync(join(cwd, path, 'dist/index.js'), 'export {};');
-      writeFileSync(join(cwd, path, 'dist/index.test.js'), 'test fixture');
-      writeFileSync(join(cwd, path, 'dist/index.d.ts'), 'export {};');
-      writeFileSync(join(cwd, path, 'README.md'), 'Readme');
-      writeFileSync(
-        join(cwd, path, 'package.json'),
-        JSON.stringify({
-          name: ['hdrify', 'hdrify-cli', 'hdrify-react'][index],
-          version: '1.1.3',
-          scripts: { prepare: 'false' },
-          dependencies: index ? { hdrify: 'workspace:*' } : { fflate: '^0.8.2' },
-        }),
-      );
-    }
-    stagePackages(cwd, '2.0.0');
-    for (const [index, path] of packages.entries()) {
-      const pkg = JSON.parse(readFileSync(join(cwd, path, 'publish/package.json')));
-      assert.equal(pkg.version, '2.0.0');
-      assert.equal(existsSync(join(cwd, path, 'publish/dist/index.test.js')), false);
-      assert.equal(pkg.scripts, undefined);
-      assert.equal(pkg.dependencies[index ? 'hdrify' : 'fflate'], index ? '^2.0.0' : '^0.8.2');
-      assert.equal(readFileSync(join(cwd, path, 'publish/LICENSE'), 'utf8'), 'MIT');
-      assert.ok(readFileSync(join(cwd, path, 'publish/dist/index.d.ts'), 'utf8'));
-      assert.equal(JSON.parse(readFileSync(join(cwd, path, 'package.json'))).version, '1.1.3');
-    }
-  } finally {
-    rmSync(cwd, { recursive: true, force: true });
-  }
-});
 
 test('PR policy enforces issue, branch, and integration target', () => {
   const pr = {

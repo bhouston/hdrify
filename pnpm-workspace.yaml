@@ -5,8 +5,12 @@ overrides:
   esbuild: 0.27.3
 
 allowBuilds:
+  '@parcel/watcher': false
   '@tailwindcss/oxide': true
+  '@vscode/vsce-sign': false
   esbuild: true
+  exifreader: false
+  keytar: false
   sharp: true
 
-link-workspace-packages: true
+linkWorkspacePackages: true
