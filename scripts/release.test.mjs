@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import test from 'node:test';
 import { analyzeCommits } from '@semantic-release/commit-analyzer';
 import { checkPullRequest } from './check-pr.mjs';
+import { publish as publishExtension } from './release-vscode-extension.mjs';
 
 // Published via pnpm publish directly (see release.config.js): pnpm rewrites
 // workspace:* deps and packs the `files` field natively, so these packages
@@ -40,14 +41,25 @@ for (const [message, expected] of [
   });
 }
 
-test('PR policy enforces issue, branch, and integration target', () => {
+test('VS Code extension publish fails fast with a clear error when VSCE_PAT/OVSX_PAT are unset', () => {
+  const { VSCE_PAT, OVSX_PAT } = process.env;
+  delete process.env.VSCE_PAT;
+  delete process.env.OVSX_PAT;
+  try {
+    assert.throws(() => publishExtension(), /VSCE_PAT and OVSX_PAT are not set/);
+  } finally {
+    if (VSCE_PAT !== undefined) process.env.VSCE_PAT = VSCE_PAT;
+    if (OVSX_PAT !== undefined) process.env.OVSX_PAT = OVSX_PAT;
+  }
+});
+
+test('PR policy enforces issue link and integration target, not branch name', () => {
   const pr = {
     base: { ref: 'main' },
-    head: { ref: 'feature/42-batch-export', repo: { full_name: 'bhouston/hdrify' } },
+    head: { ref: 'whatever-branch-name-i-want', repo: { full_name: 'bhouston/hdrify' } },
     body: 'Closes #42',
   };
   assert.doesNotThrow(() => checkPullRequest(pr));
-  assert.throws(() => checkPullRequest({ ...pr, body: 'Closes #420' }));
+  assert.throws(() => checkPullRequest({ ...pr, body: 'no issue reference' }));
   assert.throws(() => checkPullRequest({ ...pr, base: { ref: 'dev' } }));
-  assert.throws(() => checkPullRequest({ ...pr, head: { ...pr.head, ref: 'not-a-valid-branch' } }));
 });
