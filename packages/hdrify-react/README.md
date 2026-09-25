@@ -6,6 +6,7 @@
 [![NPM Downloads][npm-downloads]][npmtrends-url]
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
+[![Discord][discord-badge]][discord-url]
 
 React component for displaying HDR images from [hdrify](https://www.npmjs.com/package/hdrify). Accepts `HdrifyImage` (returned by `readHdr`, `readExr`, `readJpegGainMap`) and renders with configurable tone mapping and exposure.
 
@@ -56,3 +57,5 @@ MIT
 [tests-url]: https://github.com/bhouston/hdrify/actions/workflows/test.yml
 [coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
 [coverage-url]: https://codecov.io/gh/bhouston/hdrify
+[discord-badge]: https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white
+[discord-url]: https://discord.gg/5J5Ur3F6Z2

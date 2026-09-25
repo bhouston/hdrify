@@ -6,6 +6,7 @@
 [![NPM Downloads][npm-downloads]][npmtrends-url]
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
+[![Discord][discord-badge]][discord-url]
 
 HDRify implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
@@ -198,3 +199,5 @@ This project would not have been possible without these two projects which were 
 [tests-url]: https://github.com/bhouston/hdrify/actions/workflows/ci.yml
 [coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
 [coverage-url]: https://codecov.io/gh/bhouston/hdrify
+[discord-badge]: https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white
+[discord-url]: https://discord.gg/5J5Ur3F6Z2

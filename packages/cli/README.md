@@ -6,6 +6,7 @@
 [![NPM Downloads][npm-downloads]][npmtrends-url]
 [![Tests][tests-badge]][tests-url]
 [![Coverage][coverage-badge]][coverage-url]
+[![Discord][discord-badge]][discord-url]
 
 CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files. Convert to highly compressible JPEG-R (JPEG with gain maps) for efficient HDR storage. Powered by [hdrify](https://www.npmjs.com/package/hdrify).
 
@@ -76,3 +77,5 @@ MIT
 [tests-url]: https://github.com/bhouston/hdrify/actions/workflows/test.yml
 [coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
 [coverage-url]: https://codecov.io/gh/bhouston/hdrify
+[discord-badge]: https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white
+[discord-url]: https://discord.gg/5J5Ur3F6Z2
