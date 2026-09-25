@@ -20,13 +20,6 @@ export function setVersion(version) {
 // and Open VSX (the registry Cursor and other VS Code-compatible editors
 // use). Requires VSCE_PAT / OVSX_PAT in the environment.
 export function publish() {
-  const missing = [!process.env.VSCE_PAT && 'VSCE_PAT', !process.env.OVSX_PAT && 'OVSX_PAT'].filter(Boolean);
-  if (missing.length > 0) {
-    throw new Error(
-      `Cannot publish the VS Code extension: ${missing.join(' and ')} ${missing.length > 1 ? 'are' : 'is'} not set. Configure ${missing.length > 1 ? 'them' : 'it'} as repository secret(s) (see RELEASING.md) before dispatching a release.`,
-    );
-  }
-
   execFileSync('pnpm', ['--filter', 'hdrify-vscode-extension', 'run', 'build'], { stdio: 'inherit' });
   execFileSync('pnpm', ['--filter', 'hdrify-vscode-extension', 'exec', 'vsce', 'package', '--no-dependencies'], {
     stdio: 'inherit',

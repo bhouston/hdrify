@@ -8,9 +8,8 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "clean": "rimraf dist packages/**/dist .nx node_modules packages/**/node_modules",
-    "check": "pnpm lint && pnpm format",
     "tsc": "pnpm -r tsc",
-    "test": "pnpm vitest",
+    "test": "vitest run",
     "test:profile": "PROFILE=1 pnpm vitest run --no-coverage",
     "test:profile:main": "node --cpu-prof --cpu-prof-dir=./profile-output ./node_modules/vitest/vitest.mjs run --no-coverage",
     "profile:analyze": "node scripts/analyze-cpuprofile.mjs",
@@ -21,8 +20,7 @@
     "hdrify": "node ./packages/cli/dist/index.js",
     "release": "semantic-release",
     "release:check": "node --test scripts/release.test.mjs",
-    "size": "size-limit",
-    "format:check": "oxfmt --check ."
+    "size": "size-limit"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",
@@ -77,7 +75,7 @@
     }
   ],
   "engines": {
-    "node": ">=26.0.0"
+    "node": ">=22.0.0"
   },
   "packageManager": "pnpm@11.27.0"
 }

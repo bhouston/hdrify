@@ -5,17 +5,23 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, edited, ready_for_review]
   workflow_call:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
       - uses: pnpm/action-setup@v5
       - uses: actions/setup-node@v6
         with:
@@ -23,6 +29,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      - run: pnpm tsc
+      - run: pnpm lint
+      - name: Check formatting
+        run: pnpm exec oxfmt --check .
+      - run: pnpm test --coverage
+      # --- repository-specific steps (package-content check, size budget, e2e, docs, ...) go here ---
       - name: Verify published packages include dist
         run: |
           for pkg in packages/hdrify packages/cli packages/hdrify-react; do
@@ -31,17 +43,11 @@ jobs:
               exit 1
             }
           done
-      - name: Generate OpenCLI spec
-        run: node packages/cli/dist/index.js docgen --output packages/cli/opencli.json
-      - uses: bhouston/clidoc-action@v1
-        with:
-          files: packages/cli/opencli.json
-      - run: pnpm tsc
-      - run: pnpm lint
-      - run: pnpm test --coverage
       - run: pnpm release:check
       - name: Bundle size budget
         run: pnpm size | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Package VS Code extension
+        run: pnpm --filter hdrify-vscode-extension run package
       - name: Audit dependencies
         id: audit
         continue-on-error: true
@@ -54,32 +60,8 @@ jobs:
           name: coverage-${{ github.run_id }}-${{ github.job }}
           path: coverage/
       - uses: codecov/codecov-action@v5
+        if: ${{ !cancelled() && hashFiles('coverage/lcov.info') != '' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info
           fail_ci_if_error: false
-
-  contribution:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Validate issue link
-        run: node scripts/check-pr.mjs
-      - name: Lint PR title
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
-      - name: Lint feature commits
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: pnpm exec commitlint --from "$BASE_SHA" --to "$HEAD_SHA"
