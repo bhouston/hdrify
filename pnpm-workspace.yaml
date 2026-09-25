@@ -17,5 +17,5 @@ allowBuilds:
 linkWorkspacePackages: true
 
 minimumReleaseAgeExclude:
-  - tanstack-router-ga4@1.6.0
-  - yargs-file-commands@1.2.2
+  - tanstack-router-ga4
+  - yargs-file-commands
