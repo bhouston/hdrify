@@ -31,6 +31,11 @@ jobs:
               exit 1
             }
           done
+      - name: Generate OpenCLI spec
+        run: node packages/cli/dist/index.js docgen --output packages/cli/opencli.json
+      - uses: bhouston/clidoc-action@v1
+        with:
+          files: packages/cli/opencli.json
       - run: pnpm tsc
       - run: pnpm lint
       - run: pnpm test --coverage
