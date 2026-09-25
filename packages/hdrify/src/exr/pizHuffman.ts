@@ -57,7 +57,7 @@ function getBits(nBits: number, c: number, lc: number, uInt8Array: Uint8Array, i
   getBitsReturn.lc = currentLc;
 }
 
-const hufTableBuffer = new Array(59);
+const hufTableBuffer = Array.from<number>({ length: 59 });
 
 function hufCanonicalCodeTable(hcode: number[]): void {
   for (let i = 0; i <= 58; ++i) hufTableBuffer[i] = 0;
@@ -185,7 +185,7 @@ function hufBuildDecTable(hcode: number[], im: number, iM: number, hdecod: HufDe
       pl.lit++;
       if (pl.p) {
         const p = pl.p;
-        pl.p = new Array(pl.lit);
+        pl.p = Array.from({ length: pl.lit });
         for (let i = 0; i < pl.lit - 1; ++i) {
           const pValue = p[i];
           if (pValue !== undefined) {
@@ -193,7 +193,7 @@ function hufBuildDecTable(hcode: number[], im: number, iM: number, hdecod: HufDe
           }
         }
       } else {
-        pl.p = new Array(1);
+        pl.p = Array.from({ length: 1 });
       }
       pl.p[pl.lit - 1] = currentIm;
     } else if (l) {
@@ -379,9 +379,9 @@ function countFrequencies(freq: number[], data: Uint16Array, n: number): void {
 }
 
 function hufBuildEncTable(frq: number[], im: { value: number }, iM: { value: number }): void {
-  const hlink = new Array<number>(HUF_ENCSIZE);
+  const hlink = Array.from<number>({ length: HUF_ENCSIZE });
   const fHeap: number[] = [];
-  const scode = new Array<number>(HUF_ENCSIZE).fill(0);
+  const scode = Array.from<number>({ length: HUF_ENCSIZE }).fill(0);
 
   im.value = 0;
   while (!(frq[im.value] ?? 0)) im.value++;
@@ -568,7 +568,7 @@ export function hufCompress(raw: Uint16Array): Uint8Array {
   const n = raw.length;
   if (n === 0) return new Uint8Array(0);
 
-  const freq = new Array<number>(HUF_ENCSIZE);
+  const freq = Array.from<number>({ length: HUF_ENCSIZE });
   countFrequencies(freq, raw, n);
 
   const im = { value: 0 };
@@ -624,8 +624,8 @@ export function hufUncompress(
     );
   }
 
-  const freq = new Array(HUF_ENCSIZE);
-  const hdec: HufDec[] = new Array(HUF_DECSIZE);
+  const freq = Array.from<number>({ length: HUF_ENCSIZE });
+  const hdec: HufDec[] = Array.from({ length: HUF_DECSIZE });
   hufClearDecTable(hdec);
 
   const ni = nCompressed - (inOffset.value - initialInOffset);
