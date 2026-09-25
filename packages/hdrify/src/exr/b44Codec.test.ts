@@ -34,7 +34,7 @@ describe('b44Codec', () => {
   });
 
   it('packs a constant block into 3 bytes when flatFields (B44A) is set', () => {
-    const values = new Array(16).fill(0.5);
+    const values = Array.from({ length: 16 }).fill(0.5);
     const { wcount, decoded } = packAndUnpack(values, true);
     expect(wcount).toBe(3);
     for (const v of decoded) {
@@ -43,7 +43,7 @@ describe('b44Codec', () => {
   });
 
   it('does not use the 3-byte flat encoding for a constant block when flatFields (B44) is false', () => {
-    const values = new Array(16).fill(0.5);
+    const values = Array.from({ length: 16 }).fill(0.5);
     const { wcount } = packAndUnpack(values, false);
     expect(wcount).toBe(14);
   });
