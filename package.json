@@ -20,7 +20,8 @@
     "hdrify": "node ./packages/cli/dist/index.js",
     "release": "semantic-release",
     "release:check": "node --test scripts/release.test.mjs",
-    "size": "size-limit"
+    "size": "size-limit",
+    "gcloud": "gcloud auth application-default login && gcloud config set account \"neuralsoft@gmail.com\" && gcloud config set project bhouston-general-hosting && gcloud config set run/region us-central1"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",
