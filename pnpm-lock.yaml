@@ -97,8 +97,8 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0
       '@clidoc/yargs':
-        specifier: ^0.1.0
-        version: 0.1.0
+        specifier: ^1.1.0
+        version: 1.1.0
       hdrify:
         specifier: workspace:*
         version: link:../hdrify
@@ -109,8 +109,8 @@ importers:
         specifier: ^18.0.0
         version: 18.0.0
       yargs-file-commands:
-        specifier: ^1.2.2
-        version: 1.2.2(yargs@18.0.0)
+        specifier: ^2.1.0
+        version: 2.1.0(yargs@18.0.0)
     devDependencies:
       '@types/yargs':
         specifier: ^17.0.35
@@ -499,17 +499,17 @@ packages:
     resolution: {integrity: sha512-6zABk/ECA/QYSCQ1NGiVwwbQerUCZ+TQbp64Q3AgmfNvurHH0j8TtXa1qbShXA6qqkpAj4V5W8pP6mLe1mcMqA==}
     engines: {node: '>=18'}
 
-  '@clidoc/core@0.1.0':
-    resolution: {integrity: sha512-VTkkyimkP+JFCGrebS45ykvieAC4uXLOf7e5kTK/Smjx0S3bjklPaUYba4NJ0VV2AV1+z19+qUrzREnjNKEP0A==}
-    engines: {node: '>=22.12.0'}
-
   '@clidoc/core@1.0.0':
     resolution: {integrity: sha512-oyUkkXQ7VNRO7fXXn388oYe77jE+rVZE8MVhXcZb3C9VlDwAlTx/EUTk1QjQMrnd7ecJxuryb/E3qsq8gLcqAQ==}
     engines: {node: '>=22.12.0'}
 
-  '@clidoc/yargs@0.1.0':
-    resolution: {integrity: sha512-/h1+yuT75unZLKcimbOxBwKCc7RxFij8jE4h5UDMqrzfr8oaEbjtO9vTugoUW6WBd4Kqx7lUNIYOqqhdtpyKWA==}
-    engines: {node: '>=22.12.0'}
+  '@clidoc/core@1.1.0':
+    resolution: {integrity: sha512-RuKMqeFV3oK5gcDjss1kcPu7Lgy2loUWkp23L/JHaNw4CTsjMmwbTy4s0BW8eF42Ve9Lw2A7GzATQykXNteh3g==}
+    engines: {node: '>=22'}
+
+  '@clidoc/yargs@1.1.0':
+    resolution: {integrity: sha512-jtE6J/lPUiyxHGI95Ti+VJ5mO4e/TNX1n6l7H5aKKejWF1DuPclMB3q2ulNjYXxlgthFT4+p6B105hF7OsNflg==}
+    engines: {node: '>=22'}
 
   '@cloudflare/kv-asset-handler@0.4.2':
     resolution: {integrity: sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ==}
@@ -7603,11 +7603,11 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  yargs-file-commands@1.2.2:
-    resolution: {integrity: sha512-Up5lgQYZpoftbo7VNIEcn6YxpP5XUJedsnekO5Mq+vgrKENZyapmXFLrAiN4x8Y6ujU8GZvnEacb90UsPYgNkA==}
-    engines: {node: '>=20.0.0'}
+  yargs-file-commands@2.1.0:
+    resolution: {integrity: sha512-4ips0PL6c2epNK/dF6H+YNDtbdursTpG84ovw73xJFaeaiJgOwFN7awC8WuPcvqo8MCDAy9ztSub61C2tnaUYA==}
+    engines: {node: '>=22.0.0'}
     peerDependencies:
-      yargs: ^17
+      yargs: ^18.0.0
 
   yargs-parser@20.2.9:
     resolution: {integrity: sha512-y11nGElTIV+CT3Zv9t7VKl+Q3hTQoT9a1Qzezhhl6Rp21gJ/IVTW7Z3y9EWXhuUBC2Shnf+DX0antecpAwSP8w==}
@@ -7962,21 +7962,21 @@ snapshots:
 
   '@bcoe/v8-coverage@1.0.2': {}
 
-  '@clidoc/core@0.1.0':
-    dependencies:
-      ajv: 8.18.0
-      ajv-formats: 3.0.1(ajv@8.18.0)
-      yaml: 2.9.0
-
   '@clidoc/core@1.0.0':
     dependencies:
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
       yaml: 2.9.0
 
-  '@clidoc/yargs@0.1.0':
+  '@clidoc/core@1.1.0':
     dependencies:
-      '@clidoc/core': 0.1.0
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      yaml: 2.9.0
+
+  '@clidoc/yargs@1.1.0':
+    dependencies:
+      '@clidoc/core': 1.1.0
 
   '@cloudflare/kv-asset-handler@0.4.2': {}
 
@@ -14861,7 +14861,7 @@ snapshots:
 
   yaml@2.9.0: {}
 
-  yargs-file-commands@1.2.2(yargs@18.0.0):
+  yargs-file-commands@2.1.0(yargs@18.0.0):
     dependencies:
       yargs: 18.0.0
 

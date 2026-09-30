@@ -6,9 +6,8 @@ import { fileURLToPath } from 'node:url';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { fileCommands } from 'yargs-file-commands';
-import { createDocgenCommand, fromYargs } from '@clidoc/yargs';
+import { createDocgenCommand, fromYargsAsync } from '@clidoc/yargs';
 import { handleOpenCliRequest, infoFromPackageJson } from '@clidoc/core';
-import type { OpenCliDocument } from '@clidoc/core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const commandsDir = path.join(__dirname, 'commands');
@@ -30,12 +29,14 @@ function isCommandError(msg: string): boolean {
  * the caller handles exit codes.
  */
 export async function runCli(argv: string[]): Promise<unknown> {
-  let document: OpenCliDocument;
+  const commands = await fileCommands({ commandDirs: [commandsDir] });
+  const getDocument = () => fromYargsAsync([...commands, docgen], info);
+  const docgen = createDocgenCommand(getDocument);
   const y = yargs(argv)
     .scriptName('hdrify')
     .usage('$0 <command> [options]')
-    .command(await fileCommands({ commandDirs: [commandsDir] }))
-    .command(createDocgenCommand(() => document))
+    .command(commands)
+    .command(docgen)
     .demandCommand(1, 'You must specify a command.')
     .help()
     .alias('h', 'help')
@@ -52,21 +53,19 @@ export async function runCli(argv: string[]): Promise<unknown> {
       if (err) throw err;
       throw new Error(msg);
     });
-  // generate the document once every command, including docgen, is registered
-  document = fromYargs(y, info);
-
   if (argv.length === 0) {
     console.error('You must specify a command.\n');
     y.showHelp();
     return;
   }
 
-  if (await handleOpenCliRequest(argv, () => document)) {
-    return;
+  if (argv[0] === '__opencli') {
+    const document = await getDocument();
+    if (await handleOpenCliRequest(argv, () => document)) return;
   }
 
   try {
-    return await y.parse();
+    return await y.parseAsync();
   } catch (error) {
     if (error instanceof HelpShownError) {
       throw error;

@@ -49,11 +49,11 @@
   },
   "dependencies": {
     "@clidoc/core": "^1.0.0",
-    "@clidoc/yargs": "^0.1.0",
+    "@clidoc/yargs": "^1.1.0",
     "hdrify": "workspace:*",
     "sharp": "^0.34.5",
     "yargs": "^18.0.0",
-    "yargs-file-commands": "^1.2.2"
+    "yargs-file-commands": "^2.1.0"
   },
   "devDependencies": {
     "@types/yargs": "^17.0.35"
