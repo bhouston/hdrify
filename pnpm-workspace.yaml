@@ -19,3 +19,5 @@ linkWorkspacePackages: true
 minimumReleaseAgeExclude:
   - tanstack-router-ga4
   - yargs-file-commands
+  - '@clidoc/core@1.1.0'
+  - '@clidoc/yargs@1.1.0'
