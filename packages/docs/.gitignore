@@ -1,3 +1,5 @@
 build/
 .docusaurus/
 docs/api/
+.generated/
+docs/generated-cli/

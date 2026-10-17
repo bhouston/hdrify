@@ -14,7 +14,13 @@ const config: Config = {
     [
       'classic',
       {
-        docs: { sidebarPath: './sidebars.js', editUrl: 'https://github.com/bhouston/hdrify/edit/main/packages/docs/' },
+        docs: {
+          sidebarPath: './sidebars.js',
+          editUrl: ({ docPath }: { docPath: string }) =>
+            docPath.startsWith('generated-cli/')
+              ? undefined
+              : `https://github.com/bhouston/hdrify/edit/main/packages/docs/${docPath}`,
+        },
         blog: false,
         theme: { customCss: './src/css/custom.css' },
         gtag: { trackingID: 'G-CJJ7XP4N79' },
@@ -22,6 +28,14 @@ const config: Config = {
     ],
   ],
   plugins: [
+    [
+      '@clidoc/docusaurus',
+      {
+        input: '.generated/hdrify.opencli.json',
+        outputDir: 'docs/generated-cli',
+        basePath: '/cli/reference',
+      },
+    ],
     [
       'docusaurus-plugin-typedoc',
       {
@@ -56,7 +70,7 @@ const config: Config = {
       items: [
         { to: '/docs/', label: 'Docs', position: 'left' },
         { to: '/docs/api/core/', label: 'API', position: 'left' },
-        { to: '/docs/cli/', label: 'CLI', position: 'left' },
+        { to: '/docs/cli/reference/', label: 'CLI', position: 'left' },
         {
           href: `pathname://${process.env.BASE_URL ?? '/hdrify/'}demo/`,
           label: 'Live demo',
