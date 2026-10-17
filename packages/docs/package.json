@@ -5,7 +5,9 @@
     "dev": "docusaurus start --port 3001",
     "build": "docusaurus build && node scripts/include-demo.mjs",
     "preview": "docusaurus serve --port 3001",
-    "tsc": "tsc --noEmit"
+    "tsc": "tsc --noEmit",
+    "prebuild": "node scripts/generate-cli.mjs",
+    "predev": "node scripts/generate-cli.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.9.2",
@@ -14,12 +16,14 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@clidoc/docusaurus": "1.1.1",
     "@docusaurus/module-type-aliases": "^3.10.2",
     "@docusaurus/theme-classic": "^3.10.2",
     "@docusaurus/tsconfig": "^3.9.2",
     "@docusaurus/types": "^3.10.2",
     "@types/react": "^19.2.0",
     "docusaurus-plugin-typedoc": "^1.4.2",
+    "hdrify-cli": "workspace:*",
     "typedoc": "^0.28.14",
     "typedoc-plugin-markdown": "^4.9.0",
     "typescript": "~5.9.3",

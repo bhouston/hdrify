@@ -12,6 +12,8 @@ npm install --global hdrify-cli
 hdrify --help
 ```
 
+For every command, argument, option, default, and allowed value, see the [CLI reference](/docs/cli/reference), generated with clidoc from the actual command definitions. This guide focuses on practical workflows.
+
 ## Convert HDR assets
 
 The input and output extensions select the file formats:
@@ -59,19 +61,14 @@ hdrify reference gradient.hdr --type gradient
 
 Reference types include `rainbow`, `cie-wedge`, `cie-wedge-r`, `cie-wedge-g`, `cie-wedge-b`, and `gradient`. Use them to exercise your image pipeline with reproducible inputs.
 
-## Common conversion options
+## Command reference
 
-| Option          | Meaning                                                                                       |
-| --------------- | --------------------------------------------------------------------------------------------- |
-| `--compression` | EXR output codec: `none`, `rle`, `zip`, `zips`, `piz`, `pxr24`, `b44`, `b44a`, `dwaa`, `dwab` |
-| `--format`      | JPEG layout: `ultrahdr` or `adobe-gainmap`                                                    |
-| `--tonemapping` | Tone mapper for preview/base image creation                                                   |
-| `--exposure`    | Linear exposure multiplier                                                                    |
-| `--quality`     | JPEG quality from `0` to `100`                                                                |
-| `--size`        | `WIDTH,HEIGHT` or one size for a square                                                       |
-| `--filter`      | Resampling filter used with `--size`                                                          |
-| `--flip`        | Horizontal and vertical direction as `X,Y`                                                    |
+- [All commands](/docs/cli/reference)
+- [Convert](/docs/cli/reference/commands/convert)
+- [Inspect image information](/docs/cli/reference/commands/info)
+- [Generate reference images](/docs/cli/reference/commands/reference)
+- [Export the OpenCLI document](/docs/cli/reference/commands/docgen)
 
-Compression only applies to EXR output; gain map format only applies to JPEG output. Run `hdrify convert --help`, `hdrify reference --help`, or `hdrify info --help` for the installed version's command details.
+The reference is regenerated on each documentation build, so command descriptions and option tables follow the CLI source. Run `hdrify <command> --help` to inspect your installed version.
 
 Prefer a browser workflow? The [live demo](pathname:///hdrify/demo/) retains the viewer and converter without a CLI installation. For code integration, use the [examples](/docs/examples).

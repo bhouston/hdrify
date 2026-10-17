@@ -140,6 +140,9 @@ importers:
         specifier: ^19.2.0
         version: 19.2.4(react@19.2.4)
     devDependencies:
+      '@clidoc/docusaurus':
+        specifier: 1.1.1
+        version: 1.1.1
       '@docusaurus/module-type-aliases':
         specifier: ^3.10.2
         version: 3.10.2(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.16))(csso@5.0.5)(esbuild@0.27.3)(html-minifier-terser@7.2.0)(lightningcss@1.32.0)(postcss@8.5.16)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(sharp@0.34.5)(supports-color@10.2.2)(svgo@3.3.5)(uglify-js@3.19.3)
@@ -158,6 +161,9 @@ importers:
       docusaurus-plugin-typedoc:
         specifier: ^1.4.2
         version: 1.4.3(typedoc-plugin-markdown@4.14.0(typedoc@0.28.20(typescript@5.9.3)))(typedoc@0.28.20(typescript@5.9.3))
+      hdrify-cli:
+        specifier: workspace:*
+        version: link:../cli
       typedoc:
         specifier: ^0.28.14
         version: 0.28.20(typescript@5.9.3)
@@ -1168,6 +1174,14 @@ packages:
     resolution: {integrity: sha512-RuKMqeFV3oK5gcDjss1kcPu7Lgy2loUWkp23L/JHaNw4CTsjMmwbTy4s0BW8eF42Ve9Lw2A7GzATQykXNteh3g==}
     engines: {node: '>=22'}
 
+  '@clidoc/core@1.1.1':
+    resolution: {integrity: sha512-HyTCUwuR0ur8u6q7OSFHy/a/SgVy9i49rP7glrE5VySLxr+W5HvGzlusdpoIMGSMH50AmBzMRkdQFWxFuXJb0Q==}
+    engines: {node: '>=22'}
+
+  '@clidoc/docusaurus@1.1.1':
+    resolution: {integrity: sha512-sclJEKumFlEzTRBNB/IbrStx2LzkxrSd9vkSzeoVDtsobcJg2zxRrNQhKL9XyDqcnBRJ25a7QAM3Os868fUaFA==}
+    engines: {node: '>=22'}
+
   '@clidoc/yargs@1.1.0':
     resolution: {integrity: sha512-jtE6J/lPUiyxHGI95Ti+VJ5mO4e/TNX1n6l7H5aKKejWF1DuPclMB3q2ulNjYXxlgthFT4+p6B105hF7OsNflg==}
     engines: {node: '>=22'}
@@ -1812,9 +1826,6 @@ packages:
 
   '@emnapi/runtime@1.11.1':
     resolution: {integrity: sha512-vgj7R3y3Wgx24IQaGPA/R6YFXLHVMOZ0uVEyIQPaWs+rd1AzfEMXlAC22FYwO1XkKR6NPsq7mUandH8oIRdZFw==}
-
-  '@emnapi/runtime@1.8.1':
-    resolution: {integrity: sha512-mehfKSMWjjNol8659Z8KxEMrdSJDDot5SXMq00dM8BN4o+CLNXQ0xH2V7EchNHV4RmbZLmmPdEaXZc5H2FXmDg==}
 
   '@emnapi/wasi-threads@1.2.2':
     resolution: {integrity: sha512-c95qOXkHdydNKhscBTebqEC1CVAZpyqOfVfBzQ1qgzyl3gfeldUjIggDbIZgDKsHLgnsM+igH7TJ/eAasaVuMA==}
@@ -11749,6 +11760,16 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       yaml: 2.9.0
 
+  '@clidoc/core@1.1.1':
+    dependencies:
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      yaml: 2.9.0
+
+  '@clidoc/docusaurus@1.1.1':
+    dependencies:
+      '@clidoc/core': 1.1.1
+
   '@clidoc/yargs@1.1.0':
     dependencies:
       '@clidoc/core': 1.1.0
@@ -11780,7 +11801,7 @@ snapshots:
   '@commitlint/config-validator@21.2.0':
     dependencies:
       '@commitlint/types': 21.2.0
-      ajv: 8.18.0
+      ajv: 8.20.0
 
   '@commitlint/ensure@21.2.0':
     dependencies:
@@ -13243,11 +13264,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@emnapi/runtime@1.8.1':
-    dependencies:
-      tslib: 2.8.1
-    optional: true
-
   '@emnapi/wasi-threads@1.2.2':
     dependencies:
       tslib: 2.8.1
@@ -13450,7 +13466,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.34.5':
     dependencies:
-      '@emnapi/runtime': 1.8.1
+      '@emnapi/runtime': 1.11.1
     optional: true
 
   '@img/sharp-win32-arm64@0.34.5':
@@ -21318,7 +21334,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.0.0
       detect-libc: 2.1.2
-      semver: 7.7.4
+      semver: 7.8.5
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
@@ -21684,7 +21700,7 @@ snapshots:
 
   table@6.9.0:
     dependencies:
-      ajv: 8.18.0
+      ajv: 8.20.0
       lodash.truncate: 4.4.2
       slice-ansi: 4.0.0
       string-width: 4.2.3

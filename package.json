@@ -22,8 +22,8 @@
     "release:check": "node --test scripts/release.test.mjs",
     "size": "size-limit",
     "gcloud": "gcloud auth application-default login && gcloud config set account \"neuralsoft@gmail.com\" && gcloud config set project bhouston-general-hosting && gcloud config set run/region us-central1",
-    "docs:build": "pnpm --filter hdrify --filter hdrify-react --filter website --filter hdrify-docs build",
-    "docs:dev": "pnpm --filter hdrify-docs dev"
+    "docs:build": "pnpm --filter hdrify --filter hdrify-cli --filter hdrify-react --filter website --filter hdrify-docs build",
+    "docs:dev": "pnpm --filter hdrify-cli... build && pnpm --filter hdrify-docs dev"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.25",
