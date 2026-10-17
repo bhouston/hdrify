@@ -15,8 +15,8 @@ import { displayToLinear, linearToDisplay } from './transfer.js';
  * Otherwise creates a new Float32Array (does not mutate input).
  *
  * @param data - RGBA Float32Array
- * @param width - Image width
- * @param height - Image height
+ * @param _width - Image width
+ * @param _height - Image height
  * @param from - Source linear color space
  * @param to - Target linear color space
  * @returns Original data if no conversion; otherwise new Float32Array with converted pixels

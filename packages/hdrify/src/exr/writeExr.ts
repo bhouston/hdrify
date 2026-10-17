@@ -37,7 +37,7 @@ function getChannelsForCompression(compression: number): ExrChannel[] {
 /**
  * Write an EXR file buffer from HdrifyImage
  *
- * @param HdrifyImage - HdrifyImage containing image dimensions and pixel data
+ * @param hdrifyImage - HdrifyImage containing image dimensions and pixel data
  * @param options - Optional compression (default: zip; use piz for broader compatibility)
  * @returns Uint8Array containing EXR file data
  */

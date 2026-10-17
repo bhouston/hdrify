@@ -25,13 +25,7 @@ Encoding and assembling the JPEG are separate steps. `encodeGainMap` produces th
 
 ```js
 import { readFile, writeFile } from 'node:fs/promises';
-import {
-  encodeGainMap,
-  readExr,
-  readJpegGainMap,
-  writeExr,
-  writeJpegGainMap,
-} from 'hdrify';
+import { encodeGainMap, readExr, readJpegGainMap, writeExr, writeJpegGainMap } from 'hdrify';
 
 const image = readExr(await readFile('environment.exr'));
 const encoding = encodeGainMap(image, {
@@ -106,7 +100,7 @@ if (!canvas) throw new Error('Missing preview canvas');
 await drawPreview('/images/environment.hdr', canvas);
 ```
 
-For a file picker, replace the `fetch` call with `new Uint8Array(await file.arrayBuffer())`. This canvas preview is SDR: it makes HDR content viewable through tone mapping. For a ready-made component, see the [React guide](/docs/react), or try the [live demo](/demo/).
+For a file picker, replace the `fetch` call with `new Uint8Array(await file.arrayBuffer())`. This canvas preview is SDR: it makes HDR content viewable through tone mapping. For a ready-made component, see the [React guide](/docs/react), or try the [live demo](pathname:///hdrify/demo/).
 
 ## Decode ordinary display pixels into linear light
 
@@ -117,13 +111,7 @@ import { convertDisplayToLinear } from 'hdrify';
 
 function fromSrgbCanvas(pixels: ImageData) {
   const normalized = Float32Array.from(pixels.data, (value) => value / 255);
-  return convertDisplayToLinear(
-    normalized,
-    pixels.width,
-    pixels.height,
-    'display-srgb',
-    'linear-rec709',
-  );
+  return convertDisplayToLinear(normalized, pixels.width, pixels.height, 'display-srgb', 'linear-rec709');
 }
 ```
 

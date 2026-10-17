@@ -1,6 +1,6 @@
 # HDRify documentation website
 
-Docusaurus documentation and landing page for [hdrify.ben3d.ca](https://hdrify.ben3d.ca). The website combines hand-written guides with API documentation generated from the core and React package exports and source comments. The existing viewer and converter is retained at `/demo/`.
+Docusaurus documentation and landing page for [bhouston.github.io/hdrify](https://bhouston.github.io/hdrify/). The website combines hand-written guides with API documentation generated from the core and React package exports and source comments. The existing viewer and converter is retained at `/demo/`.
 
 ## Content
 

@@ -10,7 +10,7 @@ import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 /**
  * Write an HDR file buffer from HdrifyImage
  *
- * @param HdrifyImage - HdrifyImage containing image dimensions and pixel data
+ * @param hdrifyImage - HdrifyImage containing image dimensions and pixel data
  * @returns Uint8Array containing HDR file data
  */
 export function writeHdr(hdrifyImage: HdrifyImage): Uint8Array {

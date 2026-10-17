@@ -61,17 +61,17 @@ Reference types include `rainbow`, `cie-wedge`, `cie-wedge-r`, `cie-wedge-g`, `c
 
 ## Common conversion options
 
-| Option | Meaning |
-| --- | --- |
+| Option          | Meaning                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------- |
 | `--compression` | EXR output codec: `none`, `rle`, `zip`, `zips`, `piz`, `pxr24`, `b44`, `b44a`, `dwaa`, `dwab` |
-| `--format` | JPEG layout: `ultrahdr` or `adobe-gainmap` |
-| `--tonemapping` | Tone mapper for preview/base image creation |
-| `--exposure` | Linear exposure multiplier |
-| `--quality` | JPEG quality from `0` to `100` |
-| `--size` | `WIDTH,HEIGHT` or one size for a square |
-| `--filter` | Resampling filter used with `--size` |
-| `--flip` | Horizontal and vertical direction as `X,Y` |
+| `--format`      | JPEG layout: `ultrahdr` or `adobe-gainmap`                                                    |
+| `--tonemapping` | Tone mapper for preview/base image creation                                                   |
+| `--exposure`    | Linear exposure multiplier                                                                    |
+| `--quality`     | JPEG quality from `0` to `100`                                                                |
+| `--size`        | `WIDTH,HEIGHT` or one size for a square                                                       |
+| `--filter`      | Resampling filter used with `--size`                                                          |
+| `--flip`        | Horizontal and vertical direction as `X,Y`                                                    |
 
 Compression only applies to EXR output; gain map format only applies to JPEG output. Run `hdrify convert --help`, `hdrify reference --help`, or `hdrify info --help` for the installed version's command details.
 
-Prefer a browser workflow? The [live demo](/demo/) retains the viewer and converter without a CLI installation. For code integration, use the [examples](/docs/examples).
+Prefer a browser workflow? The [live demo](pathname:///hdrify/demo/) retains the viewer and converter without a CLI installation. For code integration, use the [examples](/docs/examples).

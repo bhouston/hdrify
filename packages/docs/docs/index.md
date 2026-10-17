@@ -13,7 +13,7 @@ HDRify reads, processes, and writes high dynamic range images in Node.js and the
 - **Build previews:** apply ACES, AgX, neutral, or Reinhard tone mapping, with exposure control.
 - **Integrate where you work:** use the core library, React canvas component, command line tools, or VS Code extension.
 
-[Open the live viewer and converter](/demo/) to experiment with your own files before writing code. The demo remains available alongside these guides.
+[Open the live viewer and converter](pathname:///hdrify/demo/) to experiment with your own files before writing code. The demo remains available alongside these guides.
 
 ## Install
 
@@ -40,12 +40,12 @@ Readers and writers are synchronous; file loading and saving in this example are
 
 ## Pick your next step
 
-| Goal | Guide |
-| --- | --- |
-| Understand file formats, precision, and linear pixels | [Formats and color](/docs/formats) |
-| Convert files, create gain maps, or draw a browser preview | [Code examples](/docs/examples) |
-| Add an HDR preview to a React application | [React](/docs/react) |
-| Convert assets without writing an application | [Command line](/docs/cli) |
-| Look up exported functions and options | [Core API](/docs/api/core) and [React API](/docs/api/react) |
+| Goal                                                       | Guide                                                       |
+| ---------------------------------------------------------- | ----------------------------------------------------------- |
+| Understand file formats, precision, and linear pixels      | [Formats and color](/docs/formats)                          |
+| Convert files, create gain maps, or draw a browser preview | [Code examples](/docs/examples)                             |
+| Add an HDR preview to a React application                  | [React](/docs/react)                                        |
+| Convert assets without writing an application              | [Command line](/docs/cli)                                   |
+| Look up exported functions and options                     | [Core API](/docs/api/core) and [React API](/docs/api/react) |
 
 The API reference is generated from the package exports and source comments, so the signatures stay connected to the implementation.

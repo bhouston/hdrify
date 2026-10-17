@@ -7,11 +7,11 @@ sidebar_position: 2
 
 ## Choose an output for its purpose
 
-| Format | Core reader / writer | Use it for |
-| --- | --- | --- |
-| OpenEXR (`.exr`) | `readExr` / `writeExr` | Floating point image workflows, environment maps, and configurable compression |
-| Radiance HDR (`.hdr`) | `readHdr` / `writeHdr` | RGBE HDR images and environment map interchange |
-| JPEG gain map (`.jpg`, `.jpeg`) | `readJpegGainMap` / `writeJpegGainMap` | An SDR JPEG plus gain data for reconstructing HDR |
+| Format                          | Core reader / writer                   | Use it for                                                                     |
+| ------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ |
+| OpenEXR (`.exr`)                | `readExr` / `writeExr`                 | Floating point image workflows, environment maps, and configurable compression |
+| Radiance HDR (`.hdr`)           | `readHdr` / `writeHdr`                 | RGBE HDR images and environment map interchange                                |
+| JPEG gain map (`.jpg`, `.jpeg`) | `readJpegGainMap` / `writeJpegGainMap` | An SDR JPEG plus gain data for reconstructing HDR                              |
 
 The CLI also writes tone-mapped PNG and WebP. JPEG output from the CLI is a JPEG gain map by default; an ordinary JPEG without the required gain map metadata is not a supported HDR input.
 
