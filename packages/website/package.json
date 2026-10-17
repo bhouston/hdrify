@@ -13,11 +13,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.0.6",
-    "@tanstack/nitro-v2-vite-plugin": "1.155.0",
     "@tanstack/react-router": "^1.132.0",
-    "@tanstack/react-router-ssr-query": "^1.131.7",
-    "@tanstack/react-start": "^1.132.0",
-    "@tanstack/router-plugin": "^1.132.0",
     "@tanstack/zod-adapter": "^1.159.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

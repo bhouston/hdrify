@@ -9,10 +9,15 @@ export default function Header() {
         search={{}}
         to="/"
       >
-        <img alt="HDRify logo" className="h-full w-auto object-contain" src="/logo192.png" />
+        <img
+          alt="HDRify logo"
+          className="h-full w-auto object-contain"
+          src={`${import.meta.env.BASE_URL}logo192.png`}
+        />
         <h1 className="text-xl font-semibold">HDRify</h1>
       </Link>
       <nav className="ml-auto flex items-center gap-4">
+        <a href={`${import.meta.env.BASE_URL}../docs/`}>Docs</a>
         <a
           aria-label="GitHub repository"
           className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"

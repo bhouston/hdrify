@@ -43,6 +43,7 @@ jobs:
               exit 1
             }
           done
+      - run: node --test packages/website/scripts/redirect-server.test.mjs
       - run: pnpm release:check
       - name: Bundle size budget
         run: pnpm size | tee -a "$GITHUB_STEP_SUMMARY"

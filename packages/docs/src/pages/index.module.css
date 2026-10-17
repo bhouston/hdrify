@@ -1,0 +1,140 @@
+.hero {
+  padding: 6rem 0 4rem;
+  background: radial-gradient(ellipse at 90% 20%, #72e0bd24, transparent 60%);
+}
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 4rem;
+  align-items: center;
+}
+.hero h1 {
+  font-size: clamp(2.7rem, 4.6vw, 4.5rem);
+  letter-spacing: -0.055em;
+  line-height: 1.07;
+}
+.eyebrow {
+  color: var(--ifm-color-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.lead {
+  font-size: 1.2rem;
+  line-height: 1.7;
+  max-width: 40rem;
+}
+.actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.8rem 0;
+}
+.install {
+  font-size: 1rem;
+}
+.visual {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: #142a32;
+  color: #fcfbf7;
+  box-shadow: 0 20px 70px #142a3226;
+}
+.spectrum {
+  height: 3rem;
+  background: linear-gradient(90deg, #172e61, #087c9b, #56c4a5, #f4ce6b, #f0844e, #fdedba);
+}
+.visualContent {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+.visualContent p {
+  font-size: 1.25rem;
+  margin: 1.5rem 0;
+}
+.visualContent code {
+  background: transparent;
+  color: #abd8cc;
+  font-size: 0.8rem;
+  border: none;
+}
+.formats {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.formats span {
+  border: 1px solid #72e0bd60;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  padding: 2rem 0 4rem;
+}
+.card {
+  padding: 1.8rem;
+  border: 1px solid #5d776f33;
+  border-radius: 1rem;
+}
+.card h2 {
+  font-size: 1.35rem;
+}
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  gap: 3rem;
+  align-items: center;
+  padding: 3rem 0 5rem;
+}
+.split h2,
+.banner h2 {
+  font-size: 2.3rem;
+  letter-spacing: -0.035em;
+}
+.banner {
+  border-radius: 1.25rem;
+  padding: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  background: #72e0bd1c;
+  margin-bottom: 2rem;
+}
+.banner p {
+  max-width: 46rem;
+}
+.banner a {
+  flex-shrink: 0;
+}
+@media (max-width: 996px) {
+  .hero {
+    padding: 3rem 0;
+  }
+  .heroGrid,
+  .split {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    padding-bottom: 2rem;
+  }
+  .banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2rem;
+    gap: 1rem;
+  }
+}
+.heroGrid > *,
+.split > *,
+.card {
+  min-width: 0;
+}

@@ -1,6 +1,6 @@
 # HDRify
 
-<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://bhouston.github.io/hdrify/img/hdrify.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]
@@ -10,7 +10,9 @@
 
 HDRify implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
 
-**→ [Online demo](https://hdrify.ben3d.ca)** — HDR, EXR, Adobe Gain Maps & UltraHDR viewer and converter (the `packages/website` app from this repo). Try it in your browser.
+**→ [Documentation & API reference](https://bhouston.github.io/hdrify/)** — installation, capabilities, generated API docs, and code examples.
+
+**→ [Live viewer & converter](https://bhouston.github.io/hdrify/demo/)** — the original demo is still here: load HDR, EXR, Adobe Gain Map, and Ultra HDR images, adjust exposure, and download conversions.
 
 ## Features
 
@@ -21,7 +23,7 @@ HDRify implements comprehensive support for high dynamic range imaging with supp
 - Full TypeScript support
 - No DOM or Node.js dependencies (works in browser, web workers, and node.js)
 - Written in a functional style to support tree-shaking
-- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.ben3d.ca
+- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://bhouston.github.io/hdrify/demo/
 - [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
 - [HDRify VS Code Extension](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) — for [VS Code](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) and [Cursor](https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension)
 
@@ -158,7 +160,7 @@ pnpm install
 pnpm dev
 ```
 
-Open http://localhost:3000 and drag-and-drop EXR or HDR files.
+Open http://localhost:3000/hdrify/demo/ and drag-and-drop EXR or HDR files.
 
 ## Development
 

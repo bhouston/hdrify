@@ -1,48 +1,9 @@
-# HDRify Website
+# HDRify live demo
 
-A browser-based EXR and HDR image viewer built with TanStack Start, Tailwind CSS, and ShadCN UI. This is the official website for the HDRify monorepo.
+The existing viewer/converter is retained as a static Vite and React app, published with the Docusaurus site at https://bhouston.github.io/hdrify/demo/.
 
-## Features
+It supports drag-and-drop and file selection, sample images, exposure/tone mapping controls, metadata, and EXR/HDR/Ultra HDR/WebP downloads. Files are processed locally using hdrify and hdrify-react. The canvas uses the 2D API.
 
-- Drag-and-drop EXR or HDR files
-- Click to browse and select files
-- Real-time exposure adjustment slider
-- Reinhard tone mapping for HDR display on LDR screens
+From the repository root, run `pnpm install`, `pnpm --filter hdrify --filter hdrify-react build`, then `pnpm --filter website dev`. Open http://localhost:3000/hdrify/demo/. `pnpm docs:build` builds the libraries, demo, and documentation together.
 
-## Getting Started
-
-From the monorepo root:
-
-```bash
-pnpm install
-cd packages/website
-pnpm run dev
-```
-
-Or from this directory:
-
-```bash
-pnpm install
-pnpm run dev
-```
-
-Open http://localhost:3000 and drag-and-drop EXR or HDR files.
-
-## Building for Production
-
-```bash
-pnpm run build
-pnpm run preview
-```
-
-## Tech Stack
-
-- [TanStack Start](https://tanstack.com/start/latest) – Full-stack React framework
-- [TanStack Router](https://tanstack.com/router/latest) – Type-safe routing
-- [Tailwind CSS](https://tailwindcss.com/) – Styling
-- [ShadCN UI](https://ui.shadcn.com/) – Accessible components
-- [hdrify](https://www.npmjs.com/package/hdrify) – HDR/EXR parsing and conversion
-
-## Learn More
-
-See the main [hdrify README](../../README.md) for the library API and usage.
+`BASE_URL` defaults to `/hdrify/`; set it to `/` consistently for all builds to host at a domain root. The original Cloud Run deployment now serves a redirect to GitHub Pages, preserving old `?image=` links and example image URLs. GitHub Pages serves the actual site and live demo from a Pages artifact; no application server is needed there.

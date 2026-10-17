@@ -1,0 +1,31 @@
+:root {
+  --ifm-color-primary: #17765e;
+  --ifm-color-primary-dark: #146a55;
+  --ifm-color-primary-darker: #12634f;
+  --ifm-color-primary-darkest: #0d4f3f;
+  --ifm-color-primary-light: #20856c;
+  --ifm-color-primary-lighter: #2a9479;
+  --ifm-color-primary-lightest: #40ab8e;
+  --ifm-background-color: #fcfbf7;
+  --ifm-heading-color: #142a32;
+  --ifm-font-family-base: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ifm-code-font-size: 0.92rem;
+}
+[data-theme='dark'] {
+  --ifm-color-primary: #72e0bd;
+  --ifm-color-primary-dark: #50d3a8;
+  --ifm-color-primary-darker: #42c99f;
+  --ifm-color-primary-darkest: #26a986;
+  --ifm-color-primary-light: #8ce8cb;
+  --ifm-color-primary-lighter: #9cebd4;
+  --ifm-color-primary-lightest: #c8f5e6;
+  --ifm-background-color: #101c20;
+  --ifm-heading-color: #f5f4ea;
+}
+.navbar {
+  box-shadow: none;
+  border-bottom: 1px solid #5d776f2e;
+}
+.footer {
+  background: #142a32;
+}

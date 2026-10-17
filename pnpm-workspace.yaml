@@ -9,6 +9,7 @@ allowBuilds:
   '@parcel/watcher': false
   '@tailwindcss/oxide': true
   '@vscode/vsce-sign': false
+  core-js: false
   esbuild: true
   exifreader: false
   keytar: false
@@ -21,3 +22,5 @@ minimumReleaseAgeExclude:
   - yargs-file-commands
   - '@clidoc/core@1.1.0'
   - '@clidoc/yargs@1.1.0'
+
+  # Docusaurus transitively uses core-js; its optional donation postinstall is unnecessary.
