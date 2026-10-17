@@ -133,3 +133,8 @@
     gap: 1rem;
   }
 }
+.heroGrid > *,
+.split > *,
+.card {
+  min-width: 0;
+}
