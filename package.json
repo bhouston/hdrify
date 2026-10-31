@@ -50,7 +50,7 @@
     "semantic-release": "^25.0.9",
     "semver": "^7.7.3",
     "size-limit": "^14.0.0",
-    "typescript": "^7.0.2",
+    "typescript": "7.1.0-beta",
     "vitest": "^5.0.1"
   },
   "lint-staged": {
