@@ -11,7 +11,7 @@ import { checkPullRequest } from './check-pr.mjs';
 const packages = ['packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
 
 for (const path of packages) {
-  test(`${path} is ready for pnpm publish`, () => {
+  void test(`${path} is ready for pnpm publish`, () => {
     assert.ok(existsSync(resolve(path, 'LICENSE')), `${path}/LICENSE is missing`);
     const pkg = JSON.parse(readFileSync(resolve(path, 'package.json'), 'utf8'));
     assert.ok(pkg.files?.includes('dist'), `${path}/package.json files must include "dist"`);
@@ -29,7 +29,7 @@ for (const [message, expected] of [
   ['chore!: remove Node 24 support', 'major'],
   ['fix: change format\n\nBREAKING CHANGE: old files are unsupported', 'major'],
 ]) {
-  test(`release analysis: ${message.split('\n')[0]}`, async () => {
+  void test(`release analysis: ${message.split('\n')[0]}`, async () => {
     assert.equal(
       await analyzeCommits(
         { preset: 'conventionalcommits' },
@@ -40,7 +40,7 @@ for (const [message, expected] of [
   });
 }
 
-test('PR policy enforces issue link and integration target, not branch name', () => {
+void test('PR policy enforces issue link and integration target, not branch name', () => {
   const pr = {
     base: { ref: 'main' },
     head: { ref: 'whatever-branch-name-i-want', repo: { full_name: 'bhouston/hdrify' } },

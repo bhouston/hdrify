@@ -177,10 +177,10 @@ importers:
         specifier: ^8.1.36
         version: 8.1.36(json5@2.2.3)(jsonc-parser@3.3.1)(supports-color@8.1.1)(yaml@2.9.1)
       '@commitlint/cli':
-        specifier: ^21.2.2
+        specifier: ^21.2.4
         version: 21.2.4(conventional-commits-parser@7.1.3)(typescript@7.1.0-beta)
       '@commitlint/config-conventional':
-        specifier: ^21.2.2
+        specifier: ^21.2.4
         version: 21.2.4
       '@semantic-release/commit-analyzer':
         specifier: ^13.0.1
@@ -192,10 +192,10 @@ importers:
         specifier: ^14.1.1
         version: 14.1.1(semantic-release@25.0.9(supports-color@8.1.1)(typescript@7.1.0-beta))(supports-color@8.1.1)
       '@size-limit/preset-small-lib':
-        specifier: ^14.0.0
+        specifier: ^14.3.0
         version: 14.3.0(size-limit@14.3.0)
       '@types/node':
-        specifier: ^24
+        specifier: ^24.19.2
         version: 24.19.2
       '@visulima/yaml':
         specifier: 1.0.0
@@ -210,26 +210,29 @@ importers:
         specifier: 9.3.1
         version: 9.3.1
       fflate:
-        specifier: ^0.8.2
+        specifier: ^0.8.3
         version: 0.8.3
       glob:
-        specifier: ^13.0.0
+        specifier: ^13.0.6
         version: 13.0.6
       husky:
         specifier: ^9.1.7
         version: 9.1.7
       jsonfile:
-        specifier: ^6.2.0
+        specifier: ^6.2.1
         version: 6.2.1
       lint-staged:
-        specifier: ^17.3.0
+        specifier: ^17.6.0
         version: 17.6.0
       oxfmt:
         specifier: ^0.75.0
         version: 0.75.0
       oxlint:
         specifier: 1.73.0
-        version: 1.73.0
+        version: 1.73.0(oxlint-tsgolint@7.0.2005)
+      oxlint-tsgolint:
+        specifier: ^7.0.2005
+        version: 7.0.2005
       prompt-confirm:
         specifier: ^2.0.4
         version: 2.0.4(supports-color@8.1.1)
@@ -240,10 +243,10 @@ importers:
         specifier: ^25.0.9
         version: 25.0.9(supports-color@8.1.1)(typescript@7.1.0-beta)
       semver:
-        specifier: ^7.7.3
+        specifier: ^7.8.5
         version: 7.8.5
       size-limit:
-        specifier: ^14.0.0
+        specifier: ^14.3.0
         version: 14.3.0
       typescript:
         specifier: 7.1.0-beta
@@ -255,10 +258,10 @@ importers:
   packages/cli:
     dependencies:
       '@clidoc/core':
-        specifier: ^1.0.0
+        specifier: ^1.1.1
         version: 1.1.1
       '@clidoc/yargs':
-        specifier: ^1.1.0
+        specifier: ^1.1.1
         version: 1.1.1
       hdrify:
         specifier: workspace:*
@@ -267,7 +270,7 @@ importers:
         specifier: ^0.35.5
         version: 0.35.5(@types/node@24.19.2)
       yargs:
-        specifier: ^18.0.0
+        specifier: ^18.2.0
         version: 18.2.0
       yargs-file-commands:
         specifier: ^2.1.0
@@ -289,16 +292,16 @@ importers:
   packages/docs:
     dependencies:
       '@docusaurus/core':
-        specifier: ^3.9.2
+        specifier: ^3.10.2
         version: 3.10.2(@mdx-js/react@3.1.1(@types/react@19.3.0)(react@19.3.1))(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.32))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.27.3)(html-minifier-terser@7.2.0)(lightningcss@1.33.0)(postcss@8.5.32)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sharp@0.35.5(@types/node@24.19.2))(supports-color@8.1.1)(svgo@3.3.5)(typescript@5.9.3)(uglify-js@3.19.3)
       '@docusaurus/preset-classic':
-        specifier: ^3.9.2
+        specifier: ^3.10.2
         version: 3.10.2(@algolia/client-search@5.61.0)(@mdx-js/react@3.1.1(@types/react@19.3.0)(react@19.3.1))(@types/react@19.3.0)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.32))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.27.3)(html-minifier-terser@7.2.0)(lightningcss@1.33.0)(postcss@8.5.32)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(search-insights@2.17.3)(sharp@0.35.5(@types/node@24.19.2))(supports-color@8.1.1)(svgo@3.3.5)(typescript@5.9.3)(uglify-js@3.19.3)
       react:
-        specifier: ^19.2.0
+        specifier: ^19.3.1
         version: 19.3.1
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
     devDependencies:
       '@clidoc/docusaurus':
@@ -311,25 +314,25 @@ importers:
         specifier: ^3.10.2
         version: 3.10.2(@types/react@19.3.0)(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.32))(csso@5.0.5)(debug@4.4.3(supports-color@8.1.1))(esbuild@0.27.3)(html-minifier-terser@7.2.0)(lightningcss@1.33.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sharp@0.35.5(@types/node@24.19.2))(supports-color@8.1.1)(svgo@3.3.5)(typescript@5.9.3)(uglify-js@3.19.3)
       '@docusaurus/tsconfig':
-        specifier: ^3.9.2
+        specifier: ^3.10.2
         version: 3.10.2
       '@docusaurus/types':
         specifier: ^3.10.2
         version: 3.10.2(clean-css@5.3.3)(cssnano@6.1.2(postcss@8.5.32))(csso@5.0.5)(esbuild@0.27.3)(html-minifier-terser@7.2.0)(lightningcss@1.33.0)(postcss@8.5.32)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(sharp@0.35.5(@types/node@24.19.2))(supports-color@8.1.1)(svgo@3.3.5)(uglify-js@3.19.3)
       '@types/react':
-        specifier: ^19.2.0
+        specifier: ^19.3.0
         version: 19.3.0
       docusaurus-plugin-typedoc:
-        specifier: ^1.4.2
+        specifier: ^1.4.3
         version: 1.4.3(typedoc-plugin-markdown@4.14.1(typedoc@0.28.20(typescript@5.9.3)))(typedoc@0.28.20(typescript@5.9.3))
       hdrify-cli:
         specifier: workspace:*
         version: link:../cli
       typedoc:
-        specifier: ^0.28.14
+        specifier: ^0.28.20
         version: 0.28.20(typescript@5.9.3)
       typedoc-plugin-markdown:
-        specifier: ^4.9.0
+        specifier: ^4.14.1
         version: 4.14.1(typedoc@0.28.20(typescript@5.9.3))
       typescript:
         specifier: ~5.9.3
@@ -344,14 +347,14 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       fflate:
-        specifier: ^0.8.2
+        specifier: ^0.8.3
         version: 0.8.3
       jpeg-js:
         specifier: ^0.4.4
         version: 0.4.4
     devDependencies:
       '@xmldom/xmldom':
-        specifier: ^0.8.10
+        specifier: ^0.8.15
         version: 0.8.15
       exifreader:
         specifier: ^4.52.0
@@ -370,10 +373,10 @@ importers:
         version: 19.3.1(react@19.3.1)
     devDependencies:
       '@types/react':
-        specifier: ^19.2.0
+        specifier: ^19.3.0
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.2.0
+        specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
 
   packages/hdrify-tests:
@@ -395,28 +398,28 @@ importers:
         version: link:../hdrify
     devDependencies:
       '@types/vscode':
-        specifier: ^1.85.0
+        specifier: ^1.144.0
         version: 1.144.0
       '@vscode/vsce':
-        specifier: ^3.2.0
+        specifier: ^3.9.2
         version: 3.9.2(supports-color@8.1.1)
       esbuild:
         specifier: 0.27.3
         version: 0.27.3
       ovsx:
-        specifier: ^1.2.0
+        specifier: ^1.3.0
         version: 1.3.0(@types/node@24.19.2)(supports-color@8.1.1)
 
   packages/website:
     dependencies:
       '@tailwindcss/vite':
-        specifier: ^4.0.6
+        specifier: ^4.3.3
         version: 4.3.3(vite@8.3.5(@types/node@24.19.2)(esbuild@0.27.3)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       '@tanstack/react-router':
-        specifier: ^1.132.0
+        specifier: ^1.170.46
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@tanstack/zod-adapter':
-        specifier: ^1.159.5
+        specifier: ^1.167.0
         version: 1.167.0(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(zod@4.6.7)
       class-variance-authority:
         specifier: ^0.7.1
@@ -437,56 +440,56 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       radix-ui:
-        specifier: ^1.4.3
+        specifier: ^1.8.1
         version: 1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       react:
-        specifier: ^19.2.0
+        specifier: ^19.3.1
         version: 19.3.1
       react-dom:
-        specifier: ^19.2.0
+        specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
       sonner:
-        specifier: ^2.0.7
+        specifier: ^2.0.8
         version: 2.0.8(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tailwind-merge:
-        specifier: ^3.0.2
+        specifier: ^3.7.0
         version: 3.7.0
       tailwindcss:
-        specifier: ^4.0.6
+        specifier: ^4.3.3
         version: 4.3.3
       tanstack-router-ga4:
-        specifier: ^1.6.0
+        specifier: ^1.6.2
         version: 1.6.2(@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
       tw-animate-css:
-        specifier: ^1.3.6
+        specifier: ^1.4.0
         version: 1.4.0
       zod:
         specifier: ^4.6.6
         version: 4.6.7
     devDependencies:
       '@testing-library/dom':
-        specifier: ^10.4.0
+        specifier: ^10.4.2
         version: 10.4.2
       '@testing-library/react':
-        specifier: ^16.2.0
+        specifier: ^16.3.3
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@types/react':
-        specifier: ^19.2.0
+        specifier: ^19.3.0
         version: 19.3.0
       '@types/react-dom':
-        specifier: ^19.2.0
+        specifier: ^19.3.0
         version: 19.3.0(@types/react@19.3.0)
       '@vitejs/plugin-react':
-        specifier: ^5.0.4
+        specifier: ^5.2.0
         version: 5.2.0(supports-color@8.1.1)(vite@8.3.5(@types/node@24.19.2)(esbuild@0.27.3)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
       jsdom:
-        specifier: ^27.0.0
+        specifier: ^27.4.0
         version: 27.4.0(@noble/hashes@1.8.0)(supports-color@8.1.1)
       vite:
         specifier: ^8.3.5
         version: 8.3.5(@types/node@24.19.2)(esbuild@0.27.3)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1)
       web-vitals:
-        specifier: ^5.1.0
+        specifier: ^5.3.0
         version: 5.3.0
 
 packages:
@@ -2917,6 +2920,36 @@ packages:
   '@oxfmt/binding-win32-x64-msvc@0.75.0':
     resolution: {integrity: sha512-pjiLiCk0QMCWxs0n5XiNU85YLAKA+wJxPjxlDVygmr4bP4glcfTU2nOpso5nR4Rdi2Pxv5YwakD4UE+eh7M0BQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxlint-tsgolint/darwin-arm64@7.0.2005':
+    resolution: {integrity: sha512-VqDZxcZVjlonNLuuvraVNgDQt+1ndwa4yJo8OqsK4HYh/61ba9IlMStCVfi/aaIqRoDhNbAKC8gdcTrXqnb+Ug==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/darwin-x64@7.0.2005':
+    resolution: {integrity: sha512-4kUfLRNYoVpv0Tm3jPYrvxyfOc/LmdvFC3pKZ4tL6K7lA7K/VS81SAtmxRzbYXYSyb3SBWhwsuX+df4neqzxxA==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxlint-tsgolint/linux-arm64@7.0.2005':
+    resolution: {integrity: sha512-rhUNcPsBlKvhXtrbhbBUidtRBRdJ8fbEHN9H5Q5N59gby18ruGuDA7KUxl7oRnUzp797uykYQhkBDm+0KpfK/Q==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@oxlint-tsgolint/linux-x64@7.0.2005':
+    resolution: {integrity: sha512-tKs9yinDQZOHygM0e8EJnjTU3mzJtdfkOZP6Udu82iLMePUSHOhTJ9zzU/mSd1hQxURI4LTRRiFhfzC+PzwdNA==}
+    cpu: [x64]
+    os: [linux]
+
+  '@oxlint-tsgolint/win32-arm64@7.0.2005':
+    resolution: {integrity: sha512-VYPnu1gjfbSv+ROhuyNfMs382D4zQU2ZRc8Uc3nuEZo1k2kf+1KfTrg4hrlWh73h9GI+dUWyo+DYCQzUBlPwcQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@oxlint-tsgolint/win32-x64@7.0.2005':
+    resolution: {integrity: sha512-ekU89cTGy9fpQzuvxIsFHrnoP8XoFjGIRgPEW6eqgY2NYjGy9pwpjF79o04WXRMJFKRrcaVqkZXUUBdLsqpQDw==}
     cpu: [x64]
     os: [win32]
 
@@ -8097,6 +8130,10 @@ packages:
         optional: true
       vite-plus:
         optional: true
+
+  oxlint-tsgolint@7.0.2005:
+    resolution: {integrity: sha512-6ccPGu4u4J9bwYPHXBFPee3RZrX3BboRdU7k14zRDDB1lvN3O7J/vPRFdaEfa1+CWx4xnQQOp4ctoaF66oO0uw==}
+    hasBin: true
 
   oxlint@1.73.0:
     resolution: {integrity: sha512-u91G9TJzU6yqKWNZUYprQB07W7YvntZXaRxQ6CkoytepYhLWUXWsr1M8zUJ34VatNPuUAr3Z8GH+O2A331CluQ==}
@@ -13837,6 +13874,24 @@ snapshots:
   '@oxfmt/binding-win32-x64-msvc@0.75.0':
     optional: true
 
+  '@oxlint-tsgolint/darwin-arm64@7.0.2005':
+    optional: true
+
+  '@oxlint-tsgolint/darwin-x64@7.0.2005':
+    optional: true
+
+  '@oxlint-tsgolint/linux-arm64@7.0.2005':
+    optional: true
+
+  '@oxlint-tsgolint/linux-x64@7.0.2005':
+    optional: true
+
+  '@oxlint-tsgolint/win32-arm64@7.0.2005':
+    optional: true
+
+  '@oxlint-tsgolint/win32-x64@7.0.2005':
+    optional: true
+
   '@oxlint/binding-android-arm-eabi@1.73.0':
     optional: true
 
@@ -15436,7 +15491,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 24.19.2
+      '@types/node': 17.0.45
 
   '@types/send@0.17.6':
     dependencies:
@@ -19450,7 +19505,16 @@ snapshots:
       '@oxfmt/binding-win32-ia32-msvc': 0.75.0
       '@oxfmt/binding-win32-x64-msvc': 0.75.0
 
-  oxlint@1.73.0:
+  oxlint-tsgolint@7.0.2005:
+    optionalDependencies:
+      '@oxlint-tsgolint/darwin-arm64': 7.0.2005
+      '@oxlint-tsgolint/darwin-x64': 7.0.2005
+      '@oxlint-tsgolint/linux-arm64': 7.0.2005
+      '@oxlint-tsgolint/linux-x64': 7.0.2005
+      '@oxlint-tsgolint/win32-arm64': 7.0.2005
+      '@oxlint-tsgolint/win32-x64': 7.0.2005
+
+  oxlint@1.73.0(oxlint-tsgolint@7.0.2005):
     optionalDependencies:
       '@oxlint/binding-android-arm-eabi': 1.73.0
       '@oxlint/binding-android-arm64': 1.73.0
@@ -19471,6 +19535,7 @@ snapshots:
       '@oxlint/binding-win32-arm64-msvc': 1.73.0
       '@oxlint/binding-win32-ia32-msvc': 1.73.0
       '@oxlint/binding-win32-x64-msvc': 1.73.0
+      oxlint-tsgolint: 7.0.2005
 
   p-cancelable@3.0.0: {}
 

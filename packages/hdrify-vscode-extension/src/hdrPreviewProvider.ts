@@ -22,7 +22,7 @@ function getInternalFormat(image: HdrifyImage): string {
   const meta = image.metadata;
   if (!meta) return '—';
   if (meta.compression != null) {
-    return EXR_COMPRESSION_NAMES[meta.compression as number] ?? `unknown (${meta.compression})`;
+    return EXR_COMPRESSION_NAMES[meta.compression as number] ?? `unknown (${JSON.stringify(meta.compression)})`;
   }
   if (meta.format === 'ultrahdr') return 'Ultra HDR (JPEG-R)';
   if (meta.format === 'adobe-gainmap') return 'Adobe gain map';
@@ -193,7 +193,7 @@ function getPreviewHtml(scriptUri: vscode.Uri): string {
     <canvas id="canvas"></canvas>
   </div>
   <div class="error" id="error" style="display:none"></div>
-  <script src="${scriptUri}"></script>
+  <script src="${scriptUri.toString()}"></script>
 </body>
 </html>`;
 }

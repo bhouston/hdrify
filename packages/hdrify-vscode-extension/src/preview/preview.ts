@@ -3,7 +3,7 @@
  * with applyToneMapping. Bundled with esbuild to include hdrify.
  */
 
-import type { ToneMappingType } from 'hdrify';
+import type { LinearColorSpace, ToneMappingType } from 'hdrify';
 import { applyToneMapping } from 'hdrify';
 
 interface PreviewPayload {
@@ -70,11 +70,7 @@ function render(): void {
   const ldrRgb = applyToneMapping(imageData.data, imageData.width, imageData.height, {
     toneMapping,
     exposure,
-    sourceColorSpace: imageData.linearColorSpace as
-      | 'linear-rec709'
-      | 'linear-srgb'
-      | 'linear-display-p3'
-      | 'linear-rec2020',
+    sourceColorSpace: imageData.linearColorSpace as LinearColorSpace,
   });
 
   canvasEl.width = imageData.width;
