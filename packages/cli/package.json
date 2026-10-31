@@ -51,7 +51,7 @@
     "@clidoc/core": "^1.0.0",
     "@clidoc/yargs": "^1.1.0",
     "hdrify": "workspace:*",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.5",
     "yargs": "^18.0.0",
     "yargs-file-commands": "^2.1.0"
   },

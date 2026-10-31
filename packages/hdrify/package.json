@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@xmldom/xmldom": "^0.8.10",
-    "exifreader": "^4.36.0"
+    "exifreader": "^4.52.0"
   },
   "engines": {
     "node": ">=22.0.0"
