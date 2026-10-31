@@ -10,22 +10,22 @@
     "predev": "node scripts/generate-cli.mjs"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.9.2",
-    "@docusaurus/preset-classic": "^3.9.2",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@docusaurus/core": "^3.10.2",
+    "@docusaurus/preset-classic": "^3.10.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
     "@clidoc/docusaurus": "1.1.1",
     "@docusaurus/module-type-aliases": "^3.10.2",
     "@docusaurus/theme-classic": "^3.10.2",
-    "@docusaurus/tsconfig": "^3.9.2",
+    "@docusaurus/tsconfig": "^3.10.2",
     "@docusaurus/types": "^3.10.2",
-    "@types/react": "^19.2.0",
-    "docusaurus-plugin-typedoc": "^1.4.2",
+    "@types/react": "^19.3.0",
+    "docusaurus-plugin-typedoc": "^1.4.3",
     "hdrify-cli": "workspace:*",
-    "typedoc": "^0.28.14",
-    "typedoc-plugin-markdown": "^4.9.0",
+    "typedoc": "^0.28.20",
+    "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "~5.9.3",
     "website": "workspace:*"
   }

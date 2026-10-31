@@ -45,12 +45,12 @@
   },
   "dependencies": {
     "buffer": "^6.0.3",
-    "fflate": "^0.8.2",
+    "fflate": "^0.8.3",
     "jpeg-js": "^0.4.4"
   },
   "devDependencies": {
-    "@xmldom/xmldom": "^0.8.10",
-    "exifreader": "^4.36.0"
+    "@xmldom/xmldom": "^0.8.15",
+    "exifreader": "^4.52.0"
   },
   "engines": {
     "node": ">=22.0.0"
