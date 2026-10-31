@@ -398,7 +398,7 @@ importers:
         version: link:../hdrify
     devDependencies:
       '@types/vscode':
-        specifier: ^1.144.0
+        specifier: ^1.85.0
         version: 1.144.0
       '@vscode/vsce':
         specifier: ^3.9.2
