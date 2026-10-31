@@ -4,6 +4,7 @@ const isProfiling = Boolean(process.env.PROFILE);
 
 export default defineConfig({
   test: {
+    fsModuleCache: true,
     include: [
       'packages/hdrify/src/**/*.test.ts',
       'packages/hdrify-tests/src/**/*.test.ts',
