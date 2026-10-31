@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { zodValidator } from '@tanstack/zod-adapter';
 import type { HdrifyImage } from 'hdrify';
 import {
   addRangeMetadata,
@@ -32,7 +31,7 @@ export type IndexSearch = z.infer<typeof indexSearchSchema>;
 
 export const Route = createFileRoute('/')({
   component: Index,
-  validateSearch: zodValidator(indexSearchSchema),
+  validateSearch: indexSearchSchema,
 });
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [

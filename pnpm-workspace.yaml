@@ -4,7 +4,6 @@ packages:
 overrides:
   serialize-javascript: ^7.0.3
   tinypool: ^2.1.2
-  zod@<4: ^4.6.6
   esbuild: 0.27.3
   conventional-changelog-conventionalcommits: 9.3.1
 
