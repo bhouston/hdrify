@@ -53,7 +53,7 @@ function stringifyYamlValue(value: unknown, indent: number): string {
   if (typeof value === 'object') {
     return stringifyYaml(value as Record<string, unknown>, indent);
   }
-  return String(value);
+  return JSON.stringify(value);
 }
 
 function stringifyYaml(obj: Record<string, unknown>, indent: number): string {

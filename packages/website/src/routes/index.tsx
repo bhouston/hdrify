@@ -454,7 +454,7 @@ function Index() {
                     <dt className="text-foreground">Compression</dt>
                     <dd>
                       {EXR_COMPRESSION_NAMES[hdrifyImage.metadata.compression as number] ??
-                        `unknown (${hdrifyImage.metadata.compression})`}
+                        `unknown (${JSON.stringify(hdrifyImage.metadata.compression)})`}
                     </dd>
                   </div>
                 )}

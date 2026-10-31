@@ -1,3 +1,4 @@
+/// <reference lib="es2023" />
 /**
  * In-memory encode → decode round-trip tests (no JPEG).
  *

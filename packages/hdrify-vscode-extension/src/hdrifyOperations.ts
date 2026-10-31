@@ -81,7 +81,7 @@ export async function convertToFormat(
       const bytes = writeJpegGainMap(encoding, { quality });
       await vscode.workspace.fs.writeFile(vscode.Uri.file(outputPath), bytes);
     } else {
-      throw new Error(`Unsupported target format: ${targetFormat}`);
+      throw new Error(`Unsupported target format: ${String(targetFormat)}`);
     }
 
     if (!leaveOriginal && inputPath !== outputPath) {

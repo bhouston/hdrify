@@ -15,8 +15,8 @@ export interface FlipImageOptions {
  */
 export function flipImage(image: HdrifyImage, options: FlipImageOptions = {}): HdrifyImage {
   const { x = 1, y = 1 } = options;
-  if (x !== 1 && x !== -1) throw new Error(`flipImage: x must be 1 or -1, got ${x}`);
-  if (y !== 1 && y !== -1) throw new Error(`flipImage: y must be 1 or -1, got ${y}`);
+  if (x !== 1 && x !== -1) throw new Error(`flipImage: x must be 1 or -1, got ${String(x)}`);
+  if (y !== 1 && y !== -1) throw new Error(`flipImage: y must be 1 or -1, got ${String(y)}`);
 
   const { width, height, data } = image;
   const out = new Float32Array(data.length);
