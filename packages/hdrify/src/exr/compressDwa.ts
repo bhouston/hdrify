@@ -240,7 +240,7 @@ export function compressDwaBlock(
 
   // DC stream: zip-predictor compressed, same pipeline as ZIP channel data.
   const totalDcCount = dcValues.length;
-  let dcBuf: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let dcBuf: Uint8Array = new Uint8Array(0);
   if (totalDcCount > 0) {
     const dcInterleaved = new Uint8Array(totalDcCount * 2);
     const dcDv = new DataView(dcInterleaved.buffer);
@@ -252,10 +252,10 @@ export function compressDwaBlock(
   }
 
   // RLE stream: OpenEXR RLE, then zlib (no predictor - matches decompressDwa's RLE path).
-  let rleUncompressed: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let rleUncompressed: Uint8Array = new Uint8Array(0);
   let rleRawSize = 0;
   for (const part of rleParts) rleRawSize += part.length;
-  let rleBuf: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let rleBuf: Uint8Array = new Uint8Array(0);
   if (rleRawSize > 0) {
     const rleRaw = new Uint8Array(rleRawSize);
     let off = 0;
@@ -270,7 +270,7 @@ export function compressDwaBlock(
   // Unknown stream: raw bytes, zlib compressed (matches decompressDwa's unknown path).
   let unknownUncompressedSize = 0;
   for (const part of unknownParts) unknownUncompressedSize += part.length;
-  let unknownBuf: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+  let unknownBuf: Uint8Array = new Uint8Array(0);
   if (unknownUncompressedSize > 0) {
     const unknownRaw = new Uint8Array(unknownUncompressedSize);
     let off = 0;

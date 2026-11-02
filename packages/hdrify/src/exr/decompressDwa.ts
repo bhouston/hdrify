@@ -65,22 +65,22 @@ function idct8x8(data: Float64Array): void {
 
     theta[0] = IDCT_A * (data[o]! + data[o + 4]!);
     theta[3] = IDCT_A * (data[o]! - data[o + 4]!);
-    theta[1] = alpha[0]! + alpha[3]!;
-    theta[2] = alpha[1]! - alpha[2]!;
+    theta[1] = alpha[0] + alpha[3];
+    theta[2] = alpha[1] - alpha[2];
 
-    gamma[0] = theta[0]! + theta[1]!;
-    gamma[1] = theta[3]! + theta[2]!;
-    gamma[2] = theta[3]! - theta[2]!;
-    gamma[3] = theta[0]! - theta[1]!;
+    gamma[0] = theta[0] + theta[1];
+    gamma[1] = theta[3] + theta[2];
+    gamma[2] = theta[3] - theta[2];
+    gamma[3] = theta[0] - theta[1];
 
-    data[o] = gamma[0]! + beta[0]!;
-    data[o + 1] = gamma[1]! + beta[1]!;
-    data[o + 2] = gamma[2]! + beta[2]!;
-    data[o + 3] = gamma[3]! + beta[3]!;
-    data[o + 4] = gamma[3]! - beta[3]!;
-    data[o + 5] = gamma[2]! - beta[2]!;
-    data[o + 6] = gamma[1]! - beta[1]!;
-    data[o + 7] = gamma[0]! - beta[0]!;
+    data[o] = gamma[0] + beta[0];
+    data[o + 1] = gamma[1] + beta[1];
+    data[o + 2] = gamma[2] + beta[2];
+    data[o + 3] = gamma[3] + beta[3];
+    data[o + 4] = gamma[3] - beta[3];
+    data[o + 5] = gamma[2] - beta[2];
+    data[o + 6] = gamma[1] - beta[1];
+    data[o + 7] = gamma[0] - beta[0];
   }
 
   for (let col = 0; col < 8; col++) {
@@ -96,22 +96,22 @@ function idct8x8(data: Float64Array): void {
 
     theta[0] = IDCT_A * (data[col]! + data[32 + col]!);
     theta[3] = IDCT_A * (data[col]! - data[32 + col]!);
-    theta[1] = alpha[0]! + alpha[3]!;
-    theta[2] = alpha[1]! - alpha[2]!;
+    theta[1] = alpha[0] + alpha[3];
+    theta[2] = alpha[1] - alpha[2];
 
-    gamma[0] = theta[0]! + theta[1]!;
-    gamma[1] = theta[3]! + theta[2]!;
-    gamma[2] = theta[3]! - theta[2]!;
-    gamma[3] = theta[0]! - theta[1]!;
+    gamma[0] = theta[0] + theta[1];
+    gamma[1] = theta[3] + theta[2];
+    gamma[2] = theta[3] - theta[2];
+    gamma[3] = theta[0] - theta[1];
 
-    data[col] = gamma[0]! + beta[0]!;
-    data[8 + col] = gamma[1]! + beta[1]!;
-    data[16 + col] = gamma[2]! + beta[2]!;
-    data[24 + col] = gamma[3]! + beta[3]!;
-    data[32 + col] = gamma[3]! - beta[3]!;
-    data[40 + col] = gamma[2]! - beta[2]!;
-    data[48 + col] = gamma[1]! - beta[1]!;
-    data[56 + col] = gamma[0]! - beta[0]!;
+    data[col] = gamma[0] + beta[0];
+    data[8 + col] = gamma[1] + beta[1];
+    data[16 + col] = gamma[2] + beta[2];
+    data[24 + col] = gamma[3] + beta[3];
+    data[32 + col] = gamma[3] - beta[3];
+    data[40 + col] = gamma[2] - beta[2];
+    data[48 + col] = gamma[1] - beta[1];
+    data[56 + col] = gamma[0] - beta[0];
   }
 }
 

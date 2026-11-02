@@ -6,7 +6,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { CompareImagesResult, HdrifyImage, MismatchSample } from 'hdrify';
+import type { CompareImagesResult, HdrifyImage } from 'hdrify';
 import { compareImages, readExr } from 'hdrify';
 import { describe, expect, it } from 'vitest';
 
@@ -57,7 +57,7 @@ function formatDiagnostics(result: CompareImagesResult, reference: HdrifyImage, 
 
   if (result.mismatchSamples && result.mismatchSamples.length > 0) {
     lines.push('', 'First mismatched pixels (by position):');
-    for (const s of result.mismatchSamples as MismatchSample[]) {
+    for (const s of result.mismatchSamples) {
       lines.push(
         `  [${s.pixelIndex}] (${s.x},${s.y}) expected RGBA=[${s.expected.map((v) => v.toFixed(4)).join(', ')}] actual=[${s.actual.map((v) => v.toFixed(4)).join(', ')}]`,
       );

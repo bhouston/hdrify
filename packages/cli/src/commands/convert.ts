@@ -170,7 +170,7 @@ export const command = defineCommand({
 
       if (size !== undefined) {
         const { width, height } = parseSize(size);
-        imageData = resizeImage(imageData, { width, height, filter: filter as (typeof RESIZE_FILTERS)[number] });
+        imageData = resizeImage(imageData, { width, height, filter: filter });
         console.log(`Resized to: ${imageData.width}x${imageData.height} (${filter})`);
       }
 

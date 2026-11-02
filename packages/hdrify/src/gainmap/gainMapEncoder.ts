@@ -147,7 +147,7 @@ export function encodeGainMap(image: HdrifyImage, options: GainMapEncodingOption
 
     // Use the quantized SDR values (what the decoder will see) when computing the gain map,
     // so the stored ratio best recovers HDR from the actual 8-bit SDR.
-    const sdrLinQuantizedR = sRGBToLinear(sdr[idx]! / 255) + offsetSdr[0];
+    const sdrLinQuantizedR = sRGBToLinear(sdr[idx] / 255) + offsetSdr[0];
     const sdrLinQuantizedG = sRGBToLinear(sdr[idx + 1]! / 255) + offsetSdr[1];
     const sdrLinQuantizedB = sRGBToLinear(sdr[idx + 2]! / 255) + offsetSdr[2];
     const hdrR = r + offsetHdr[0];

@@ -96,7 +96,7 @@ export function convertLinearToDisplay(
     ...image,
     data: out,
     displayColorSpace: to,
-  } as HdrifyImage & { displayColorSpace: DisplayColorSpace };
+  };
 }
 
 /**

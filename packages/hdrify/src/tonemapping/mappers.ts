@@ -163,9 +163,9 @@ function agxBatch(input: Float32Array, output: Float32Array, pixelCount: number)
     agxVecIn[2] = input[si + 2]!;
 
     applyMatrix3(LINEAR_REC709_TO_REC2020, agxVecIn, agxVecOut);
-    let r = agxVecOut[0]!;
-    let g = agxVecOut[1]!;
-    let b = agxVecOut[2]!;
+    let r = agxVecOut[0];
+    let g = agxVecOut[1];
+    let b = agxVecOut[2];
 
     applyMatrix3(AgXInsetMatrix, agxVecOut, agxVecIn);
     r = agxVecIn[0]!;

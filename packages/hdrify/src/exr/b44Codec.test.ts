@@ -29,7 +29,7 @@ describe('b44Codec', () => {
     const { wcount, decoded } = packAndUnpack(values, false);
     expect(wcount).toBe(14);
     for (let i = 0; i < 16; i++) {
-      expect(decoded[i]).toBeCloseTo(values[i]!, 1);
+      expect(decoded[i]).toBeCloseTo(values[i], 1);
     }
   });
 
@@ -54,7 +54,7 @@ describe('b44Codec', () => {
     ];
     const { decoded } = packAndUnpack(values, false);
     for (let i = 0; i < 16; i++) {
-      expect(decoded[i]).toBeCloseTo(values[i]!, 1);
+      expect(decoded[i]).toBeCloseTo(values[i], 1);
     }
   });
 
@@ -65,7 +65,7 @@ describe('b44Codec', () => {
     const values = [0, -0, 1, -1, 0.9, -0.9, 0.5, -0.5, 0.75, -0.75, 0.2, -0.2, 0.6, -0.6, 0.25, -0.25];
     const { decoded } = packAndUnpack(values, false);
     for (let i = 0; i < 16; i++) {
-      expect(Math.abs(decoded[i]! - values[i]!)).toBeLessThan(0.3);
+      expect(Math.abs(decoded[i] - values[i])).toBeLessThan(0.3);
     }
   });
 
@@ -92,6 +92,6 @@ describe('b44Codec', () => {
     unpackB44Block14(bytes, s);
     // First sample corresponds to pixel (0,0)'s B channel; verified against
     // OpenImageIO's decode of assets/example_b44.exr (B = 0.481445).
-    expect(decodeFloat16(s[0]!)).toBeCloseTo(0.481445, 5);
+    expect(decodeFloat16(s[0])).toBeCloseTo(0.481445, 5);
   });
 });

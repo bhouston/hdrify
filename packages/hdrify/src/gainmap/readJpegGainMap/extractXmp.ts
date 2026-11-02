@@ -22,7 +22,7 @@ function getXmlValue(xml: string, tag: string, defaultValue?: string): string | 
     if (liMatches && liMatches.length === 3) {
       return liMatches.map((v) => v.replace(/<\/?rdf:li[^>]*>/gi, '').trim()) as [string, string, string];
     }
-    return (inner?.trim() ?? '') as string;
+    return inner?.trim() ?? '';
   }
 
   if (defaultValue !== undefined) return defaultValue;
@@ -57,7 +57,7 @@ export function extractGainMapXmp(buffer: Uint8Array): GainMapMetadata {
     const xmpBlock = str.slice(start, end + 10);
 
     try {
-      const version = getXmlValue(xmpBlock, 'hdrgm:Version', undefined as unknown as string);
+      const version = getXmlValue(xmpBlock, 'hdrgm:Version', undefined);
       if (version === undefined || version === '') {
         start = str.indexOf('<x:xmpmeta', end);
         continue;

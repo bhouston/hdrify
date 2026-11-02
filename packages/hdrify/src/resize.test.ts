@@ -17,7 +17,7 @@ describe('resizeImage', () => {
     const img = createGradientImage({ width: 4, height: 1, mode: 'horizontal', min: 0, max: 3 });
     const resized = resizeImage(img, { width: 8, height: 1, filter: 'nearest' });
     const values = new Set<number>();
-    for (let x = 0; x < 8; x++) values.add(Math.round(resized.data[x * 4]!));
+    for (let x = 0; x < 8; x++) values.add(Math.round(resized.data[x * 4]));
     for (const v of values) expect([0, 1, 2, 3]).toContain(v);
   });
 

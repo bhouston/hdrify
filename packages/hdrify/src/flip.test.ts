@@ -10,7 +10,7 @@ function makeIndexedImage(): HdrifyImage {
 }
 
 const rValues = (image: HdrifyImage): number[] =>
-  Array.from({ length: image.width * image.height }, (_, i) => image.data[i * 4]!);
+  Array.from({ length: image.width * image.height }, (_, i) => image.data[i * 4]);
 
 describe('flipImage', () => {
   it('defaults to a no-op copy (new buffer, same values)', () => {

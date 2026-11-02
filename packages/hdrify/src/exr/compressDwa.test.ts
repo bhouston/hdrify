@@ -34,7 +34,7 @@ function buildRaw(
   let offset = 0;
   for (let y = 0; y < height; y++) {
     for (let c = 0; c < channels.length; c++) {
-      const isFloat = channels[c]!.pixelType === FLOAT;
+      const isFloat = channels[c].pixelType === FLOAT;
       for (let x = 0; x < width; x++) {
         const v = valueFn(x, y, c);
         if (isFloat) {
@@ -64,7 +64,7 @@ function maxAbsError(
   let maxErr = 0;
   for (let y = 0; y < height; y++) {
     for (let c = 0; c < channels.length; c++) {
-      const isFloat = channels[c]!.pixelType === FLOAT;
+      const isFloat = channels[c].pixelType === FLOAT;
       for (let x = 0; x < width; x++) {
         const va = isFloat ? dvA.getFloat32(offset, true) : decodeFloat16(dvA.getUint16(offset, true));
         const vb = isFloat ? dvB.getFloat32(offset, true) : decodeFloat16(dvB.getUint16(offset, true));
@@ -166,13 +166,13 @@ describe('compressDwaBlock + decompressDwa (RLE path)', () => {
   });
 
   it('round-trips a single alpha-only channel exactly, including long runs', () => {
-    const channels: ExrChannel[] = [RGBA_HALF[3]!];
+    const channels: ExrChannel[] = [RGBA_HALF[3]];
     const { raw, decompressed } = roundTrip(20, 20, channels, () => 0.75); // constant -> long RLE runs
     expect(decompressed).toEqual(raw);
   });
 
   it('round-trips a UINT alpha channel exactly', () => {
-    const channels: ExrChannel[] = [{ ...RGBA_HALF[3]!, pixelType: 0 /* UINT */ }];
+    const channels: ExrChannel[] = [{ ...RGBA_HALF[3], pixelType: 0 /* UINT */ }];
     const width = 8;
     const height = 8;
     const raw = new Uint8Array(width * height * 4);
@@ -222,7 +222,7 @@ describe('compressDwaBlock + decompressDwa (single-channel DCT path, non-CSC)', 
   });
 
   it('does not CSC-group an R channel with no matching G/B', () => {
-    const channels: ExrChannel[] = [RGBA_HALF[0]!];
+    const channels: ExrChannel[] = [RGBA_HALF[0]];
     const { raw, decompressed } = roundTrip(
       16,
       16,
