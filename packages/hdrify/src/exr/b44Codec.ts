@@ -118,18 +118,18 @@ export function packB44Block(s: Uint16Array, out: Uint8Array, flatFields: boolea
 
   out[0] = t[0]! >> 8;
   out[1] = t[0]! & 0xff;
-  out[2] = (shift << 2) | (r[0]! >> 4);
-  out[3] = (r[0]! << 4) | (r[1]! >> 2);
-  out[4] = (r[1]! << 6) | r[2]!;
-  out[5] = (r[3]! << 2) | (r[4]! >> 4);
-  out[6] = (r[4]! << 4) | (r[5]! >> 2);
-  out[7] = (r[5]! << 6) | r[6]!;
-  out[8] = (r[7]! << 2) | (r[8]! >> 4);
-  out[9] = (r[8]! << 4) | (r[9]! >> 2);
-  out[10] = (r[9]! << 6) | r[10]!;
-  out[11] = (r[11]! << 2) | (r[12]! >> 4);
-  out[12] = (r[12]! << 4) | (r[13]! >> 2);
-  out[13] = (r[13]! << 6) | r[14]!;
+  out[2] = (shift << 2) | (r[0] >> 4);
+  out[3] = (r[0] << 4) | (r[1] >> 2);
+  out[4] = (r[1] << 6) | r[2];
+  out[5] = (r[3] << 2) | (r[4] >> 4);
+  out[6] = (r[4] << 4) | (r[5] >> 2);
+  out[7] = (r[5] << 6) | r[6];
+  out[8] = (r[7] << 2) | (r[8] >> 4);
+  out[9] = (r[8] << 4) | (r[9] >> 2);
+  out[10] = (r[9] << 6) | r[10];
+  out[11] = (r[11] << 2) | (r[12] >> 4);
+  out[12] = (r[12] << 4) | (r[13] >> 2);
+  out[13] = (r[13] << 6) | r[14];
   for (let i = 0; i < 14; i++) out[i] = out[i]! & 0xff;
 
   return 14;
@@ -149,24 +149,24 @@ export function unpackB44Block14(b: Uint8Array, s: Uint16Array): void {
   const shift = b[2]! >> 2;
   const bias = (0x20 << shift) & 0xffff;
 
-  s[4] = (s[0]! + ((((b[2]! << 4) | (b[3]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
-  s[8] = (s[4]! + ((((b[3]! << 2) | (b[4]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
-  s[12] = (s[8]! + ((b[4]! & 0x3f) << shift) - bias) & 0xffff;
+  s[4] = (s[0] + ((((b[2]! << 4) | (b[3]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
+  s[8] = (s[4] + ((((b[3]! << 2) | (b[4]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
+  s[12] = (s[8] + ((b[4]! & 0x3f) << shift) - bias) & 0xffff;
 
-  s[1] = (s[0]! + ((b[5]! >> 2) << shift) - bias) & 0xffff;
-  s[5] = (s[4]! + ((((b[5]! << 4) | (b[6]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
-  s[9] = (s[8]! + ((((b[6]! << 2) | (b[7]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
-  s[13] = (s[12]! + ((b[7]! & 0x3f) << shift) - bias) & 0xffff;
+  s[1] = (s[0] + ((b[5]! >> 2) << shift) - bias) & 0xffff;
+  s[5] = (s[4] + ((((b[5]! << 4) | (b[6]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
+  s[9] = (s[8] + ((((b[6]! << 2) | (b[7]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
+  s[13] = (s[12] + ((b[7]! & 0x3f) << shift) - bias) & 0xffff;
 
-  s[2] = (s[1]! + ((b[8]! >> 2) << shift) - bias) & 0xffff;
-  s[6] = (s[5]! + ((((b[8]! << 4) | (b[9]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
-  s[10] = (s[9]! + ((((b[9]! << 2) | (b[10]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
-  s[14] = (s[13]! + ((b[10]! & 0x3f) << shift) - bias) & 0xffff;
+  s[2] = (s[1] + ((b[8]! >> 2) << shift) - bias) & 0xffff;
+  s[6] = (s[5] + ((((b[8]! << 4) | (b[9]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
+  s[10] = (s[9] + ((((b[9]! << 2) | (b[10]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
+  s[14] = (s[13] + ((b[10]! & 0x3f) << shift) - bias) & 0xffff;
 
-  s[3] = (s[2]! + ((b[11]! >> 2) << shift) - bias) & 0xffff;
-  s[7] = (s[6]! + ((((b[11]! << 4) | (b[12]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
-  s[11] = (s[10]! + ((((b[12]! << 2) | (b[13]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
-  s[15] = (s[14]! + ((b[13]! & 0x3f) << shift) - bias) & 0xffff;
+  s[3] = (s[2] + ((b[11]! >> 2) << shift) - bias) & 0xffff;
+  s[7] = (s[6] + ((((b[11]! << 4) | (b[12]! >> 4)) & 0x3f) << shift) - bias) & 0xffff;
+  s[11] = (s[10] + ((((b[12]! << 2) | (b[13]! >> 6)) & 0x3f) << shift) - bias) & 0xffff;
+  s[15] = (s[14] + ((b[13]! & 0x3f) << shift) - bias) & 0xffff;
 
   unmap(s);
 }

@@ -47,7 +47,7 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
 
   if (sdrDecoded.width !== gainDecoded.width || sdrDecoded.height !== gainDecoded.height) {
     gainData = new Uint8ClampedArray(
-      scaleToSize(gainDecoded.data as Uint8Array, gainDecoded.width, gainDecoded.height, width, height),
+      scaleToSize(gainDecoded.data, gainDecoded.width, gainDecoded.height, width, height),
     );
   }
 

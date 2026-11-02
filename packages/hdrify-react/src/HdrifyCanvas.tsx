@@ -22,9 +22,10 @@ export function HdrifyCanvas({
 
   const setRef = useCallback(
     (el: HTMLCanvasElement | null) => {
-      (canvasRef as React.MutableRefObject<HTMLCanvasElement | null>).current = el;
+      canvasRef.current = el;
       if (forwardedRef) {
-        (forwardedRef as React.MutableRefObject<HTMLCanvasElement | null>).current = el;
+        // oxlint-disable-next-line react/immutability -- forwarding the element into the parent-owned ref
+        forwardedRef.current = el;
       }
     },
     [forwardedRef],

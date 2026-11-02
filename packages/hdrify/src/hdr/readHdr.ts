@@ -348,10 +348,10 @@ function decodeOldRLE(buffer: Uint8Array, w: number, h: number): Uint8Array {
         output[outIdx++] = prev[3]!;
       }
     } else {
-      const rn = (r & 0xff) as number;
-      const gn = (g & 0xff) as number;
-      const bn = (b & 0xff) as number;
-      const en = (e & 0xff) as number;
+      const rn = r & 0xff;
+      const gn = g & 0xff;
+      const bn = b & 0xff;
+      const en = e & 0xff;
       prev[0] = rn;
       prev[1] = gn;
       prev[2] = bn;

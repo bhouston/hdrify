@@ -340,7 +340,7 @@ describe('exrWriter', () => {
       expect(parsedData.width).toBe(width);
       expect(parsedData.height).toBe(height);
       for (let i = 0; i < originalData.data.length; i++) {
-        expect(parsedData.data[i]).toBeCloseTo(originalData.data[i]!, 2);
+        expect(parsedData.data[i]).toBeCloseTo(originalData.data[i], 2);
       }
     });
 

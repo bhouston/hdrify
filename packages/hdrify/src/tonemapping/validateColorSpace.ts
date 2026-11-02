@@ -54,7 +54,7 @@ export function validateToneMappingColorSpaceFromMetadata(
     return;
   }
 
-  const ch = chromaticities as Chromaticities;
+  const ch = chromaticities;
   if (
     typeof ch.redX !== 'number' ||
     typeof ch.redY !== 'number' ||

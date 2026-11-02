@@ -150,7 +150,7 @@ function Index() {
         setSourceFileName(file.name);
         setSelectedExampleUrl('');
         trackImageLoad(source, file.name, ext);
-        void navigate({ to: '.', search: {} as IndexSearch });
+        void navigate({ to: '.', search: {} });
       } catch (error) {
         console.error('Error parsing file:', error);
         toast.error(`Error parsing file: ${error instanceof Error ? error.message : String(error)}`);
@@ -198,6 +198,7 @@ function Index() {
   // Load image from URL when ?image= is present (shared link or example selection)
   useEffect(() => {
     if (!imageParam) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- loadFromUrl syncs the ?image= URL param into local state
     void loadFromUrl(imageParam);
   }, [imageParam, loadFromUrl]);
 
@@ -332,7 +333,7 @@ function Index() {
         <span className="text-xs font-medium text-muted-foreground">Examples</span>
         <Select
           disabled={loadingExample}
-          onValueChange={(value) => void navigate({ to: '/', search: { image: value } as IndexSearch })}
+          onValueChange={(value) => void navigate({ to: '/', search: { image: value } })}
           value={selectedExampleUrl}
         >
           <SelectTrigger className="w-[280px]" size="sm">
