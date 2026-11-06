@@ -1,6 +1,6 @@
 # HDRify live demo
 
-The existing viewer/converter is retained as a static Vite and React app, published with the Docusaurus site at https://bhouston.github.io/hdrify/demo/.
+The existing viewer/converter is retained as a static Vite and React app, published with the Docusaurus site at https://hdrify.ben3d.ca/demo/.
 
 It supports drag-and-drop and file selection, sample images, exposure/tone mapping controls, metadata, and EXR/HDR/Ultra HDR/WebP downloads. Files are processed locally using hdrify and hdrify-react. The canvas uses the 2D API.
 

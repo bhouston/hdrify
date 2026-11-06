@@ -1,0 +1,16 @@
+{
+  "name": "HDRify",
+  "short_name": "HDRify",
+  "description": "Read, transform, and write OpenEXR, Radiance HDR, and JPEG gain maps in JavaScript. Typed APIs for browsers, Node.js, React, and the command line.",
+  "start_url": ".",
+  "display": "browser",
+  "background_color": "#101c20",
+  "theme_color": "#101c20",
+  "icons": [
+    {
+      "src": "img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
