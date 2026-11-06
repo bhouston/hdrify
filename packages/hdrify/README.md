@@ -1,18 +1,36 @@
+<p align="center">
+  <a href="https://hdrify.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="hdrify logo" src="https://raw.githubusercontent.com/bhouston/hdrify/main/packages/website/public/logo512.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://npmjs.com/package/hdrify"><img src="https://img.shields.io/npm/v/hdrify.svg" alt="npm package"></a>
+  <a href="https://www.npmtrends.com/hdrify"><img src="https://img.shields.io/npm/dw/hdrify.svg" alt="npm downloads"></a>
+  <a href="https://codecov.io/gh/bhouston/hdrify"><img src="https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg" alt="coverage"></a>
+  <a href="https://discord.gg/5J5Ur3F6Z2"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://hdrify.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # hdrify
 
-<img src="https://hdrify.ben3d.ca/img/hdrify.png" alt="HDRify logo" width="192" height="192">
+> Read and write EXR, HDR, and Ultra HDR images in pure JavaScript.
 
-[![NPM Package][npm]][npm-url]
-[![NPM Downloads][npm-downloads]][npmtrends-url]
-[![Tests][tests-badge]][tests-url]
-[![Coverage][coverage-badge]][coverage-url]
-[![Discord][discord-badge]][discord-url]
+- 📦 Pure JavaScript, No Native Bindings
+- 🌐 Node.js, Browsers, and Web Workers
+- 🗜️ All Major EXR Compressions
+- 📸 Adobe and Ultra HDR Gain Maps
+- 🎨 Four Built-in Tone Mappers
+- 🔷 Full TypeScript Support
 
 Universal EXR, HDR, and gain map image library for Node.js and browsers. Read and write HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) in pure JavaScript. No native bindings.
 
 **Related packages:** [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
 
-## Features
+[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
+
+## Capabilities
 
 - Read and write RGB EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
@@ -107,21 +125,14 @@ const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
 const flipped = flipImage(image, { y: -1 }); // x/y: 1 (default, unchanged) or -1 (mirror that axis)
 ```
 
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/hdrify/blob/main/CONTRIBUTING.md).
+
 ## License
 
 MIT
 
 ## Author
 
-[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
-
-[npm]: https://img.shields.io/npm/v/hdrify
-[npm-url]: https://www.npmjs.com/package/hdrify
-[npm-downloads]: https://img.shields.io/npm/dw/hdrify
-[npmtrends-url]: https://www.npmtrends.com/hdrify
-[tests-badge]: https://github.com/bhouston/hdrify/workflows/Tests/badge.svg
-[tests-url]: https://github.com/bhouston/hdrify/actions/workflows/test.yml
-[coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
-[coverage-url]: https://codecov.io/gh/bhouston/hdrify
-[discord-badge]: https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white
-[discord-url]: https://discord.gg/5J5Ur3F6Z2
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
