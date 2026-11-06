@@ -189,7 +189,7 @@ Open http://localhost:3000/hdrify/demo/ and drag-and-drop EXR or HDR files.
 
 ## Development
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting a change. Release setup and npm trusted publishing are documented in [RELEASING.md](RELEASING.md).
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting a change.
 
 ```bash
 pnpm install
@@ -216,6 +216,10 @@ This project would not have been possible without these two projects which were 
 - [Three.js](https://github.com/mrdoob/three.js) - tone mapping, UltraHDR loader, EXR loader, example images.
 - [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - Ultra HDR loading, saving, XMP metadata structure and JPEG-R assembly (reference implementation).
 - [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) - EXR encoding/decoding for all the various compression formats, example images.
+
+## Releases
+
+See [RELEASING.md](RELEASING.md) for how releases are published and [GitHub Releases](https://github.com/bhouston/hdrify/releases) for changes.
 
 ## Contribution
 
