@@ -7,6 +7,7 @@ export default defineConfig({
     fsModuleCache: true,
     include: [
       'packages/hdrify/src/**/*.test.ts',
+      'packages/docs/*.test.mjs',
       'packages/hdrify-tests/src/**/*.test.ts',
       'packages/cli-tests/src/**/*.test.ts',
       'packages/hdrify-vscode-extension/src/**/*.test.ts',

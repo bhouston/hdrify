@@ -1,4 +1,5 @@
 import type { Config } from '@docusaurus/types';
+import { legacyRedirectTarget } from './legacyRedirect.mjs';
 const url = process.env.SITE_URL ?? 'https://hdrify.ben3d.ca';
 const baseUrl = process.env.BASE_URL ?? '/';
 const githubIcon =
@@ -17,6 +18,11 @@ const config: Config = {
   url,
   baseUrl,
   headTags: [
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: `var target = (${legacyRedirectTarget.toString()})(location.href, ${JSON.stringify(baseUrl)}); if (target) location.replace(target);`,
+    },
     link({ rel: 'icon', type: 'image/png', sizes: '32x32', href: `${baseUrl}img/favicon-32x32.png` }),
     link({ rel: 'apple-touch-icon', sizes: '180x180', href: `${baseUrl}img/apple-touch-icon.png` }),
     link({ rel: 'manifest', href: `${baseUrl}site.webmanifest` }),
