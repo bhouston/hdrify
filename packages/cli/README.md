@@ -1,6 +1,6 @@
 # hdrify-cli
 
-<img src="https://hdrify.ben3d.ca/logo192.png" alt="HDRify logo" width="192" height="192">
+<img src="https://hdrify.ben3d.ca/img/hdrify.png" alt="HDRify logo" width="192" height="192">
 
 [![NPM Package][npm]][npm-url]
 [![NPM Downloads][npm-downloads]][npmtrends-url]

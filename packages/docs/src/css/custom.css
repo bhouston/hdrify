@@ -29,3 +29,8 @@
 .footer {
   background: #142a32;
 }
+
+.footer__copyright a {
+  color: var(--ifm-footer-link-color);
+  text-decoration: underline;
+}
