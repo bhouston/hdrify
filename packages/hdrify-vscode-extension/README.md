@@ -1,17 +1,46 @@
+<p align="center">
+  <a href="https://hdrify.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="HDRify VS Code Extension logo" src="https://raw.githubusercontent.com/bhouston/hdrify/main/packages/website/public/logo512.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension"><img src="https://img.shields.io/open-vsx/v/benhouston3d/hdrify-vscode-extension.svg" alt="open vsx version"></a>
+  <a href="https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension"><img src="https://img.shields.io/open-vsx/dt/benhouston3d/hdrify-vscode-extension.svg" alt="open vsx downloads"></a>
+  <a href="https://codecov.io/gh/bhouston/hdrify"><img src="https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg" alt="coverage"></a>
+  <a href="https://discord.gg/5J5Ur3F6Z2"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://hdrify.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # HDRify VS Code Extension
 
-![HDR Image Preview](/packages/hdrify-vscode-extension/images/icon.png)
+> Preview and convert EXR, HDR, and Ultra HDR images in VS Code.
+
+- 👁️ Built-in HDR Image Preview
+- 🎚️ Exposure and Tone Mapper Controls
+- 🔄 Convert to EXR, HDR, Ultra HDR
+- 📂 Batch Convert Multiple Files
+- 📦 No External Tools Required
+- 🧩 Works in VS Code and Cursor
 
 A VS Code and Cursor extension that adds HDR image conversion and preview for EXR, HDR, and UltraHDR Jpeg files using the [hdrify](https://www.npmjs.com/package/hdrify) library. No external dependencies (OpenImageIO, OpenEXR, etc) required.
 
-[Join the Discord](https://discord.gg/5J5Ur3F6Z2)
+[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
+
+## Installation
+
+- **VS Code**: Install from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension).
+- **Cursor**: Install from [Open VSX](https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension).
+
+To install from a VSIX, run `pnpm run package` in `packages/hdrify-vscode-extension`, then use **Extensions: Install from VSIX...** and select the generated `.vsix` file.
 
 ## HDR Image Preview
 
 - **EXR and HDR**: Click any `.exr` or `.hdr` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
 - **JPEG**: For UltraHDR Jpeg files, right-click and choose **Open with HDR Image Preview**. Standard JPEGs open with the built-in viewer by default; use "Reopen Editor With → HDR Image Preview" to try opening as HDR (will show an error if not a gain-map JPEG).
 
-![HDR Image Preview](/packages/hdrify-vscode-extension/images/image-preview.webp)
+![HDR Image Preview](https://raw.githubusercontent.com/bhouston/hdrify/main/packages/hdrify-vscode-extension/images/image-preview.webp)
 
 ## Convert HDR Image
 
@@ -43,19 +72,14 @@ Right-click an EXR, HDR, or UltraHDR Jpeg in the Explorer. A **Convert HDR Image
 
 By default, the extension **replaces** the existing file when converting (overwrites with the new format and deletes the original). Enable **Leave original when changing format** to write to new files instead.
 
+## Contribution
+
+See [Contributing Guide](https://github.com/bhouston/hdrify/blob/main/CONTRIBUTING.md).
+
 ## License
 
 MIT
 
----
-
-## Installation (for contributors)
-
-- **VS Code**: Install from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/) (when published) or install from VSIX.
-- **Cursor**: Install from [Open VSX](https://open-vsx.org/) (when published) or install from VSIX.
-
-To install from VSIX: run `pnpm run package` in this directory, then use **Extensions: Install from VSIX...** and select the generated `.vsix` file.
-
 ## Author
 
-[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).

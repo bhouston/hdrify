@@ -1,20 +1,45 @@
+<p align="center">
+  <a href="https://hdrify.ben3d.ca" target="_blank" rel="noopener noreferrer">
+    <img alt="HDRify logo" src="https://raw.githubusercontent.com/bhouston/hdrify/main/packages/website/public/logo512.png" height="96">
+  </a>
+</p>
+<br/>
+<p align="center">
+  <a href="https://npmjs.com/package/hdrify"><img src="https://img.shields.io/npm/v/hdrify.svg" alt="npm package"></a>
+  <a href="https://www.npmtrends.com/hdrify"><img src="https://img.shields.io/npm/dw/hdrify.svg" alt="npm downloads"></a>
+  <a href="https://codecov.io/gh/bhouston/hdrify"><img src="https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg" alt="coverage"></a>
+  <a href="https://discord.gg/5J5Ur3F6Z2"><img src="https://img.shields.io/badge/chat-discord-blue?style=flat&logo=discord" alt="discord chat"></a>
+  <a href="https://hdrify.ben3d.ca"><img src="https://img.shields.io/badge/docs-read-blue?style=flat" alt="documentation"></a>
+</p>
+<br/>
+
 # HDRify
 
-<img src="https://hdrify.ben3d.ca/img/hdrify.png" alt="HDRify logo" width="192" height="192">
+> Read and write EXR, HDR, and Ultra HDR images in pure JavaScript.
 
-[![NPM Package][npm]][npm-url]
-[![NPM Downloads][npm-downloads]][npmtrends-url]
-[![Tests][tests-badge]][tests-url]
-[![Coverage][coverage-badge]][coverage-url]
-[![Discord][discord-badge]][discord-url]
+- 📦 Pure JavaScript, No Native Bindings
+- 🌐 Node.js, Browsers, and Web Workers
+- 🗜️ All Major EXR Compressions
+- 📸 Adobe and Ultra HDR Gain Maps
+- 🎨 Four Built-in Tone Mappers
+- 🔷 Full TypeScript Support
 
-HDRify implements comprehensive support for high dynamic range imaging with support for HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) reading and writing in pure JavaScript. No native bindings—works in Node.js and browsers.
+HDRify reads and writes HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain maps (JPEG-R / Ultra HDR) in pure JavaScript. It has no native bindings and works in Node.js and browsers.
 
-**→ [Documentation & API reference](https://hdrify.ben3d.ca/)** — installation, capabilities, generated API docs, and code examples.
+Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer accepts it, so converting between formats is a read followed by a write.
 
-**→ [Live viewer & converter](https://hdrify.ben3d.ca/demo/)** — the original demo is still here: load HDR, EXR, Adobe Gain Map, and Ultra HDR images, adjust exposure, and download conversions.
+[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
 
-## Features
+## Packages
+
+| Package                                                     | Version (click for changelogs)                                                                                                                                          |
+| ----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [hdrify](packages/hdrify)                                   | [![hdrify version](https://img.shields.io/npm/v/hdrify.svg?label=%20)](https://github.com/bhouston/hdrify/releases)                                                     |
+| [hdrify-cli](packages/cli)                                  | [![hdrify-cli version](https://img.shields.io/npm/v/hdrify-cli.svg?label=%20)](https://github.com/bhouston/hdrify/releases)                                             |
+| [hdrify-react](packages/hdrify-react)                       | [![hdrify-react version](https://img.shields.io/npm/v/hdrify-react.svg?label=%20)](https://github.com/bhouston/hdrify/releases)                                         |
+| [hdrify-vscode-extension](packages/hdrify-vscode-extension) | [![hdrify-vscode-extension version](https://img.shields.io/open-vsx/v/benhouston3d/hdrify-vscode-extension.svg?label=%20)](https://github.com/bhouston/hdrify/releases) |
+
+## Capabilities
 
 - Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
@@ -152,7 +177,7 @@ hdrify convert input.exr output.exr --compression pxr24
 
 ## Demos
 
-See the **online demo** link at the top. To run the website locally (`packages/website`, drag-and-drop and exposure slider):
+See the [online demo](https://hdrify.ben3d.ca/demo/). To run the website locally (`packages/website`, drag-and-drop and exposure slider):
 
 ```bash
 cd packages/website
@@ -184,14 +209,6 @@ CI runs tests with coverage (`pnpm test --coverage`) and enforces coverage floor
 
 Change either only with an explanation in the PR.
 
-## License
-
-MIT
-
-## Author
-
-[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com)
-
 ## Acknowledgements
 
 This project would not have been possible without these two projects which were used a reference:
@@ -200,13 +217,14 @@ This project would not have been possible without these two projects which were 
 - [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - Ultra HDR loading, saving, XMP metadata structure and JPEG-R assembly (reference implementation).
 - [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr) - EXR encoding/decoding for all the various compression formats, example images.
 
-[npm]: https://img.shields.io/npm/v/hdrify
-[npm-url]: https://www.npmjs.com/package/hdrify
-[npm-downloads]: https://img.shields.io/npm/dw/hdrify
-[npmtrends-url]: https://www.npmtrends.com/hdrify
-[tests-badge]: https://github.com/bhouston/hdrify/actions/workflows/ci.yml/badge.svg
-[tests-url]: https://github.com/bhouston/hdrify/actions/workflows/ci.yml
-[coverage-badge]: https://codecov.io/gh/bhouston/hdrify/branch/main/graph/badge.svg
-[coverage-url]: https://codecov.io/gh/bhouston/hdrify
-[discord-badge]: https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white
-[discord-url]: https://discord.gg/5J5Ur3F6Z2
+## Contribution
+
+See [Contributing Guide](CONTRIBUTING.md).
+
+## License
+
+MIT
+
+## Author
+
+[Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
