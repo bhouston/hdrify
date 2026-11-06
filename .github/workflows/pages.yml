@@ -1,8 +1,19 @@
 name: Deploy documentation to GitHub Pages
+# Deployed by the Release workflow after each release, from the release tag, so the site
+# documents released behavior and version. Dispatch manually to redeploy the latest release.
 on:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Release tag to build'
+        type: string
+        required: true
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Release tag to build; defaults to the latest v* tag'
+        type: string
+        required: false
 permissions:
   contents: read
   pages: write
@@ -16,6 +27,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check out the release tag
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          tag="${REF:-$(git describe --tags --abbrev=0 --match 'v*' origin/main)}"
+          case "$tag" in
+            v[0-9]*) ;;
+            *) echo "::error::Expected a v<version> release tag, got '$tag'."; exit 1 ;;
+          esac
+          git checkout --quiet "refs/tags/$tag"
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
