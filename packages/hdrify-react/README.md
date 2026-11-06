@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://hdrify.ben3d.ca" target="_blank" rel="noopener noreferrer">
-    <img alt="hdrify-react logo" src="https://raw.githubusercontent.com/bhouston/hdrify/main/packages/website/public/logo512.png" height="96">
+    <img alt="hdrify-react logo" src="https://raw.githubusercontent.com/bhouston/hdrify/main/packages/hdrify-vscode-extension/images/icon.png" height="96">
   </a>
 </p>
 <br/>
