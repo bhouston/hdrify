@@ -1,58 +1,72 @@
-# Releases
+# Releasing
 
-## Running a release
+Releases are manual and maintainer-only. Merging to `main` never publishes.
 
-Releases are never triggered by pushes or merges to `main`. When ready to publish, the maintainer dispatches the workflow:
+## Running a Release
 
 ```sh
-gh workflow run release.yml --ref main
+gh workflow run release.yml --ref main                  # release
+gh workflow run release.yml --ref main -f dry_run=true  # preview only, publishes nothing
 ```
 
-Add `-f dry_run=true` to validate versioning, the changelog, and staged packages without publishing or tagging. The workflow refuses to run against any ref other than `main`. If there are no release-worthy commits since the last tag, the run succeeds as a no-op and says so in the run summary.
+When there are no release-worthy commits since the last `v*` tag, the run is a no-op.
 
-## One-time activation
+## What the Workflow Does
 
-The workflow is installed in `.github/workflows/release.yml`.
+1. Refuses any ref other than `main`.
+2. Runs the full CI workflow on the dispatched commit.
+3. Stops if `main` has moved since the dispatch.
+4. Installs, builds, and runs `pnpm release`, which is semantic-release.
+5. semantic-release computes the next version, creates the `v<version>` tag and GitHub Release, and publishes.
 
-1. On npmjs.com, open Settings → Trusted Publisher for **each** package: `hdrify`, `hdrify-cli`, and `hdrify-react`. Select GitHub Actions and enter:
+Releases run one at a time and never cancel a publish in progress. npm packages publish through npm trusted publishing (GitHub OIDC), so no `NPM_TOKEN` is stored.
 
-   | Field                | Value         |
-   | -------------------- | ------------- |
-   | Organization or user | `bhouston`    |
-   | Repository           | `hdrify`      |
-   | Workflow filename    | `release.yml` |
-   | Environment name     | Leave blank   |
+## Versioning
 
-   These are package settings, not repository secrets. No `NPM_TOKEN` or `NODE_AUTH_TOKEN` is needed. The release job publishes with `pnpm` (pinned to `packageManager` in `package.json`, ≥11.1.3 for reliable OIDC publishing in GitHub Actions) with `id-token: write`; npm supplies automatic provenance for trusted-publisher packages. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+The version comes from the Conventional Commits since the last `v*` tag. The highest change wins:
 
-2. The existing release baseline was created during setup. For reference, the bootstrap commands are below; do not rerun them when the tag already exists. The migration baseline is `v1.1.4` at `ff4c3bef6f058a6232749806c1e20d52dd623671`, the main commit at setup; npm already contains hdrify and hdrify-cli 1.1.4 and hdrify-react 1.1.3. This is a version floor for the shared release series, not a claim that hdrify-react 1.1.4 was published. Never move this tag after activation.
+- `feat` produces a minor release.
+- `fix` and `perf` produce a patch release.
+- `!` or a `BREAKING CHANGE:` footer produces a major release.
+- Other types do not trigger a release.
 
-   ```sh
-   git tag v1.1.4 ff4c3bef6f058a6232749806c1e20d52dd623671
-   git push origin v1.1.4
-   ```
+Everything this repository publishes shares one version. `package.json` versions in source are development snapshots; the Git tag and the registry hold the released version. [GitHub Releases](https://github.com/bhouston/hdrify/releases) is the changelog of record.
 
-3. `main` is protected: PRs, up-to-date `ci` and `contribution` checks, and resolved conversations are required, including for administrators. Force pushes and deletion are disabled. Review approval count is zero to support a solo maintainer. Merge commits are enabled; linear history is not required. `main` is the default branch so GitHub closes delivered issues on merge. `dev` predates this workflow, is no longer targeted by contributor PRs or CI, and is kept around unused rather than deleted.
-4. Configure the npm publishers before activation. Dispatch `Release` on `main` (see above) when ready to publish.
-5. Configure the repository `CODECOV_TOKEN` secret from Codecov for reliable coverage publishing. Coverage thresholds themselves do not depend on Codecov.
-6. Configure the repository `VSCE_PAT` (Azure DevOps personal access token for the `benhouston3d` publisher) and `OVSX_PAT` (Open VSX access token) secrets so the release job can publish the VS Code extension.
+## One-Time Setup
 
-## Versioning and artifacts
+1. On npmjs.com, open each package's Trusted Publisher settings, choose GitHub Actions, and enter organization or user `bhouston`, repository `hdrify`, workflow filename `release.yml`, and environment name `npm`.
+2. Protect `main`: require pull requests and the CI checks, allow merge commits, and block force pushes and deletion.
+3. If the repository uploads coverage to Codecov, add the `CODECOV_TOKEN` repository secret.
 
-Semantic-release analyzes Conventional Commits since the last `v*` tag. `feat` produces a minor, `fix`/`perf` a patch, and `!` or `BREAKING CHANGE:` a major. The highest change wins. A docs/chore-only integration produces no npm release.
+## Recovery
 
-`hdrify`, `hdrify-cli`, and `hdrify-react` share one version and publish in dependency order via `pnpm publish` (through `@anolilab/semantic-release-pnpm`, one plugin instance per package), which updates each `package.json` version and rewrites any `workspace:*` internal dependency to a resolved semver range natively. The VS Code extension (`packages/hdrify-vscode-extension`) shares the same version stream — `release.config.js` pins its `package.json` version to `nextRelease.version` alongside the npm packages — but is never `npm publish`'d; instead it's built, packaged with `vsce`, and published to the VS Code Marketplace and Open VSX Registry (`scripts/release-vscode-extension.mjs`), requiring the `VSCE_PAT` and `OVSX_PAT` repository secrets. Documentation and the static demo deploy through the GitHub Pages artifact workflow. Source package versions are development snapshots; the authoritative released version is the Git tag/npm version. Each package's `files` field ships built JS and declarations, and npm/pnpm packing conventions include the package's own README and LICENSE automatically. It does not write version commits to protected branches.
+Publishing is not atomic. If a run fails part way, compare the registry versions, the `v<version>` tag, and the workflow log, then finish what is missing from the same release commit. If publishing succeeded but the GitHub Release failed, create the release from the existing tag. Never republish a version, delete a published version, or move a release tag. Resolve the failure before dispatching another release.
 
-Each GitHub Release contains generated release notes and all three npm tarballs. [GitHub Releases](https://github.com/bhouston/hdrify/releases) is the cumulative changelog of record; releases never write a `CHANGELOG.md` back to source.
+## Repository Specifics
 
-The release job waits for the complete reusable CI suite and only runs from a manual dispatch against `main`. Releases are serialized and never cancel an in-progress publish.
+### Published Artifacts
 
-## Validation and recovery
+- npm: `hdrify`, `hdrify-cli`, and `hdrify-react`, published in that order with `pnpm publish`. Each GitHub Release attaches their tarballs.
+- VS Code Marketplace and Open VSX: `hdrify-vscode-extension` (`packages/hdrify-vscode-extension`), published by `benhouston3d`.
 
-`pnpm release:check` tests release analysis and each package's publish readiness (a real LICENSE and a `files` field that ships `dist`) without publishing. Dispatching `release.yml` with `dry_run=true` runs the full workflow — including CI — and previews what semantic-release would do, without publishing or tagging. After building, inspect tarball contents with `pnpm pack --dry-run` in each package directory (`packages/hdrify`, `packages/cli`, `packages/hdrify-react`).
+Add each npm package's Trusted Publisher in One-Time Setup step 1.
 
-npm publication across three packages is not atomic. If a release fails after publishing one package, inspect npm, the tag, and the workflow log before retrying. Do not delete published versions or blindly remove tags. Finish missing packages from the exact release commit through trusted CI, then complete the GitHub Release. Resolve failures before dispatching another release.
+### VS Code Extension
 
-## Reusing the standard
+The extension shares the release version, which `release.config.js` pins in its `package.json`, but it is never published to npm. `scripts/release-vscode-extension.mjs` builds it, packages it with `vsce`, and publishes it to both registries. Add these repository secrets:
 
-After a successful real release, extract CONTRIBUTING.md, SECURITY.md, the agent pointers, templates, commitlint/Husky setup, CI, and release configuration into a dedicated template repository. Keep each repository’s own LICENSE. Adapt repository names, package paths, version baseline, coverage and bundle budgets, then install matching dependencies. This monorepo’s package staging configuration is repository-specific; copying it unchanged into other projects is not appropriate.
+- `VSCE_PAT`: Azure DevOps personal access token for the `benhouston3d` publisher.
+- `OVSX_PAT`: Open VSX access token.
+
+### Website
+
+After a real release (not a dry run), the `website` job calls `pages.yml` to deploy the documentation and demo to GitHub Pages from the new `v*` tag.
+
+### Required Checks
+
+`main` requires the `ci` and `contribution` checks.
+
+### Local Validation
+
+- `pnpm release:check` tests commit analysis and each npm package's publish readiness (a `LICENSE` and a `files` field that ships `dist`).
+- After `pnpm build`, run `pnpm pack --dry-run` in `packages/hdrify`, `packages/cli`, and `packages/hdrify-react` to inspect tarball contents.
