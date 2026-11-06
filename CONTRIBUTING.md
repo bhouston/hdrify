@@ -52,6 +52,8 @@ The Release workflow refuses any ref other than `main`, re-runs CI on the dispat
 - npm packages, through npm trusted publishing (GitHub OIDC, no `NPM_TOKEN`);
 - VS Code extensions, where the repository has one, to the VS Code Marketplace and Open VSX.
 
+When a release is published, the Release workflow then deploys the documentation site from the release tag (`pages.yml`). Merging to `main` never deploys the site.
+
 When there are no release-worthy commits, the run is a no-op. Never bump versions, edit changelogs, or push release tags by hand.
 
 ## Security

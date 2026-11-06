@@ -12,7 +12,7 @@ Docusaurus documentation and landing page for [hdrify.ben3d.ca](https://hdrify.b
 
 Generated API pages are built from `packages/hdrify/src/index.ts` and `packages/hdrify-react/src/index.ts`. Update the public exports and their TSDoc/JSDoc comments to improve the reference; edit the guide Markdown files for explanations and examples.
 
-Run the documentation scripts from this package or use the root workspace commands. Build from the repository root so workspace dependencies and the live demo are available. The GitHub Pages deployment workflow publishes the generated static site as a Pages artifact.
+Run the documentation scripts from this package or use the root workspace commands. Build from the repository root so workspace dependencies and the live demo are available. The GitHub Pages deployment workflow (`pages.yml`) publishes the generated static site as a Pages artifact. It does not run on merges to `main`: the Release workflow calls it with the new release tag, and it can be dispatched manually to redeploy a release.
 
 ## CLI documentation
 
