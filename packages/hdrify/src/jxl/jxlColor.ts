@@ -13,6 +13,7 @@ import {
   chromaticitiesToRgbXyzMatrix,
   chromaticitiesToXyzRgbMatrix,
   multiply3,
+  invert3,
   type Mat3,
 } from '../color/matrixConversion.js';
 import { linearToSrgb as linearTosRGB, srgbToLinear as sRGBToLinear } from './jxlXyb.js';
@@ -58,6 +59,9 @@ export function jxlChromaticities(ce: JxlColorEncoding): Chromaticities {
         : ce.whitePoint === 'e'
           ? [1 / 3, 1 / 3]
           : [0.3127, 0.329];
+  const matrix = chromaticitiesToRgbXyzMatrix(ch);
+  if (![...matrix.flat(), ...invert3(matrix).flat()].every(Number.isFinite))
+    throw new Error('JXL: invalid colour encoding chromaticities');
   return ch;
 }
 
@@ -154,6 +158,8 @@ function transform(h: JxlImageHeader): ColorTransform {
     decode = [d, d, d];
     encode = [e, e, e];
   }
+  if (![...toOutput.flat(), ...toSrgb.flat(), ...invert3(toSrgb).flat()].every(Number.isFinite))
+    throw new Error('JXL: invalid colour encoding matrix');
   const result: ColorTransform = {
     space,
     toOutput,

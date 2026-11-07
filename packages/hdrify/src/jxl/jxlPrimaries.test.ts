@@ -2,6 +2,8 @@ import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { applyMatrix3ToFloat32Array, bradfordAdaptation, getLinearToLinearMatrix } from '../color/matrixConversion.js';
 import { ASSETS, readPfm } from './jxlTestAssets.js';
+import { jxlChromaticities } from './jxlColor.js';
+import type { JxlColorEncoding } from './jxlImageHeader.js';
 import { readJxl } from './readJxl.js';
 describe('chromatic adaptation', () => {
   it('Bradford D50 to D65 matches the published matrix', () => {
@@ -30,4 +32,40 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
         expect(img.metadata?.linearReferenceWhiteNits).toBe(img.metadata?.intensityTarget);
       });
     }
+});
+
+it('rejects singular and zero-y custom chromaticities before producing nonfinite pixels', () => {
+  const base: JxlColorEncoding = {
+    wantIcc: false,
+    colorSpace: 'rgb',
+    whitePoint: 'd65',
+    primaries: 'custom',
+    primariesXy: [
+      [0.64, 0.33],
+      [0.3, 0.6],
+      [0.15, 0.06],
+    ],
+    transferFunction: 'linear',
+    renderingIntent: 'relative',
+  };
+  const cases: JxlColorEncoding[] = [
+    {
+      ...base,
+      primariesXy: [
+        [0.64, 0],
+        [0.3, 0.6],
+        [0.15, 0.06],
+      ],
+    },
+    {
+      ...base,
+      primariesXy: [
+        [0.64, 0.33],
+        [0.64, 0.33],
+        [0.15, 0.06],
+      ],
+    },
+    { ...base, whitePoint: 'custom', whiteXy: [0.3127, 0] },
+  ];
+  for (const ce of cases) expect(() => jxlChromaticities(ce)).toThrow('invalid colour encoding');
 });
