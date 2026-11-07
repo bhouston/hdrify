@@ -43,7 +43,7 @@ Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer
 
 - Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
-- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animations return the first frame), and write lossless Modular or lossy DCT8 JPEG XL (float16, float32, uint16, uint8)
+- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animation frame API, orientation, associated alpha and extra channels), and write lossless Modular or lossy DCT8 JPEG XL (float16, float32, uint16, uint8)
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
 - Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
 - Full TypeScript support
@@ -114,9 +114,19 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 ### Reading and writing JPEG XL
 
 ```ts
-import { readJxl, writeJxl } from 'hdrify';
+import { readJxl, readJxlFrames, writeJxl } from 'hdrify';
 
 const imageData = readJxl(new Uint8Array(fs.readFileSync('image.jxl')));
+// Return every coalesced animation frame, with seconds, optional timecodes and loop count.
+const { frames, numLoops } = readJxlFrames(new Uint8Array(fs.readFileSync('animation.jxl')));
+// Both APIs apply orientation and return straight alpha by default. To retain stored orientation and alpha association:
+const raw = readJxl(new Uint8Array(fs.readFileSync('image.jxl')), {
+  applyOrientation: false,
+  keepPremultipliedAlpha: true,
+});
+// Full-resolution extra channels (including alpha) are retained as named, typed float planes:
+const extraChannels = imageData.metadata?.extraChannels;
+
 // Lossless; bitDepth: 'float16' (default), 'float32' (bit-exact), 'uint16' or 'uint8'
 fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
 // Lossy XYB / DCT8 output, preserving HDR range:
@@ -137,6 +147,8 @@ not a universal perceptual guarantee. Reproduce size and linear/sRGB error
 measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
 For the CLI, use
 `hdrify convert input.exr output.jxl --jxl-lossy` or `--jxl-distance 0.5`.
+
+JPEG XL extra channels are available in `metadata.extraChannels` as `{ name, type, width, height, data: Float32Array }`, in the returned image orientation. Spot colours retain their RGB/solidity in each plane’s `spotColor` field; set `{ renderSpotColors: true }` on either reader to composite them like djxl. CMYK ICC conversion is unsupported. `readJxlFrames` retains all decoded frames in memory.
 
 ### Converting between formats
 

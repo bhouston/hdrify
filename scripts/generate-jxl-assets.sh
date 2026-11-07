@@ -127,3 +127,22 @@ djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet
 # --- Native TypeScript VarDCT writer: independent decoder oracle used even without djxl in CI. ---
 (cd "$ROOT" && JXL_VARDCT_CRAFT_OUT="$FEAT" pnpm vitest run packages/hdrify/src/jxl/writeJxlVardct.test.ts -t 'writes the native VarDCT oracle fixture' --no-coverage >/dev/null)
 djxl "$FEAT/native_dct8_hdr.jxl" "$FEAT/native_dct8_hdr.ref.pfm" --quiet
+
+# --- Decoder metadata/output fixtures (requires libjxl development headers and pkg-config). ---
+c++ "$ROOT/scripts/generate-jxl-decoder-assets.cc" $(pkg-config --cflags --libs libjxl) -o "$SRC/decoder-fixtures"
+(cd "$ROOT" && "$SRC/decoder-fixtures")
+for input in "$FEAT"/orientation*.jxl "$FEAT"/extra_channels.jxl "$FEAT"/spot_color.jxl; do
+  djxl "$input" "${input%.jxl}.ref.pfm" --quiet
+done
+# associated_alpha.ref.pfm is emitted by the C API helper with unpremultiplication enabled.
+(cd "$ROOT" && JXL_CRAFT_OUT="$FEAT" pnpm exec vitest run packages/hdrify/src/jxl/jxlDecoderGaps.test.ts -t 'writes the crafted preview' >/dev/null)
+djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
+
+# HDR transfer-function and colour-management corpus.
+bash "$ROOT/scripts/generate-jxl-color-assets.sh"
+
+# Combined Rec.2020, orientation, associated alpha and animation output. PFM drops alpha while
+# retaining association, so the oracle is compared using keepPremultipliedAlpha: true.
+djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
+  --color_space=RGB_D65_202_Rel_Lin --output_frames
+for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
