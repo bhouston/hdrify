@@ -64,7 +64,7 @@
     {
       "name": "hdrify browser bundle",
       "path": "packages/hdrify/dist/index.js",
-      "limit": "50 kB"
+      "limit": "64 kB"
     },
     {
       "name": "hdrify-react browser bundle",

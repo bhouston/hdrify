@@ -41,7 +41,7 @@ enc lossless_rgb8_container rgb8.ppm ppm -d 0 --container=1
 enc lossless_rgb16 rgb16.ppm ppm16 -d 0
 enc lossless_gray8 gray8.pgm pgm -d 0
 enc lossless_rgba8 rgba8.png pam -d 0
-enc lossless_float32 hdr.pfm pfm -d 0
+enc lossless_float32 hdr.pfm pfm -d 0 -x color_space=RGB_D65_SRG_Rel_Lin
 enc lossless_float16 hdr_half.exr pfm -d 0
 enc lossless_palette palette8.ppm ppm -d 0
 enc lossless_squeeze rgb8.ppm ppm -d 0 -R 1
@@ -52,7 +52,7 @@ enc lossy_modular rgb8.ppm pfm -m 1 -d 1
 
 # --- VarDCT ---
 enc vardct_rgb8 rgb8.ppm pfm -d 1
-enc vardct_float hdr.pfm pfm -d 1
+enc vardct_float hdr.pfm pfm -d 1 -x color_space=RGB_D65_SRG_Rel_Lin
 enc vardct_rgba8 rgba8.png pam16 -d 1
 enc vardct_nofilters rgb8.ppm pfm -d 1 --epf=0 --gaborish=0
 enc vardct_progressive rgb8.ppm pfm -d 1 -p
@@ -61,3 +61,11 @@ enc vardct_resampling rgb8.ppm pfm -d 4 --resampling=2
 enc vardct_noise rgb8.ppm pfm -d 1 --photon_noise_iso=3200
 
 ls -la "$OUT"
+
+# --- Embedded ICC profile (want_icc) ---
+# icc_rec2020_pq.icc is a libjxl-synthesized profile (Rec.2020 primaries, PQ); the .jxl embeds it verbatim,
+# so a decoder's reconstructed ICC bytes must equal the .icc file.
+oiiotool "$A/blouberg_sunrise_2_1k.jpg" --resize 16x8 -d uint8 -o "$SRC/icc_base.png"
+cjxl "$SRC/icc_base.png" "$SRC/icc_tmp.jxl" --quiet -d 0 -x color_space=RGB_D65_202_Rel_PeQ
+djxl "$SRC/icc_tmp.jxl" "$SRC/icc_tmp.png" --quiet --icc_out="$OUT/icc_rec2020_pq.icc"
+cjxl "$SRC/icc_base.png" "$OUT/icc_rec2020_pq.jxl" --quiet -d 0 -x icc_pathname="$OUT/icc_rec2020_pq.icc"
