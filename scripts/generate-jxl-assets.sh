@@ -136,3 +136,9 @@ djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
 
 # HDR transfer-function and colour-management corpus.
 bash "$ROOT/scripts/generate-jxl-color-assets.sh"
+
+# Combined Rec.2020, orientation, associated alpha and animation output. PFM drops alpha while
+# retaining association, so the oracle is compared using keepPremultipliedAlpha: true.
+djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
+  --color_space=RGB_D65_202_Rel_Lin --output_frames
+for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
