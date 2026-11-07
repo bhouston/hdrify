@@ -397,6 +397,8 @@ export function* decodeDisplayedFrames(
 export interface ReadJxlOptions {
   /** Apply the stored EXIF orientation to pixels and extra channels (default true). */
   applyOrientation?: boolean;
+  /** Preserve associated alpha instead of returning straight alpha (default false). */
+  keepPremultipliedAlpha?: boolean;
 }
 
 /** Apply EXIF orientation to row-major interleaved samples without mutating the source. */
@@ -471,7 +473,16 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
   }
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
-  for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha ? alpha[i]! : 1;
+  const associated = alphaIdx >= 0 && h.extraChannels[alphaIdx]!.alphaAssociated;
+  for (let i = 0; i < n; i++) {
+    const a = alpha ? alpha[i]! : 1;
+    out[i * 4 + 3] = a;
+    if (associated && !options.keepPremultipliedAlpha) {
+      // Match libjxl kSmallAlpha, including tiny/zero alpha without NaN/Inf.
+      const scale = 1 / Math.max(a, 2 ** -26);
+      for (let c = 0; c < 3; c++) out[i * 4 + c] = out[i * 4 + c]! * scale;
+    }
+  }
 
   const orientation = options.applyOrientation === false ? 1 : h.orientation;
   return {
@@ -489,6 +500,7 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
       transferFunction: h.colorEncoding.transferFunction,
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
+      alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
       ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),

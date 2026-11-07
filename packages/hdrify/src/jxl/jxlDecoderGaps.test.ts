@@ -87,4 +87,21 @@ describe('JPEG XL decoder gaps', () => {
       expect(raw.metadata?.orientation).toBe(orientation);
     });
   }
+
+  it('unpremultiplies associated alpha, including tiny and zero alpha, with an opt-out', () => {
+    const file = bytes('associated_alpha');
+    const straight = readJxl(file);
+    const associated = readJxl(file, { keepPremultipliedAlpha: true });
+    expect(straight.metadata?.alphaPremultiplied).toBe(false);
+    expect(associated.metadata?.alphaPremultiplied).toBe(true);
+    const ref = readPfm('features/associated_alpha.ref.pfm');
+    for (let i = 0; i < 6; i++)
+      for (let c = 0; c < 3; c++) {
+        expect(straight.data[i * 4 + c]).toBeCloseTo(ref.samples[i * 3 + c], 6);
+        expect(straight.data[i * 4 + c]).toBeCloseTo(
+          associated.data[i * 4 + c] / Math.max(associated.data[i * 4 + 3], 2 ** -26),
+          6,
+        );
+      }
+  });
 });
