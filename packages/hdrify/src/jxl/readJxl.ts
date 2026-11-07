@@ -310,9 +310,14 @@ function renderFrame(
 }
 
 /** Skip one frame: returns its header and the byte offset after it. */
-function skipFrame(codestream: Uint8Array, pos: number, h: JxlImageHeader): { fh: JxlFrameHeader; end: number } {
+function skipFrame(
+  codestream: Uint8Array,
+  pos: number,
+  h: JxlImageHeader,
+  isPreview = false,
+): { fh: JxlFrameHeader; end: number } {
   const br = new JxlBitReader(codestream, pos);
-  const fh = readFrameHeader(br, h);
+  const fh = readFrameHeader(br, h, isPreview);
   const toc = readToc(br, fh);
   return { fh, end: br.byteOffset + toc.sizes.reduce((a, b) => a + b, 0) };
 }
@@ -392,8 +397,8 @@ export function readJxl(data: Uint8Array): HdrifyImage {
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
-  if (h.preview) throw new Error('JXL: preview frames are not supported yet');
-  const first = decodeDisplayedFrames(codestream, h, br.byteOffset).next().value;
+  const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
+  const first = decodeDisplayedFrames(codestream, h, start).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
   const { canvas, fh } = first;
   let pos = first.end;
