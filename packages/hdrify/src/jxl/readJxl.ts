@@ -34,6 +34,7 @@ import {
   readLfCoeffs,
   readPassGroup,
   reconstructVardct,
+  upsampleChroma2x,
 } from './jxlVardctDecode.js';
 import { xybToLinearSrgb, ycbcrToRgb } from './jxlXyb.js';
 
@@ -255,7 +256,24 @@ function framePlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] {
   let color = lossyColorPlanes(fr, h);
   if (!color) {
     const toFloat = sampleConverter(h.bitDepth);
-    color = [0, 1, 2].map((c) => Float32Array.from(fr.channels[nbColor === 1 ? 0 : c]!.data, toFloat));
+    color = [0, 1, 2].map((c) => {
+      const channel = fr.channels[nbColor === 1 ? 0 : c]!;
+      let p: Float32Array = Float32Array.from(channel.data, toFloat);
+      let { width, height } = channel;
+      if (channel.hshift) {
+        p = upsampleChroma2x(p, width, height, true);
+        width *= 2;
+      }
+      if (channel.vshift) {
+        p = upsampleChroma2x(p, width, height, false);
+        height *= 2;
+      }
+      if (width === fr.dims.width && height === fr.dims.height) return p;
+      const cropped = new Float32Array(fr.dims.width * fr.dims.height);
+      for (let y = 0; y < fr.dims.height; y++)
+        cropped.set(p.subarray(y * width, y * width + fr.dims.width), y * fr.dims.width);
+      return cropped;
+    });
   }
   const ecs = h.extraChannels.map((ec, i) =>
     Float32Array.from(fr.channels[nbColor + i]!.data, sampleConverter(ec.bitDepth)),
@@ -310,9 +328,14 @@ function renderFrame(
 }
 
 /** Skip one frame: returns its header and the byte offset after it. */
-function skipFrame(codestream: Uint8Array, pos: number, h: JxlImageHeader): { fh: JxlFrameHeader; end: number } {
+function skipFrame(
+  codestream: Uint8Array,
+  pos: number,
+  h: JxlImageHeader,
+  isPreview = false,
+): { fh: JxlFrameHeader; end: number } {
   const br = new JxlBitReader(codestream, pos);
-  const fh = readFrameHeader(br, h);
+  const fh = readFrameHeader(br, h, isPreview);
   const toc = readToc(br, fh);
   return { fh, end: br.byteOffset + toc.sizes.reduce((a, b) => a + b, 0) };
 }
@@ -367,7 +390,7 @@ export function* decodeDisplayedFrames(
       if (tf) for (const p of [r, g, b]) for (let i = 0; i < n; i++) p[i] = tf.fromLinear(p[i]!);
     } else {
       linear = false;
-      if (fr.vardct && fh.doYCbCr) ycbcrToRgb(r, g, b, n);
+      if (fh.doYCbCr) ycbcrToRgb(r, g, b, n);
       if (fr.vardct && h.colorEncoding.colorSpace === 'gray') {
         g.set(r);
         b.set(r);
@@ -391,8 +414,8 @@ export function readJxl(data: Uint8Array): HdrifyImage {
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
-  if (h.preview) throw new Error('JXL: preview frames are not supported yet');
-  const first = decodeDisplayedFrames(codestream, h, br.byteOffset).next().value;
+  const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
+  const first = decodeDisplayedFrames(codestream, h, start).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
   const { canvas, fh } = first;
   let pos = first.end;

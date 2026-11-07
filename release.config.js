@@ -2,10 +2,10 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { publish as publishExtension, setVersion as setExtensionVersion } from './scripts/release-vscode-extension.mjs';
 
-// Packages published to npm, in dependency order (hdrify first; cli and
+// Packages published to npm, in dependency order (ICC first; cli and
 // hdrify-react depend on it via workspace:*, which pnpm publish rewrites
 // to a resolved semver range natively).
-const packages = ['packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
+const packages = ['packages/icc', 'packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
 
 export default {
   branches: ['main'],
@@ -19,7 +19,7 @@ export default {
     // silently ignores in favor of packing the cwd (verified with pnpm
     // 11.27.0) -- it would attach the private monorepo root tarball to the
     // GitHub Release instead of each package's own tarball. Pack explicitly
-    // below, once all three packages have their final bumped version.
+    // below, once all packages have their final bumped version.
     ...packages.map((path) => ['@anolilab/semantic-release-pnpm', { pkgRoot: path }]),
     {
       prepare: (_pluginConfig, { nextRelease }) => {
