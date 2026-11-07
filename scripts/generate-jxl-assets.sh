@@ -133,3 +133,9 @@ done
 # associated_alpha.ref.pfm is emitted by the C API helper with unpremultiplication enabled.
 (cd "$ROOT" && JXL_CRAFT_OUT="$FEAT" pnpm exec vitest run packages/hdrify/src/jxl/jxlDecoderGaps.test.ts -t 'writes the crafted preview' >/dev/null)
 djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
+
+# Combined Rec.2020, orientation, associated alpha and animation output. PFM drops alpha while
+# retaining association, so the oracle is compared using keepPremultipliedAlpha: true.
+djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
+  --color_space=RGB_D65_202_Rel_Lin --output_frames
+for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
