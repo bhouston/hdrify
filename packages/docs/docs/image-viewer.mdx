@@ -90,11 +90,68 @@ Attach listeners before setting a source.
 
 | Event            | `event.detail`                                                                |
 | ---------------- | ----------------------------------------------------------------------------- |
-| `load`           | `{ image }`, the decoded `HdrifyImage`                                        |
+| `progress`       | Loading progress; see [Loading progress](#loading-progress)                   |
+| `load`           | `{ image }`, the decoded `HdrifyImage`, once it is drawn                      |
 | `error`          | `{ message, error }` for fetch and decode failures; the message is also shown |
 | `settingschange` | `{ settings }` after the user changes a setting                               |
 
 Events bubble and cross the shadow root. Changing the source cancels an unfinished request.
+
+## Loading progress
+
+While an image loads, a thin bar across the top of the viewer fills as it downloads, decodes and draws, then fades out. The element sets `aria-busy="true"` until the image is drawn. The bar follows `<material-viewer>`, so the same customizations work:
+
+```css
+image-viewer {
+  --progress-bar-height: 3px;
+  --progress-bar-color: #f2b134;
+}
+image-viewer::part(default-progress-bar) {
+  border-radius: 0 2px 2px 0;
+}
+```
+
+To replace the bar, add your own element with `slot="progress-bar"`, and drive it from `progress` events. An empty slotted element hides the bar. Each `progress` event's `detail` has:
+
+| Field           | Meaning                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `totalProgress` | 0 to 1 across the whole load: the download is the first 80%, decoding and drawing the rest. Never decreases  |
+| `stage`         | `download`, `decode` or `render`. `render` is reported once, with `totalProgress` 1, when the image is drawn |
+| `loaded`        | Bytes downloaded so far (0 for `data` and `image` sources)                                                   |
+| `total`         | File size in bytes, or `null` when the server sends no usable `Content-Length` (for example, compressed)     |
+| `progress`      | Download fraction from 0 to 1, or `null` while `total` is unknown                                            |
+
+```js
+viewer.addEventListener('progress', (event) => {
+  console.log(`${event.detail.stage}: ${Math.round(event.detail.totalProgress * 100)}%`);
+});
+```
+
+Decoding runs on the main thread, so the page pauses briefly while a large file decodes. The bar is drawn before decoding starts.
+
+## Wait for the image and save it
+
+`whenReady()` resolves once the current image has loaded and been drawn. `toBlob()` waits for the same thing, then encodes the tone-mapped image with the current tone mapping and exposure:
+
+```js
+const viewer = document.querySelector('image-viewer');
+viewer.src = '/images/memorial.exr';
+await viewer.whenReady();
+const png = await viewer.toBlob();
+const thumbnail = await viewer.toBlob({ type: 'image/webp', quality: 0.85, width: 256 });
+```
+
+| `toBlob` option   | What it does                                                                                               |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `type`            | `image/png` (default), `image/jpeg` or `image/webp`                                                        |
+| `quality`         | 0–1 for JPEG and WebP                                                                                      |
+| `width`, `height` | Output size in pixels, up to 16384. Without them, the image's own size; with one, the aspect ratio is kept |
+
+- The image contains only the picture: no exposure slider, options panel or progress bar. It is an opaque, 8-bit sRGB rendering of the image at its own resolution (unless resized), independent of the viewer's size and `fit`. To keep the full dynamic range, use HDRify's writers on the decoded image (`event.detail.image` from `load`).
+- If a browser can't encode the requested type, it returns a PNG. Check `blob.type`.
+- If the source changes before it finishes loading, `whenReady()` waits for the new source. Changes made right before the call, such as setting `src` or `data`, are included.
+- Both reject on the same failures as the `error` event, and if the element is removed from the page or was never added. `toBlob()` also rejects when there is no image.
+- An element without a source is ready immediately.
 
 ## Match your site's colours
 
@@ -127,7 +184,29 @@ import { ImageViewer } from 'hdrify-react';
   style={{ height: 600 }}
   onLoad={(image) => console.log(image.width, image.height)}
   onError={(error) => console.error(error)}
+  onProgress={(progress) => console.log(progress.totalProgress)}
 />;
+```
+
+With React 19, pass a `ref` to get the same `whenReady()` and `toBlob()`:
+
+```tsx
+import { ImageViewer, type ImageViewerHandle } from 'hdrify-react';
+import { useRef } from 'react';
+
+export function Preview() {
+  const viewer = useRef<ImageViewerHandle>(null);
+  const save = async () => {
+    const blob = await viewer.current!.toBlob({ type: 'image/jpeg', quality: 0.9 });
+    window.open(URL.createObjectURL(blob));
+  };
+  return (
+    <>
+      <ImageViewer ref={viewer} src="/images/memorial.exr" />
+      <button onClick={save}>Save preview</button>
+    </>
+  );
+}
 ```
 
 Settings props (`toneMapping`, `exposure`, `fit`) set the initial values and override the user's choice whenever they change. Use `onSettingsChange` to follow the user's changes. See [React](./react.md) for the lower-level `HdrifyCanvas`, and the [React API reference](/docs/api/react) for every prop.
