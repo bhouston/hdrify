@@ -209,7 +209,8 @@ export function staysLinear(fh: JxlFrameHeader): boolean {
 /**
  * Store a decoded frame into its reference slot (libjxl FrameDecoder::FinalizeFrame). With saveBeforeCt the
  * frame-sized planes from before the color transform are copied (`beforeCt`, after upsampling and noise);
- * otherwise the blended canvas returned by blendFrame is stored.
+ * otherwise the blended canvas returned by blendFrame is stored. A `beforeCt` already marked `savedBeforeCt`
+ * is taken as an owned snapshot and stored without copying.
  */
 export function saveReference(
   references: (JxlReferenceFrame | undefined)[],
@@ -219,12 +220,14 @@ export function saveReference(
 ): void {
   if (!canBeReferenced(fh)) return;
   references[fh.saveAsReference] = fh.saveBeforeCt
-    ? {
-        width: beforeCt.width,
-        height: beforeCt.height,
-        planes: beforeCt.planes.map((p) => p.slice()),
-        savedBeforeCt: true,
-      }
+    ? beforeCt.savedBeforeCt
+      ? beforeCt // Already a private snapshot (readJxl copies colour planes before the in-place transform).
+      : {
+          width: beforeCt.width,
+          height: beforeCt.height,
+          planes: beforeCt.planes.map((p) => p.slice()),
+          savedBeforeCt: true,
+        }
     : canvas;
 }
 
