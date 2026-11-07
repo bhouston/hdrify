@@ -176,6 +176,7 @@ function transform(h: JxlImageHeader): ColorTransform {
 }
 
 function matrix(m: Mat3, v: number[]): number[] {
+  if (m === identity) return v; // Preserve native float channels, including nonfinite values and signed zero.
   return m.map((r) => r[0] * v[0]! + r[1] * v[1]! + r[2] * v[2]!);
 }
 function ootf(v: number[], h: JxlImageHeader, t: ColorTransform, forward: boolean): number[] {
