@@ -34,6 +34,7 @@ import {
   readLfCoeffs,
   readPassGroup,
   reconstructVardct,
+  upsampleChroma2x,
 } from './jxlVardctDecode.js';
 import { xybToLinearSrgb, ycbcrToRgb } from './jxlXyb.js';
 
@@ -255,7 +256,24 @@ function framePlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] {
   let color = lossyColorPlanes(fr, h);
   if (!color) {
     const toFloat = sampleConverter(h.bitDepth);
-    color = [0, 1, 2].map((c) => Float32Array.from(fr.channels[nbColor === 1 ? 0 : c]!.data, toFloat));
+    color = [0, 1, 2].map((c) => {
+      const channel = fr.channels[nbColor === 1 ? 0 : c]!;
+      let p: Float32Array = Float32Array.from(channel.data, toFloat);
+      let { width, height } = channel;
+      if (channel.hshift) {
+        p = upsampleChroma2x(p, width, height, true);
+        width *= 2;
+      }
+      if (channel.vshift) {
+        p = upsampleChroma2x(p, width, height, false);
+        height *= 2;
+      }
+      if (width === fr.dims.width && height === fr.dims.height) return p;
+      const cropped = new Float32Array(fr.dims.width * fr.dims.height);
+      for (let y = 0; y < fr.dims.height; y++)
+        cropped.set(p.subarray(y * width, y * width + fr.dims.width), y * fr.dims.width);
+      return cropped;
+    });
   }
   const ecs = h.extraChannels.map((ec, i) =>
     Float32Array.from(fr.channels[nbColor + i]!.data, sampleConverter(ec.bitDepth)),

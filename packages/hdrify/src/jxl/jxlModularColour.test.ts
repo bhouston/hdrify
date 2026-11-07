@@ -62,7 +62,12 @@ function modularYCbCr(modes: number[]): Uint8Array {
   return w.finish();
 }
 
-const cases = [['444', [0, 0, 0]]] as const;
+const cases = [
+  ['444', [0, 0, 0]],
+  ['420', [0, 1, 0]],
+  ['422', [0, 2, 0]],
+  ['440', [0, 3, 0]],
+] as const;
 describe('Modular YCbCr with chroma subsampling', () => {
   for (const [name, modes] of cases) {
     it(`${name} matches djxl at odd image edges`, () => {
