@@ -271,17 +271,26 @@ export class JxlEncEntropyCode {
 
 /** Estimated coded size in bits of `stream` (per-context token entropy plus raw extra bits). */
 export function estimateStreamBits(stream: TokenStream, numContexts: number): number {
+  return estimateContextBits([stream], numContexts).reduce((a, b) => a + b, 0);
+}
+
+/** Per-context token entropy plus hybrid uint extra bits, across all streams. */
+export function estimateContextBits(streams: TokenStream[], numContexts: number): Float64Array {
   const histograms = Array.from({ length: numContexts }, () => new Float64Array(JXL_ENC_NUM_TOKENS));
-  let bits = 0;
-  for (let i = 0; i < stream.values.length; i++) {
-    const v = stream.values[i]!;
-    histograms[stream.contexts[i]!]![hybridUintToken(v)]!++;
-    if (v >= SPLIT) bits += 30 - Math.clz32(v);
+  const bits = new Float64Array(numContexts);
+  for (const stream of streams) {
+    for (let i = 0; i < stream.values.length; i++) {
+      const v = stream.values[i]!;
+      const ctx = stream.contexts[i]!;
+      histograms[ctx]![hybridUintToken(v)]!++;
+      if (v >= SPLIT) bits[ctx]! += 30 - Math.clz32(v);
+    }
   }
-  for (const h of histograms) {
+  for (let ctx = 0; ctx < numContexts; ctx++) {
+    const h = histograms[ctx]!;
     let total = 0;
     for (const count of h) total += count;
-    for (const count of h) if (count > 0) bits -= count * Math.log2(count / total);
+    for (const count of h) if (count > 0) bits[ctx]! -= count * Math.log2(count / total);
   }
   return bits;
 }
