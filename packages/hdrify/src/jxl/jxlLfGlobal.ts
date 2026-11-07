@@ -147,10 +147,13 @@ export function readLfGlobal(
   const quantizer = vardct ? readQuantizer(br) : undefined;
   const blockCtx = vardct ? readHfBlockContext(br) : undefined;
   const cfl = vardct ? readLfChannelCorrelation(br) : undefined;
-  const global = br.readBool() ? readMaTree(br) : undefined;
+  // libjxl DecodeGlobalInfo: one colour channel only for gray without a colour transform (XYB/YCbCr).
+  const nbChans = h.colorEncoding.colorSpace === 'gray' && !h.xybEncoded && !fh.doYCbCr ? 1 : 3;
+  const treeLimit = 1024 + Math.floor((dims.width * dims.height * (nbChans + h.extraChannels.length)) / 16);
+  const global = br.readBool() ? readMaTree(br, treeLimit) : undefined;
 
   const chans: ModularChannelInfo[] = [];
-  const nbColor = vardct ? 0 : h.colorEncoding.colorSpace === 'gray' && !fh.doYCbCr ? 1 : 3;
+  const nbColor = vardct ? 0 : nbChans;
   // Subsampling modes encode relative JPEG sampling factors, not absolute shifts.
   const hFactors = [0, 1, 1, 0];
   const vFactors = [0, 1, 0, 1];

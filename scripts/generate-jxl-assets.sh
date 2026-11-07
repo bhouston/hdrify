@@ -49,6 +49,7 @@ enc lossless_multigroup big8.ppm ppm -d 0 -g 0
 
 # --- Lossy Modular (XYB + squeeze) ---
 enc lossy_modular rgb8.ppm pfm -m 1 -d 1
+enc lossy_modular_gray gray8.pgm pfm -m 1 -d 1
 
 # --- VarDCT ---
 enc vardct_rgb8 rgb8.ppm pfm -d 1
