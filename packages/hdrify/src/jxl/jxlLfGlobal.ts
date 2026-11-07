@@ -151,8 +151,19 @@ export function readLfGlobal(
 
   const chans: ModularChannelInfo[] = [];
   const nbColor = vardct ? 0 : h.colorEncoding.colorSpace === 'gray' && !fh.doYCbCr ? 1 : 3;
-  if (nbColor && fh.jpegUpsampling.some((m) => m !== 0)) throw new Error('JXL: not yet supported: chroma subsampling');
-  for (let c = 0; c < nbColor; c++) chans.push({ width: dims.width, height: dims.height, hshift: 0, vshift: 0 });
+  // Subsampling modes encode relative JPEG sampling factors, not absolute shifts.
+  const hFactors = [0, 1, 1, 0];
+  const vFactors = [0, 1, 0, 1];
+  for (let c = 0; c < nbColor; c++) {
+    const hshift = dims.maxHShift - hFactors[fh.jpegUpsampling[c]!]!;
+    const vshift = dims.maxVShift - vFactors[fh.jpegUpsampling[c]!]!;
+    chans.push({
+      width: Math.ceil(dims.width / 2 ** hshift),
+      height: Math.ceil(dims.height / 2 ** vshift),
+      hshift,
+      vshift,
+    });
+  }
   const upShift = Math.log2(fh.upsampling);
   h.extraChannels.forEach((ec, i) => {
     const ecUp = fh.ecUpsampling[i]! << ec.dimShift;
