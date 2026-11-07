@@ -96,6 +96,19 @@ describe('learned Modular trees', () => {
     expect(learnedLeaf(model.roots[0], input[1].properties).offset).toBe(128);
   });
 
+  it('learns signed extreme offsets without changing the sampled properties', () => {
+    const input = samples(0, true).map((sample, i) => ({
+      ...sample,
+      gradient: packSigned(i & 1 ? Math.imul(i, 0x9e3779b1) : -0x80000000),
+      weighted: packSigned(i & 1 ? 0x7fffffff : Math.imul(i, 0x9e3779b1)),
+    }));
+    const model = learnMaTree(input, [0])!;
+    expect(learnedLeaf(model.roots[0], input[0].properties).offset).toBe(-0x80000000);
+    expect(learnedLeaf(model.roots[0], input[1].properties).offset).toBe(0x7fffffff);
+    expect(input[0].properties[5]).toBe(-0x80000000);
+    expect(input[1].properties[5]).toBe(0x7fffffff);
+  });
+
   it('factors only full-stream divisibility and preserves signed wraparound', () => {
     const model = learnMaTree(samples(), [0])!;
     const context = learnedLeaf(model.roots[0], samples()[0].properties).context;
