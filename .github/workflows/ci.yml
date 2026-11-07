@@ -34,7 +34,7 @@ jobs:
       - name: Check formatting
         run: pnpm exec oxfmt --check .
       - run: pnpm test --coverage
-      # --- repository-specific steps (package-content check, size budget, e2e, docs, ...) go here ---
+      # --- repository-specific steps (package-content check, e2e, docs, ...) go here ---
       - name: Verify published packages include dist
         run: |
           for pkg in packages/hdrify packages/cli packages/hdrify-react; do
