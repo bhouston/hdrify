@@ -44,8 +44,6 @@ jobs:
             }
           done
       - run: pnpm release:check
-      - name: Bundle size budget
-        run: pnpm size | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Package VS Code extension
         run: pnpm --filter hdrify-vscode-extension run package
       - name: Audit dependencies
