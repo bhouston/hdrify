@@ -150,6 +150,22 @@ describe('JxlEncEntropyCode round-trips through the decoder', () => {
     expect(Math.abs(estimateStreamBits(stream, 1) - actual) / actual).toBeLessThan(0.02);
   });
 
+  it('clusters many logical HF contexts into a small set of prefix histograms', () => {
+    const contextMap = Uint8Array.from({ length: 495 }, (_, c) => (c < 37 ? 0 : 1 + (c & 1)));
+    const stream = { contexts: [0, 494, 37, 12, 490, 140], values: [63, 0, 0xffffffff, 3, 2, 99] };
+    const code = JxlEncEntropyCode.build(495, [stream], contextMap);
+    const w = new JxlBitWriter();
+    code.writeHeader(w);
+    code.writeStream(w, stream);
+    w.writeBits(13, 0x1abc);
+    const br = new JxlBitReader(w.finish());
+    const dec = JxlEntropyDecoder.read(br, 495);
+    dec.begin(br);
+    for (let i = 0; i < stream.values.length; i++) expect(dec.readUint(br, stream.contexts[i])).toBe(stream.values[i]);
+    dec.finish();
+    expect(br.readBits(13)).toBe(0x1abc);
+  });
+
   it('buildPrefixCode trims the alphabet to the last used token', () => {
     expect(buildPrefixCode([3, 0, 1, 0, 0]).alphabetSize).toBe(3);
     expect(buildPrefixCode([0, 0]).alphabetSize).toBe(1);
