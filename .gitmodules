@@ -1,3 +1,0 @@
-[submodule "submodule/openexr"]
-	path = submodule/openexr
-	url = https://github.com/AcademySoftwareFoundation/openexr.git

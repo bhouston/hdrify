@@ -38,6 +38,14 @@ pnpm test
 
 The Husky pre-commit hook formats and lints staged files (`oxfmt`, `oxlint --fix`) and type-checks the workspace. CI runs the same checks plus any repository-specific gates, such as coverage floors, package-content checks, and a dependency audit; see `.github/workflows/ci.yml`. Explain any intentional threshold change in the PR.
 
+## Reference implementations
+
+Reference implementations are not vendored or included as submodules. When you need one, clone it as a sibling repository (next to this repo), for example:
+
+- [OpenEXR](https://github.com/AcademySoftwareFoundation/openexr)
+- [libjxl](https://github.com/libjxl/libjxl) (JPEG XL reference)
+- [jxl-oxide](https://github.com/tirr-c/jxl-oxide)
+
 ## Releases
 
 Merging to `main` never publishes. A release is a separate, deliberate step that the maintainer triggers whenever the changes accumulated on `main` should ship:
