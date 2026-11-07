@@ -75,6 +75,24 @@ describe('JxlBitReader', () => {
 
 describe('JxlBitWriter round-trip', async () => {
   const { JxlBitWriter } = await import('./jxlBitWriter.js');
+  it('appends offset views across growths and resumes bit writes', () => {
+    const w = new JxlBitWriter();
+    const source = Uint8Array.from({ length: 9002 }, (_, i) => i & 0xff);
+    const view = source.subarray(1, -1);
+    w.writeBits(8, 0xa5);
+    w.writeBytes(new Uint8Array());
+    w.writeBytes(view);
+    // Appends must copy: later changes to the source cannot change encoded bytes.
+    const expected = new Uint8Array([0xa5, ...view, ...view, 0xff]);
+    w.writeBytes(view);
+    source.fill(0);
+    w.writeBits(3, 7);
+    expect(() => w.writeBytes(view)).toThrow(/not byte-aligned/);
+    w.writeBits(5, 31);
+    expect(w.finish()).toEqual(expected);
+    expect(w.bitPosition).toBe(expected.length * 8);
+  });
+
   for (const capacity of [1024, 2048]) {
     for (let bits = 1; bits < 8; bits++) {
       it(`preserves ${bits} pending bits after ${capacity} flushed bytes`, () => {
