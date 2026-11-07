@@ -222,7 +222,7 @@ export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear:
 
 export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
   return {
-    originalChromaticities: jxlChromaticities(h.colorEncoding),
+    ...(!h.colorEncoding.wantIcc && { originalChromaticities: jxlChromaticities(h.colorEncoding) }),
     linearReferenceWhiteNits: h.toneMapping.intensityTarget,
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
     ...(h.colorEncoding.wantIcc && { iccColorManaged: transform(h).iccManaged }),
