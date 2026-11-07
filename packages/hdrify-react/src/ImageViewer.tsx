@@ -1,7 +1,10 @@
 import type { HdrifyImage, ToneMappingType } from 'hdrify';
-import { type CSSProperties, useEffect, useId, useRef, useState } from 'react';
+import { type CSSProperties, type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
+import { captureImage, type ImageViewerCaptureOptions } from './capture.js';
 import { decodeHdrifyImage } from './decode.js';
 import { HdrifyCanvas } from './HdrifyCanvas.js';
+import { type DownloadProgress, type ImageViewerProgress, readResponse } from './progress.js';
+import { ViewerReadiness } from './readiness.js';
 import { IMAGE_VIEWER_CSS } from './styles.js';
 
 /** `open` shows the options panel, `closed` shows only its gear button, and `hidden` shows neither. */
@@ -33,6 +36,17 @@ export const TONE_MAPPING_OPTIONS: readonly { value: ToneMappingType; label: str
 /** Range of the exposure slider, in stops. The options panel accepts any value. */
 export const EXPOSURE_SLIDER_RANGE = { min: -10, max: 10 } as const;
 
+/** Imperative handle for {@link ImageViewer}, received through its `ref` (React 19). */
+export interface ImageViewerHandle {
+  /**
+   * Resolve once the current source is loaded and drawn (immediately with no source). If the source changes first,
+   * it waits for the new source instead. Rejects with the load's error, or if the component unmounts.
+   */
+  whenReady(): Promise<void>;
+  /** Wait for {@link whenReady}, then encode the tone-mapped image with the current settings; no viewer controls. */
+  toBlob(options?: ImageViewerCaptureOptions): Promise<Blob>;
+}
+
 /** Props for {@link ImageViewer}. Settings props override the user's choice whenever they change. */
 export interface ImageViewerProps extends Partial<ImageViewerSettings> {
   /** URL of an EXR, HDR or gain map JPEG (optionally gzipped). Fetching is cancelled when it changes. */
@@ -49,14 +63,18 @@ export interface ImageViewerProps extends Partial<ImageViewerSettings> {
   className?: string;
   /** Wrapper style; the default height is 480 pixels. */
   style?: CSSProperties;
-  /** Called after each image loads. */
+  /** Called after each image loads and is drawn. */
   onLoad?: (image: HdrifyImage) => void;
   /** Called with fetch and decode errors; they are also shown in the viewer. */
   onError?: (error: Error) => void;
+  /** Called as the image downloads, decodes and is drawn. */
+  onProgress?: (progress: ImageViewerProgress) => void;
   /** Called when the user changes a setting with the slider or the options panel. */
   onSettingsChange?: (settings: ImageViewerSettings) => void;
   /** Called when the user opens or closes the options panel. */
   onSettingsPanelChange?: (mode: SettingsPanelMode) => void;
+  /** Receives an {@link ImageViewerHandle} for readiness and image capture. */
+  ref?: Ref<ImageViewerHandle>;
 }
 
 function definedSettings(settings: Partial<ImageViewerSettings>): Partial<ImageViewerSettings> {
@@ -67,11 +85,13 @@ function formatStops(stops: number): string {
   return `${stops > 0 ? '+' : ''}${Number(stops.toFixed(1))} EV`;
 }
 
-async function fetchBytes(url: string, signal: AbortSignal): Promise<ArrayBuffer> {
-  const response = await fetch(url, { signal });
-  if (!response.ok) throw new Error(`Failed to load ${url}: HTTP ${response.status}`);
-  return response.arrayBuffer();
-}
+/** Wait until the browser has painted, so the progress bar shows before decoding blocks the main thread. */
+const afterPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+
+/** Share of the progress bar for the download; decoding and drawing take the rest. */
+const DOWNLOAD_SHARE = 0.8;
+const NO_DOWNLOAD: DownloadProgress = { loaded: 0, total: null, progress: null };
+let loadCount = 0;
 
 interface LoadState {
   source?: string | ArrayBuffer | Uint8Array;
@@ -80,8 +100,8 @@ interface LoadState {
 }
 
 /**
- * Loads and displays an HDR image with tone mapping, an optional options panel and an optional exposure slider.
- * Accepts every format hdrify reads; see {@link decodeHdrifyImage}.
+ * Loads and displays an HDR image with tone mapping, a loading bar, an optional options panel and an optional
+ * exposure slider. Accepts every format hdrify reads; see {@link decodeHdrifyImage}.
  *
  * @example
  * ```tsx
@@ -101,12 +121,14 @@ export function ImageViewer({
   style,
   onLoad,
   onError,
+  onProgress,
   onSettingsChange,
   onSettingsPanelChange,
+  ref,
 }: ImageViewerProps) {
-  const callbacks = useRef({ onLoad, onError, onSettingsChange, onSettingsPanelChange });
+  const callbacks = useRef({ onLoad, onError, onProgress, onSettingsChange, onSettingsPanelChange });
   useEffect(() => {
-    callbacks.current = { onLoad, onError, onSettingsChange, onSettingsPanelChange };
+    callbacks.current = { onLoad, onError, onProgress, onSettingsChange, onSettingsPanelChange };
   });
 
   // Props seed the state and override it whenever they change; the user can change it in between.
@@ -137,41 +159,99 @@ export function ImageViewer({
     callbacks.current.onSettingsPanelChange?.(mode);
   };
 
+  const [readiness] = useState(() => new ViewerReadiness());
+  useEffect(() => () => readiness.disconnect(), [readiness]);
+
   // The latest fetch/decode result, tagged with the source it came from; the rest is derived during render.
   const source = image ? undefined : (data ?? src);
   const [loaded, setLoaded] = useState<LoadState>({});
+  // Progress of the current load; `id` remounts the bar so it never animates backwards into a new load.
+  const [bar, setBar] = useState<{ id: number; value: number } | null>(null);
+  const download = useRef(NO_DOWNLOAD);
   useEffect(() => {
-    if (image) {
-      callbacks.current.onLoad?.(image);
+    readiness.pending();
+    download.current = NO_DOWNLOAD;
+    if (image) return; // Drawn below.
+    if (!source) {
+      readiness.finish();
       return;
     }
-    if (!source) return;
     const controller = new AbortController();
+    const { signal } = controller;
+    const id = ++loadCount;
+    let overall = 0;
+    const report = (stage: ImageViewerProgress['stage'], totalProgress: number) => {
+      if (signal.aborted) return;
+      overall = Math.max(overall, totalProgress);
+      setBar({ id, value: overall });
+      callbacks.current.onProgress?.({ ...download.current, totalProgress: overall, stage });
+    };
+    const fetchWithProgress = async (url: string) => {
+      report('download', 0);
+      const response = await fetch(url, { signal });
+      if (!response.ok) throw new Error(`Failed to load ${url}: HTTP ${response.status}`);
+      return readResponse(response, signal, (progress) => {
+        download.current = progress;
+        report('download', DOWNLOAD_SHARE * (progress.progress ?? 0));
+      });
+    };
     (async () => {
-      const decoded = await decodeHdrifyImage(
-        typeof source === 'string' ? await fetchBytes(source, controller.signal) : source,
-      );
-      if (controller.signal.aborted) return;
+      const bytes = typeof source === 'string' ? await fetchWithProgress(source) : source;
+      report('decode', typeof source === 'string' ? DOWNLOAD_SHARE : 0);
+      await afterPaint();
+      signal.throwIfAborted();
+      const decoded = await decodeHdrifyImage(bytes);
+      signal.throwIfAborted();
       setLoaded({ source, image: decoded });
-      callbacks.current.onLoad?.(decoded);
     })().catch((reason: unknown) => {
-      if (controller.signal.aborted) return;
+      if (signal.aborted) return;
       const error = reason instanceof Error ? reason : new Error(String(reason));
+      readiness.finish(error);
+      setBar(null);
       setLoaded({ source, error: error.message });
       callbacks.current.onError?.(error);
     });
     return () => controller.abort();
-  }, [image, source]);
+  }, [image, source, readiness]);
   const loading = source !== undefined && loaded.source !== source;
   // While a new source loads, keep showing the previous image.
   const shownImage = image ?? (source === undefined ? undefined : loaded.image);
   const error = !loading && source !== undefined ? loaded.error : undefined;
+  const barValue = bar && !loading ? 1 : bar?.value;
+
+  // HdrifyCanvas (a child) draws in its effect, which runs before this one: the new image is on screen here.
+  const drawn = loading ? undefined : shownImage;
+  const latest = useRef({ image: drawn, settings });
+  useEffect(() => {
+    latest.current = { image: drawn, settings };
+  });
+  useEffect(() => {
+    if (!drawn) return;
+    readiness.finish();
+    callbacks.current.onProgress?.({ ...download.current, totalProgress: 1, stage: 'render' });
+    callbacks.current.onLoad?.(drawn);
+  }, [drawn, readiness]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      whenReady: () => readiness.whenReady(),
+      toBlob: async (options) => {
+        await readiness.whenReady();
+        const { image: current, settings: currentSettings } = latest.current;
+        if (!current) throw new Error('No image is loaded.');
+        return captureImage(current, currentSettings.toneMapping, 2 ** currentSettings.exposure, options);
+      },
+    }),
+    [readiness],
+  );
 
   return (
     <div
       className={className ? `hdrify-viewer ${className}` : 'hdrify-viewer'}
       style={{ height: 480, ...style }}
       data-fit={settings.fit}
+      aria-busy={loading}
     >
       <style>{IMAGE_VIEWER_CSS}</style>
       <div className="hdrify-viewer-viewport">
@@ -184,7 +264,26 @@ export function ImageViewer({
           />
         )}
       </div>
-      {loading && <output className="hdrify-viewer-status">Loading image…</output>}
+      <div className="hdrify-viewer-progress" hidden={barValue === undefined}>
+        {/* In <image-viewer>, slot="progress-bar" children replace the default bar, as in <material-viewer>. */}
+        <slot name="progress-bar">
+          {bar && barValue !== undefined && (
+            <div
+              key={bar.id}
+              className={barValue === 1 ? 'hdrify-viewer-progress-fill complete' : 'hdrify-viewer-progress-fill'}
+              part="default-progress-bar"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a scaled fill, styleable via ::part like <material-viewer>'s
+              role="progressbar"
+              aria-label="Loading image"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(barValue * 100)}
+              aria-hidden={barValue === 1}
+              style={{ transform: `scaleX(${Math.max(0.02, barValue)})` }}
+            />
+          )}
+        </slot>
+      </div>
       {error && (
         <p role="alert" className="hdrify-viewer-error">
           {error}

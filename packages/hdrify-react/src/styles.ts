@@ -30,7 +30,14 @@ export const IMAGE_VIEWER_CSS = `
 .hdrify-viewer-viewport { position: absolute; inset: 0; display: flex; overflow: auto; }
 .hdrify-viewer-canvas { display: block; flex: none; margin: auto; }
 .hdrify-viewer[data-fit='contain'] .hdrify-viewer-canvas { width: 100%; height: 100%; object-fit: contain; }
-.hdrify-viewer-status { position: absolute; left: 12px; bottom: 10px; color: var(--hv-muted); pointer-events: none; }
+.hdrify-viewer-progress { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; }
+.hdrify-viewer-progress-fill {
+  position: absolute; top: 0; left: 0; width: 100%; height: var(--progress-bar-height, 5px);
+  background-color: var(--progress-bar-color, rgb(255 255 255 / 50%));
+  transform-origin: top left; transition: transform 0.09s;
+}
+.hdrify-viewer-progress-fill.complete { opacity: 0; transition: transform 0.09s, opacity 0.3s 1s; }
+@media (prefers-reduced-motion: reduce) { .hdrify-viewer-progress-fill { transition: none; } }
 .hdrify-viewer-error {
   position: absolute; top: 12px; left: 12px; right: 12px; max-width: 460px; margin: 0; padding: 10px 14px;
   border: 1px solid color-mix(in srgb, var(--hv-error) 40%, transparent); border-radius: var(--hv-radius);

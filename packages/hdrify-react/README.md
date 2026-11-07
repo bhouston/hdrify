@@ -66,6 +66,8 @@ The same viewer is available as a web component for plain HTML and other framewo
 <image-viewer src="/images/memorial.exr" exposure-control></image-viewer>
 ```
 
+While loading, a progress bar fills across the top (`onProgress` / the `progress` event report it). `whenReady()` and `toBlob()` (on the element, or on the component's `ref`) wait for the image and export the tone-mapped result.
+
 With a bundler, `import 'hdrify-react/element'` instead. See the [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for all attributes, events and theming.
 
 ### HdrifyCanvas props
