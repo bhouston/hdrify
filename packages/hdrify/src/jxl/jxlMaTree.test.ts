@@ -3,7 +3,10 @@ import { JxlBitReader } from './jxlBitReader.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import { packSigned } from './jxlEncEntropy.js';
 import { type EntropyOp, writeEntropyStream } from './jxlEntropyTestUtils.js';
-import { filterTree, type MaTree, maTreeLookup, readMaTree } from './jxlMaTree.js';
+import type { JxlFrameDimensions, JxlFrameHeader } from './jxlFrameHeader.js';
+import type { JxlImageHeader } from './jxlImageHeader.js';
+import { readLfGlobal } from './jxlLfGlobal.js';
+import { filterTree, type MaTree, readMaTree } from './jxlMaTree.js';
 import { decodeModularStream } from './jxlModular.js';
 import { Predictor } from './jxlPredictors.js';
 
@@ -40,34 +43,7 @@ function writeGroupHeader(w: JxlBitWriter, useGlobalTree: boolean): void {
   w.writeBits(2, 0); // nb_transforms = 0
 }
 
-/** Hand-built tree: root splits on property 6 (N) > 10; left -> leaf 0; right splits on property 3 (x) > 2. */
-function sampleTree(): MaTree {
-  return {
-    property: Int32Array.from([6, -1, 3, -1, -1]),
-    splitVal: Int32Array.from([10, 0, 2, 0, 0]),
-    left: Int32Array.from([1, 0, 3, 0, 0]),
-    right: Int32Array.from([2, 0, 4, 0, 0]),
-    ctx: Int32Array.from([0, 0, 0, 1, 2]),
-    predictor: Uint8Array.from([0, 1, 0, 2, 5]),
-    offset: Int32Array.from([0, 3, 0, 0, -1]),
-    multiplier: Int32Array.from([1, 1, 1, 1, 4]),
-    numLeaves: 3,
-  };
-}
-
-describe('MA tree lookup', () => {
-  it('goes left when property > split value', () => {
-    const t = sampleTree();
-    const props = new Int32Array(16);
-    props[6] = 11;
-    expect(maTreeLookup(t, props)).toBe(1);
-    props[6] = 10;
-    props[3] = 3;
-    expect(maTreeLookup(t, props)).toBe(3);
-    props[3] = 2;
-    expect(maTreeLookup(t, props)).toBe(4);
-  });
-
+describe('MA tree filtering', () => {
   it('filterTree resolves channel / stream decisions and reports needs', () => {
     // root: channel (0) > 0 ? [stream (1) > 4 ? leafA : WP-prop split] : leafC
     const t: MaTree = {
@@ -146,6 +122,29 @@ describe('readMaTree', () => {
     const w = new JxlBitWriter();
     writeTree(w, [{ pred: 14 }], [], 1);
     expect(() => readMaTree(new JxlBitReader(w.finish()))).toThrow();
+  });
+
+  it('bounds the global tree by frame size (libjxl 1024 + xsize * ysize * channels / 16)', () => {
+    // LfGlobal of a gray Modular frame: default LF dequant, then a 3001-node global tree.
+    const w = new JxlBitWriter();
+    w.writeBool(true); // default LF dequantization
+    w.writeBool(true); // has global tree
+    writeEntropyStream(
+      w,
+      { numDists: 6, usePrefix: false },
+      treeOps(Array.from({ length: 3001 }, (_, i): Node => (i < 1500 ? { prop: 0, split: 0 } : { pred: 0 }))),
+    );
+    const bytes = w.finish();
+    const h = {
+      colorEncoding: { colorSpace: 'gray' },
+      xybEncoded: false,
+      extraChannels: [],
+    } as unknown as JxlImageHeader;
+    const fh = { encoding: 'modular' } as JxlFrameHeader;
+    const lfGlobal = (width: number, height: number) => () =>
+      readLfGlobal(new JxlBitReader(bytes), h, fh, { width, height } as JxlFrameDimensions);
+    expect(lfGlobal(1, 1)).toThrow(/MA tree too large/); // limit 1024
+    expect(lfGlobal(256, 256)).toThrow(/invalid MA tree/); // limit 5120: read in full, then fails validation
   });
 });
 

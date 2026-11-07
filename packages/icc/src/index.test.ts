@@ -107,3 +107,35 @@ describe('ICC profile I/O', () => {
     expect(() => writeIccProfile(p)).toThrow('four bytes');
   });
 });
+
+it('reads and rewrites shared tag ranges without amplifying payload allocation', () => {
+  const source = readIccProfile(load('adobe_rgb'));
+  const payload = new Uint8Array(4096).fill(7);
+  source.tags = Array.from({ length: 1000 }, () => ({ signature: 'data', data: payload }));
+  const encoded = Buffer.from(writeIccProfile(source));
+  expect(encoded.length).toBe(132 + 1000 * 12 + 4096);
+  const parsed = readIccProfile(encoded);
+  expect(new Set(parsed.tags.map((t) => t.data.buffer)).size).toBe(1);
+  expect(new Set(parsed.tags.map((t) => t.data.byteOffset)).size).toBe(1);
+  expect(parsed.tags[0].data.buffer).not.toBe(encoded.buffer);
+  const offset = new DataView(encoded.buffer, encoded.byteOffset, encoded.byteLength).getUint32(136);
+  encoded[offset] = 99;
+  expect(parsed.tags[0].data[0]).toBe(7);
+  const rewritten = writeIccProfile(parsed);
+  expect(rewritten.length).toBe(encoded.length);
+  expect(readIccProfile(rewritten).tags[999].data).toEqual(payload);
+});
+
+it('coalesces overlapping payloads and aligns unaligned caller views', () => {
+  const profile = readIccProfile(load('adobe_rgb'));
+  const storage = Uint8Array.from({ length: 8192 }, (_, i) => i % 251);
+  profile.tags = Array.from({ length: 1000 }, (_, i) => ({
+    signature: 'data',
+    data: storage.subarray(i % 100, (i % 100) + 4096),
+  }));
+  const encoded = writeIccProfile(profile);
+  expect(encoded.length).toBeLessThan(132 + 12000 + storage.length * 4);
+  const d = new DataView(encoded.buffer);
+  for (let i = 0; i < 1000; i++) expect(d.getUint32(136 + i * 12) % 4).toBe(0);
+  expect(readIccProfile(encoded).tags).toEqual(profile.tags);
+});

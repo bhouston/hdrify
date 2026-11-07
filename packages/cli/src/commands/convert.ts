@@ -69,7 +69,7 @@ export const command = defineCommand({
         demandOption: true,
       })
       .positional('output', {
-        describe: 'Output file path (.exr, .hdr, .jxl (lossless), .png, .webp, .jpg, .jpeg)',
+        describe: 'Output file path (.exr, .hdr, .jxl, .png, .webp, .jpg, .jpeg)',
         type: 'string',
         demandOption: true,
       })
@@ -92,6 +92,15 @@ export const command = defineCommand({
         describe: 'JPEG quality 0-100 (JPEG/JPEG-R output only)',
         type: 'number',
         default: 90,
+      })
+      .option('jxl-lossy', {
+        describe: 'Write lossy XYB JPEG XL (JXL output only; default is lossless)',
+        type: 'boolean',
+        default: false,
+      })
+      .option('jxl-distance', {
+        describe: 'JPEG XL quantization distance, > 0 and <= 25; enables lossy output (default: 1)',
+        type: 'number',
       })
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
@@ -121,7 +130,21 @@ export const command = defineCommand({
         nargs: 1,
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality, compression, format, size, filter, flip } = argv;
+    const {
+      input,
+      output,
+      tonemapping,
+      gamma,
+      exposure,
+      quality,
+      compression,
+      format,
+      size,
+      filter,
+      flip,
+      'jxl-lossy': jxlLossy,
+      'jxl-distance': jxlDistance,
+    } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -141,6 +164,13 @@ export const command = defineCommand({
     const supportedOutput = [...HDR_EXTENSIONS, ...SDR_EXTENSIONS].join(', ');
     if (!isHdrExtension(outputExt) && !isSdrExtension(outputExt)) {
       console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: ${supportedOutput}`);
+      process.exit(1);
+    }
+
+    if ((jxlLossy || jxlDistance !== undefined) && outputExt !== '.jxl') {
+      console.error(
+        `Error: --jxl-lossy and --jxl-distance are only valid for JXL output. Output format is ${outputExt}.`,
+      );
       process.exit(1);
     }
 
@@ -195,7 +225,7 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
-          outputBuffer = writeJxl(dataToWrite);
+          outputBuffer = writeJxl(dataToWrite, { lossy: jxlLossy || jxlDistance !== undefined, distance: jxlDistance });
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }
