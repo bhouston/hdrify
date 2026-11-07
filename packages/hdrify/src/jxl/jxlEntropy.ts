@@ -49,11 +49,16 @@ export function readHybridUint(br: JxlBitReader, cfg: HybridUintConfig, token: n
   if (token < cfg.split) return token;
   const msb = cfg.msbInToken;
   const lsb = cfg.lsbInToken;
-  const n = cfg.splitExponent - msb - lsb + Math.floor((token - cfg.split) / 2 ** (msb + lsb));
+  const n = cfg.splitExponent - msb - lsb + ((token - cfg.split) >>> (msb + lsb));
   if (n > 32) throw new Error('JXL: hybrid uint too large');
   const low = token & ((1 << lsb) - 1);
   const high = ((token >>> lsb) & ((1 << msb) - 1)) | (1 << msb);
-  return (high * 2 ** n + br.readBits(n)) * (1 << lsb) + low;
+  // Result has msb + 1 + n + lsb bits: int32 shifts are exact below 32 bits.
+  if (n + msb + lsb < 31) return (((high << n) | br.readBits(n)) << lsb) | low;
+  const v = (high * 2 ** n + br.readBits(n)) * (1 << lsb) + low;
+  // Conforming streams fit uint32 (libjxl truncates); reject rather than wrap so values stay uint32.
+  if (v > 0xffffffff) throw new Error('JXL: hybrid uint too large');
+  return v;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -466,14 +471,14 @@ export class JxlEntropyDecoder {
   private readonly code: EntropyCode;
   private state = 0;
   private started = false;
-  private window: Float64Array | null = null;
+  private window: Uint32Array | null = null;
   private numToCopy = 0;
   private copyPos = 0;
   private numDecoded = 0;
 
   private constructor(code: EntropyCode) {
     this.code = code;
-    if (code.lz77) this.window = new Float64Array(1024);
+    if (code.lz77) this.window = new Uint32Array(1024);
   }
 
   /**
@@ -621,7 +626,7 @@ export class JxlEntropyDecoder {
     let w = this.window!;
     const i = this.numDecoded++ & WINDOW_MASK;
     if (i >= w.length) {
-      const grown = new Float64Array(Math.min(WINDOW_SIZE, w.length * 2));
+      const grown = new Uint32Array(Math.min(WINDOW_SIZE, w.length * 2));
       grown.set(w);
       this.window = w = grown;
     }

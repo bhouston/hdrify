@@ -46,6 +46,7 @@ const CORPUS: Record<string, Expect> = {
   lossless_rgba8: [64, 64, 8, false, false, false, true, 'srgb', 'absolute'],
   lossless_squeeze: [96, 48, 8, false, false, false, false, 'srgb', 'perceptual'],
   lossy_modular: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],
+  lossy_modular_gray: [96, 48, 8, false, true, true, false, 'srgb', 'perceptual'],
   vardct_float: [64, 96, 32, true, true, false, false, 'linear', 'relative'],
   vardct_nofilters: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],
   vardct_noise: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],

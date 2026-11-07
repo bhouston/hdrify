@@ -133,8 +133,6 @@ fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
 fs.writeFileSync('delivery.jxl', writeJxl(imageData, { lossy: true, distance: 1 }));
 ```
 
-JPEG XL extra channels are available in `metadata.extraChannels` as `{ name, type, width, height, data: Float32Array }`, in the returned image orientation. Spot colours retain their RGB/solidity in each plane’s `spotColor` field; set `{ renderSpotColors: true }` on either reader to composite them like djxl. CMYK ICC conversion is unsupported. `readJxlFrames` retains all decoded frames in memory.
-
 For additional lossless compression, use `writeJxl(imageData, { effort: 'high' })`
 or CLI `--jxl-effort high`. The default `standard` effort uses prefix codes;
 `high` also tries ANS and learned prediction trees, retaining the smaller coded
@@ -159,6 +157,10 @@ not a universal perceptual guarantee. Reproduce size and linear/sRGB error
 measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
 For the CLI, use
 `hdrify convert input.exr output.jxl --jxl-lossy` or `--jxl-distance 0.5`.
+
+JPEG XL extra channels are available in `metadata.extraChannels` as `{ name, type, width, height, data: Float32Array }`, in the returned image orientation. Spot colours retain their RGB/solidity in each plane’s `spotColor` field; set `{ renderSpotColors: true }` on either reader to composite them like djxl. CMYK ICC conversion is unsupported. `readJxlFrames` retains all decoded frames in memory.
+
+`metadata.originalChromaticities` describes enum/custom colour declarations. For embedded ICC sources, the reader retains `metadata.iccProfile` and reports colour-transform support in `metadata.iccColorManaged`; it omits `originalChromaticities`.
 
 ### Converting between formats
 

@@ -85,3 +85,26 @@ it('preserves native linear float samples including nonfinite neighbours and sig
   expect([...decoded.data]).toEqual([...data]);
   expect(new Uint32Array(decoded.data.buffer)[12]).toBe(0x80000000);
 });
+
+it('retains an embedded ICC profile without reporting placeholder enum chromaticities', () => {
+  const image = readJxl(fs.readFileSync(new URL('color/adobe_rgb-d0.jxl', ASSETS)));
+  expect(image.metadata?.iccProfile).toBeInstanceOf(Uint8Array);
+  expect(image.metadata?.iccColorManaged).toBe(true);
+  expect(image.metadata).not.toHaveProperty('originalChromaticities');
+});
+
+it('retains original chromaticities for enum and custom colour declarations', () => {
+  const native = readJxl(fs.readFileSync(new URL('color/pq-d0.jxl', ASSETS)));
+  expect(native.metadata?.originalChromaticities).toMatchObject({
+    greenX: 0.17,
+    greenY: 0.797,
+    whiteX: 0.3127,
+    whiteY: 0.329,
+  });
+  const custom = readJxl(fs.readFileSync(new URL('color/custom-d0.jxl', ASSETS)));
+  expect(custom.metadata?.originalChromaticities).toMatchObject({ redX: 0.64, greenX: 0.21, blueX: 0.15 });
+  expect(custom.metadata?.originalChromaticities).toMatchObject({
+    whiteX: expect.closeTo(0.345669, 5),
+    whiteY: expect.closeTo(0.358496, 5),
+  });
+});
