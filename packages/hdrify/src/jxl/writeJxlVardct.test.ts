@@ -60,8 +60,10 @@ const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
 
 describe('lossy DCT8 JPEG XL', () => {
   it.runIf(process.env.JXL_VARDCT_CRAFT_OUT)('writes the native VarDCT oracle fixture', () => {
+    const output = process.env.JXL_VARDCT_CRAFT_OUT;
+    if (!output) throw new Error('JXL_VARDCT_CRAFT_OUT is required to generate the oracle');
     writeFileSync(
-      join(process.env.JXL_VARDCT_CRAFT_OUT, 'native_dct8_hdr.jxl'),
+      join(output, 'native_dct8_hdr.jxl'),
       writeJxl(pattern(19, 7, true, 100), { lossy: true, distance: 0.5 }),
     );
   });
