@@ -451,6 +451,7 @@ export function readToc(br: JxlBitReader, fh: JxlFrameHeader): JxlToc {
     );
   }
   br.zeroPadToByte();
+  br.checkBounds();
   const rawOffsets: number[] = [];
   let off = 0;
   for (const s of raw) {

@@ -44,6 +44,30 @@ describe('JxlBitReader', () => {
     expect(() => end.skip(200)).toThrow();
   });
 
+  it('allows lookahead beyond EOF but rejects consuming those bits', () => {
+    const br = new JxlBitReader(new Uint8Array([0xa5]));
+    expect(br.peekBits(15)).toBe(0xa5);
+    br.readBits(8);
+    expect(() => br.checkBounds()).not.toThrow();
+    br.skipBits(1);
+    expect(() => br.checkBounds()).toThrow(/unexpected end/);
+  });
+
+  it('validates reader ranges against the supplied view', () => {
+    const bytes = new Uint8Array(8).subarray(2, 6);
+    for (const [offset, length] of [
+      [-1, 1],
+      [0, -1],
+      [3, 2],
+      [5, 0],
+      [0.5, 1],
+      [0, NaN],
+    ]) {
+      expect(() => new JxlBitReader(bytes, offset, length)).toThrow(/range/);
+    }
+    expect(() => new JxlBitReader(bytes, 4, 0)).not.toThrow();
+  });
+
   it('unpackSigned zig-zags', () => {
     expect([0, 1, 2, 3, 4].map(unpackSigned)).toEqual([0, -1, 1, -2, 2]);
   });
