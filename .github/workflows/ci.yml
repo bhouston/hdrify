@@ -21,7 +21,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          submodules: true # non-recursive: libjxl nests large third_party submodules we only use as reference
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -75,7 +74,6 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          submodules: true # non-recursive: libjxl nests large third_party submodules we only use as reference
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:

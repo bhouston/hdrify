@@ -1,6 +1,0 @@
-[submodule "submodule/openexr"]
-	path = submodule/openexr
-	url = https://github.com/AcademySoftwareFoundation/openexr.git
-[submodule "submodule/libjxl"]
-	path = submodule/libjxl
-	url = https://github.com/libjxl/libjxl.git
