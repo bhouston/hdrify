@@ -201,7 +201,7 @@ export function factorMaResiduals(model: JxlLearnedModel, streams: TokenStream[]
   if (logs.every((log) => log === 0)) return streams;
   return streams.map((stream) => ({
     contexts: stream.contexts,
-    values: Float64Array.from(stream.values, (value, i) =>
+    values: Uint32Array.from(stream.values, (value, i) =>
       packSigned(unpackSigned(value) / 2 ** logs[stream.contexts[i]!]!),
     ),
   }));
