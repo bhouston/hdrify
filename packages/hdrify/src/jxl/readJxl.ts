@@ -17,10 +17,9 @@ import { applyInverseTransforms, decodeModularGroup, type ModularChannel, modula
 import {
   advanceFrameIndices,
   blendFrame,
-  canBeReferenced,
   isDisplayedFrame,
   type JxlReferenceFrame,
-  needsBlending,
+  staysLinear,
   saveReference,
   upsampleFrame,
 } from './jxlRender.js';
@@ -337,8 +336,7 @@ export function* decodeDisplayedFrames(
     }
     const frame: JxlReferenceFrame = { width: w, height: hh, planes };
     const beforeCt = fh.saveBeforeCt ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)) } : frame;
-    // A frame that is neither blended nor referenced goes straight to the output and can stay linear.
-    let linear = !needsBlending(fh) && !canBeReferenced(fh);
+    let linear = staysLinear(fh);
     const [r, g, b] = [planes[0]!, planes[1]!, planes[2]!];
     const n = w * hh;
     if (h.xybEncoded) {
