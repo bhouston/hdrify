@@ -139,3 +139,7 @@ djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
 djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
   --color_space=RGB_D65_202_Rel_Lin --output_frames
 for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
+
+# --- Native TypeScript VarDCT writer: independent decoder oracle used even without djxl in CI. ---
+(cd "$ROOT" && JXL_VARDCT_CRAFT_OUT="$FEAT" pnpm vitest run packages/hdrify/src/jxl/writeJxlVardct.test.ts -t 'writes the native VarDCT oracle fixture' --no-coverage >/dev/null)
+djxl "$FEAT/native_dct8_hdr.jxl" "$FEAT/native_dct8_hdr.ref.pfm" --quiet

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readExr } from 'hdrify';
+import { readExr, readJxl } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTempDir, exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
@@ -16,6 +16,49 @@ describe('CLI convert command', () => {
     if (tempDir && fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true });
     }
+  });
+
+  it('accepts high-effort lossless JXL and rejects effort on other output formats', () => {
+    const output = path.join(tempDir, 'high.jxl');
+    const result = runCli(['convert', exrFilePaths[0], output, '--size', '33,19', '--jxl-effort', 'high']);
+    expect(result.exitCode, result.stderr).toBe(0);
+    const image = readJxl(fs.readFileSync(output));
+    expect([image.width, image.height]).toEqual([33, 19]);
+    const invalid = runCli(['convert', exrFilePaths[0], path.join(tempDir, 'out.exr'), '--jxl-effort', 'high']);
+    expect(invalid.exitCode).toBe(1);
+    expect(invalid.stderr).toMatch(/only valid for JXL/);
+  });
+
+  it('writes lossy JPEG XL with --jxl-distance and --jxl-lossy', () => {
+    const input = exrFilePaths[0];
+    for (const flags of [['--jxl-lossy'], ['--jxl-distance', '0.5']]) {
+      const output = path.join(tempDir, 'lossy.jxl');
+      const result = runCli(['convert', input, output, '--size', '33,19', ...flags]);
+      expect(result.exitCode, result.stderr).toBe(0);
+      const image = readJxl(fs.readFileSync(output));
+      expect([image.width, image.height]).toEqual([33, 19]);
+    }
+  });
+
+  it('rejects JPEG XL lossy options on other output formats', () => {
+    const result = runCli(['convert', exrFilePaths[0], path.join(tempDir, 'output.exr'), '--jxl-lossy']);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toMatch(/only valid for JXL/);
+  });
+
+  it('rejects high effort with lossy JXL output', () => {
+    const result = runCli([
+      'convert',
+      exrFilePaths[0],
+      path.join(tempDir, 'lossy.jxl'),
+      '--size',
+      '33,19',
+      '--jxl-lossy',
+      '--jxl-effort',
+      'high',
+    ]);
+    expect(result.exitCode).toBe(1);
+    expect(result.stderr).toMatch(/only supported for lossless/);
   });
 
   describe('EXR/HDR conversions', () => {

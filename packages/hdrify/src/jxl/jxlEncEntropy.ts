@@ -1,9 +1,10 @@
-import type { JxlBitWriter } from './jxlBitWriter.js';
+import { JxlAnsCode } from './jxlEncAns.js';
+import { JxlBitWriter } from './jxlBitWriter.js';
 
 /**
- * Prefix-code (Huffman) entropy coder for JPEG XL, the encoder side of the
- * spec's "entropy-coded stream": no LZ77, identity context clustering, one
- * prefix code per context, Brotli-style complex/simple code descriptions.
+ * Prefix/alias-ANS entropy coder for JPEG XL, the encoder side of the
+ * spec's "entropy-coded stream": optional LZ77 and size-gated alias-ANS,
+ * one histogram per context, Brotli-style complex/simple code descriptions.
  * Ports the relevant parts of libjxl enc_ans.cc / enc_huffman*.cc and the
  * hand-written writer in enc_fast_lossless.cc (PrefixCode::WriteTo).
  */
@@ -26,8 +27,8 @@ export function hybridUintToken(value: number): number {
 }
 
 /** Write `value`'s token with `code`, followed by its raw extra bits. */
-function writeHybridUint(w: JxlBitWriter, code: PrefixCode, value: number): void {
-  const token = hybridUintToken(value);
+function writeHybridUint(w: JxlBitWriter, code: PrefixCode, value: number, tokenOffset = 0): void {
+  const token = hybridUintToken(value) + tokenOffset;
   w.writeBits(code.lengths[token]!, code.codes[token]!);
   if (value >= SPLIT) {
     const nbits = 30 - Math.clz32(value); // n - msb_in_token
@@ -177,18 +178,18 @@ function writeAlphabetSize(w: JxlBitWriter, size: number): void {
 }
 
 /** Context map with identity clustering (simple form when ≤ 3 bits per entry, else entropy coded). */
-function writeContextMap(w: JxlBitWriter, numContexts: number): void {
+function writeContextMap(w: JxlBitWriter, numContexts: number, map?: Uint8Array): void {
   if (numContexts === 1) return;
-  const nbits = bitsFor(numContexts - 1);
+  const nbits = bitsFor(map ? Math.max(...map) : numContexts - 1);
   if (nbits <= 3) {
     w.writeBool(true); // is_simple
     w.writeBits(2, nbits);
-    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, c);
+    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, map?.[c] ?? c);
     return;
   }
   w.writeBool(false); // not simple
   w.writeBool(false); // no move-to-front
-  const values = Array.from({ length: numContexts }, (_, c) => c);
+  const values = Array.from({ length: numContexts }, (_, c) => map?.[c] ?? c);
   const stream: TokenStream = { contexts: new Uint8Array(numContexts), values };
   const code = JxlEncEntropyCode.build(1, [stream]);
   code.writeHeader(w);
@@ -201,50 +202,185 @@ export interface TokenStream {
   values: ArrayLike<number>;
 }
 
-/** Entropy code (one prefix code per context) built from the streams it will encode. */
+/** Entropy model built from the immutable streams it will encode. */
 export class JxlEncEntropyCode {
-  private constructor(private readonly codes: PrefixCode[]) {}
+  private measuredBits = 0;
 
-  static build(numContexts: number, streams: TokenStream[]): JxlEncEntropyCode {
-    const histograms = Array.from({ length: numContexts }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
-    for (const { contexts, values } of streams) {
-      for (let i = 0; i < values.length; i++) histograms[contexts[i]!]![hybridUintToken(values[i]!)]!++;
-    }
-    return new JxlEncEntropyCode(histograms.map(buildPrefixCode));
+  private constructor(
+    private readonly codes: PrefixCode[],
+    private readonly options: {
+      lzStreams?: Map<TokenStream, LzStream>;
+      ans?: JxlAnsCode;
+      minSymbol?: number;
+      numContexts?: number;
+      contextMap?: Uint8Array;
+    } = {},
+  ) {}
+
+  /** Exact entropy header + all model-stream payload bits, set by buildModular(). */
+  get encodedSizeBits(): number {
+    return this.measuredBits;
   }
 
-  /** Write the stream header: LZ77 off, context map, hybrid uint configs and prefix codes. */
+  /** Compare complete headers and payloads for prefix/ANS, with and without LZ77.
+   * Explicit distances use Modular's nonzero distance multiplier convention.
+   * MA trees and context maps keep the prefix-only build() path.
+   */
+  static buildModular(numContexts: number, streams: TokenStream[], allowAns = false): JxlEncEntropyCode {
+    const histogram = (count: number, encoded?: Map<TokenStream, LzStream>): Uint32Array[] => {
+      const hist = Array.from({ length: count }, () => new Uint32Array(224 + JXL_ENC_NUM_TOKENS));
+      for (const original of streams) {
+        const lz = encoded?.get(original);
+        const { contexts, values } = lz ?? original;
+        for (let i = 0; i < values.length; i++)
+          hist[contexts[i]!]![hybridUintToken(values[i]!) + (lz?.offsets[i] ?? 0)]!++;
+      }
+      return hist;
+    };
+    const rawHist = histogram(numContexts);
+    const lzStreams = new Map(streams.map((stream) => [stream, lz77Tokens(stream, numContexts)]));
+    const lzHist = histogram(numContexts + 1, lzStreams);
+    const plain = new JxlEncEntropyCode(rawHist.map(buildPrefixCode));
+    const prefixLz = new JxlEncEntropyCode(lzHist.map(buildPrefixCode), { lzStreams });
+    const candidates = [plain, prefixLz];
+    if (allowAns) {
+      // Parsing is identical for both alphabets; only the length-symbol marker changes.
+      const ansLzStreams = new Map(
+        streams.map((stream) => {
+          const lz = lzStreams.get(stream)!;
+          return [stream, { ...lz, offsets: Uint8Array.from(lz.offsets, (offset) => (offset ? 128 : 0)) }];
+        }),
+      );
+      const ansHist = (hist: Uint32Array[], lz = false): Uint32Array[] =>
+        hist.map((h) => {
+          const out = new Uint32Array(256);
+          out.set(h.subarray(0, JXL_ENC_NUM_TOKENS));
+          if (lz) out.set(h.subarray(224), 128);
+          return out;
+        });
+      candidates.push(
+        new JxlEncEntropyCode([], { ans: new JxlAnsCode(ansHist(rawHist)), numContexts }),
+        new JxlEncEntropyCode([], {
+          ans: new JxlAnsCode(ansHist(lzHist, true)),
+          lzStreams: ansLzStreams,
+          minSymbol: 128,
+          numContexts: numContexts + 1,
+        }),
+      );
+    }
+    let best = plain,
+      bestSize = Infinity;
+    for (let c = 0; c < candidates.length; c++) {
+      const code = candidates[c]!;
+      const w = new JxlBitWriter();
+      code.writeHeader(w);
+      let bits = w.bitPosition;
+      if (code.options.ans) {
+        for (const stream of streams) {
+          const encoded = code.options.lzStreams?.get(stream);
+          bits += code.options.ans.streamSizeBits(encoded ?? stream, encoded?.offsets);
+        }
+      } else {
+        const hist = c === 0 ? rawHist : lzHist;
+        for (let ctx = 0; ctx < hist.length; ctx++) {
+          for (let token = 0; token < hist[ctx]!.length; token++) {
+            const count = hist[ctx]![token]!;
+            if (!count) continue;
+            const uintToken = c === 1 && token >= 224 ? token - 224 : token;
+            const extra = uintToken < 16 ? 0 : 3 + ((uintToken - 16) >> 1);
+            bits += count * (code.codes[ctx]!.lengths[token]! + extra);
+          }
+        }
+      }
+      code.measuredBits = bits;
+      if (bits < bestSize) {
+        bestSize = bits;
+        best = code;
+      }
+    }
+    return best;
+  }
+
+  static build(numContexts: number, streams: TokenStream[], contextMap?: Uint8Array): JxlEncEntropyCode {
+    const numClusters = contextMap ? Math.max(...contextMap) + 1 : numContexts;
+    const histograms = Array.from({ length: numClusters }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
+    for (const { contexts, values } of streams) {
+      for (let i = 0; i < values.length; i++)
+        histograms[contextMap?.[contexts[i]!] ?? contexts[i]!]![hybridUintToken(values[i]!)]!++;
+    }
+    return new JxlEncEntropyCode(histograms.map(buildPrefixCode), { contextMap });
+  }
+
+  /** Write LZ77 parameters, context map, hybrid uint configs and entropy histograms. */
   writeHeader(w: JxlBitWriter): void {
-    w.writeBool(false); // lz77.enabled
-    writeContextMap(w, this.codes.length);
-    w.writeBool(true); // use_prefix_code (log_alphabet_size = 15)
-    for (let c = 0; c < this.codes.length; c++) {
+    w.writeBool(!!this.options.lzStreams);
+    if (this.options.lzStreams) {
+      w.writeU32(this.options.minSymbol ?? 224, 224, 512, 4096, { bits: 15, offset: 8 });
+      w.writeU32(3, 3, 4, { bits: 2, offset: 5 }, { bits: 8, offset: 9 });
+      w.writeBits(4, SPLIT_EXPONENT); // length config, log alphabet size 8
+      w.writeBits(3, MSB_IN_TOKEN);
+      w.writeBits(2, 0);
+    }
+    writeContextMap(
+      w,
+      this.options.contextMap?.length ?? this.options.numContexts ?? this.codes.length,
+      this.options.contextMap,
+    );
+    w.writeBool(!this.options.ans); // use_prefix_code
+    if (this.options.ans) w.writeBits(2, 3); // log alphabet size 8
+    for (let c = 0; c < (this.options.numContexts ?? this.codes.length); c++) {
       w.writeBits(bitsFor(15), SPLIT_EXPONENT);
       w.writeBits(bitsFor(SPLIT_EXPONENT), MSB_IN_TOKEN);
       w.writeBits(bitsFor(SPLIT_EXPONENT - MSB_IN_TOKEN), 0); // lsb_in_token
     }
-    for (const code of this.codes) writeAlphabetSize(w, code.alphabetSize);
-    for (const code of this.codes) writePrefixCode(w, code);
+    if (this.options.ans) this.options.ans.writeHistograms(w);
+    else {
+      for (const code of this.codes) writeAlphabetSize(w, code.alphabetSize);
+      for (const code of this.codes) writePrefixCode(w, code);
+    }
   }
 
-  writeStream(w: JxlBitWriter, { contexts, values }: TokenStream): void {
-    for (let i = 0; i < values.length; i++) writeHybridUint(w, this.codes[contexts[i]!]!, values[i]!);
+  writeStream(w: JxlBitWriter, stream: TokenStream): void {
+    const encoded = this.options.lzStreams?.get(stream);
+    if (this.options.lzStreams && !encoded) throw new Error('JXL: stream was not included in LZ77 model');
+    const { contexts, values } = encoded ?? stream;
+    if (this.options.ans) {
+      this.options.ans.writeStream(w, encoded ?? stream, encoded?.offsets);
+      return;
+    }
+    for (let i = 0; i < values.length; i++) {
+      writeHybridUint(
+        w,
+        this.codes[this.options.contextMap?.[contexts[i]!] ?? contexts[i]!]!,
+        values[i]!,
+        encoded?.offsets[i] ?? 0,
+      );
+    }
   }
 }
 
 /** Estimated coded size in bits of `stream` (per-context token entropy plus raw extra bits). */
 export function estimateStreamBits(stream: TokenStream, numContexts: number): number {
+  return estimateContextBits([stream], numContexts).reduce((a, b) => a + b, 0);
+}
+
+/** Per-context token entropy plus hybrid uint extra bits, across all streams. */
+export function estimateContextBits(streams: TokenStream[], numContexts: number): Float64Array {
   const histograms = Array.from({ length: numContexts }, () => new Float64Array(JXL_ENC_NUM_TOKENS));
-  let bits = 0;
-  for (let i = 0; i < stream.values.length; i++) {
-    const v = stream.values[i]!;
-    histograms[stream.contexts[i]!]![hybridUintToken(v)]!++;
-    if (v >= SPLIT) bits += 30 - Math.clz32(v);
+  const bits = new Float64Array(numContexts);
+  for (const stream of streams) {
+    for (let i = 0; i < stream.values.length; i++) {
+      const v = stream.values[i]!;
+      const ctx = stream.contexts[i]!;
+      histograms[ctx]![hybridUintToken(v)]!++;
+      if (v >= SPLIT) bits[ctx]! += 30 - Math.clz32(v);
+    }
   }
-  for (const h of histograms) {
+  for (let ctx = 0; ctx < numContexts; ctx++) {
+    const h = histograms[ctx]!;
     let total = 0;
     for (const count of h) total += count;
-    for (const count of h) if (count > 0) bits -= count * Math.log2(count / total);
+    for (const count of h) if (count > 0) bits[ctx]! -= count * Math.log2(count / total);
   }
   return bits;
 }
@@ -252,4 +388,53 @@ export function estimateStreamBits(stream: TokenStream, numContexts: number): nu
 /** Map a signed integer to uint32: 0, -1, 1, -2, … → 0, 1, 2, 3, … */
 export function packSigned(v: number): number {
   return v >= 0 ? 2 * v : -2 * v - 1;
+}
+
+interface LzStream extends TokenStream {
+  offsets: ArrayLike<number>;
+}
+
+/** Linear-time greedy parser with a bounded hash table and JPEG XL's 1 Mi-sample window.
+ * Matches may overlap and cross contexts: the decoder copies residual values before
+ * consulting their context. Each stream starts with a fresh history, as the decoder does.
+ */
+function lz77Tokens(stream: TokenStream, distanceContext: number, minSymbol = 224): LzStream {
+  const { values } = stream;
+  const contexts = new Uint8Array(values.length);
+  const output = new Float64Array(values.length);
+  const offsets = new Uint8Array(values.length);
+  let count = 0;
+  const last = new Int32Array(1 << 16).fill(-1);
+  const hash = (i: number): number =>
+    (Math.imul(values[i]!, 0x1e35a7bd) ^ Math.imul(values[i + 1]!, 0x9e3779b1) ^ values[i + 2]!) >>> 16;
+  const push = (ctx: number, value: number, offset = 0): void => {
+    contexts[count] = ctx;
+    output[count] = value;
+    offsets[count++] = offset;
+  };
+  for (let i = 0; i < values.length;) {
+    let length = 0;
+    let previous = -1;
+    if (i + 7 < values.length) {
+      const h = hash(i);
+      previous = last[h]!;
+      if (previous >= 0 && i - previous <= 1 << 20) {
+        while (i + length < values.length && values[previous + length] === values[i + length]) length++;
+      }
+    }
+    if (length >= 8) {
+      push(stream.contexts[i]!, length - 3, minSymbol);
+      push(distanceContext, i - previous + 119);
+    } else {
+      length = 1;
+      push(stream.contexts[i]!, values[i]!);
+    }
+    for (let j = i; j < i + length && j + 2 < values.length; j++) last[hash(j)] = j;
+    i += length;
+  }
+  return {
+    contexts: contexts.subarray(0, count),
+    values: output.subarray(0, count),
+    offsets: offsets.subarray(0, count),
+  };
 }

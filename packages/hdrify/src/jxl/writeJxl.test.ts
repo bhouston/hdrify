@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeFloat16, encodeFloat16 } from '../exr/halfFloat.js';
 import { readExr } from '../exr/readExr.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
+import { readJxl } from './readJxl.js';
 import { type WriteJxlOptions, writeJxl } from './writeJxl.js';
 
 const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
@@ -140,6 +141,15 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
 
   it('large groups (groupSizeShift 3)', () => expectRgb(pattern(300, 40), { groupSizeShift: 3 }));
 
+  it('high-effort ANS round trips with djxl for every sample format and partial groups', () => {
+    for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
+      expectRgb(
+        pattern(270, 23, (x, y) => ((x + y) % 7) / 6),
+        { bitDepth, effort: 'high', groupSizeShift: 0 },
+      );
+    }
+  });
+
   it('constant images', () => {
     expectRgb(
       makeImage(40, 30, () => 0),
@@ -266,6 +276,61 @@ describe('writeJxl', () => {
     expect(Array.from(writeJxl(pattern(2, 2)).subarray(0, 2))).toEqual([0xff, 0x0a]);
   });
 
+  it('compresses flat and smooth synthetic images below their previous size', () => {
+    const flat = makeImage(256, 256, (x, _y, c) => (c === 3 ? 1 : x < 128 ? 0 : [0.25, 3, 1000][c]));
+    const encoded = writeJxl(flat);
+    expect(encoded.length).toBeLessThan(512);
+    const decoded = readJxl(encoded);
+    expect(decoded.data).toEqual(flat.data);
+    const smooth = makeImage(512, 512, (x, y, c) => (c === 3 ? 1 : (x + y * (c + 1)) / 1024));
+    const bytes = writeJxl(smooth);
+    expect(bytes.length).toBeLessThan(60000);
+    const got = readJxl(bytes);
+    expect(got.data).toEqual(Float32Array.from(smooth.data, (v) => expected(v, 'float16')));
+  });
+
+  for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
+    it(`${bitDepth}: prediction and LZ77 retain samples across partial groups and alpha`, () => {
+      const image = pattern(270, 23, (x, y) => ((x + y) % 7) / 6);
+      const decoded = readJxl(writeJxl(image, { bitDepth, groupSizeShift: 0 }));
+      expect([decoded.width, decoded.height]).toEqual([image.width, image.height]);
+      for (let i = 0; i < image.data.length; i++) {
+        expect(decoded.data[i]).toBeCloseTo(expected(image.data[i], bitDepth), 6);
+      }
+    });
+  }
+
+  it('weighted prediction compresses the gradient corpus without changing half-float samples', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/reference_gradient.exr', import.meta.url)));
+    const bytes = writeJxl(image);
+    expect(bytes.length).toBeLessThan(56000); // Gradient + LZ77 alone was 62,906 bytes.
+    const got = readJxl(bytes);
+    expect(got.data).toEqual(Float32Array.from(image.data, (v) => decodeFloat16(encodeFloat16(v))));
+  });
+
+  it('chooses a dense palette by cost and keeps integer samples exact', () => {
+    let seed = 12345;
+    const image = makeImage(64, 64, (_x, _y, c) => {
+      if (c === 3) return 1;
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (((seed >>> 0) % 100) * 2) / 255;
+    });
+    const bytes = writeJxl(image, { bitDepth: 'uint8' });
+    expect(bytes.length).toBeLessThan(12000); // The fixed density threshold produced 12,878 bytes.
+    expect(readJxl(bytes).data).toEqual(image.data);
+  });
+
+  it('high effort enables size-gated ANS while standard output remains the default', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/reference_gradient.exr', import.meta.url)));
+    const standard = writeJxl(image);
+    expect(writeJxl(image, { effort: 'standard' })).toEqual(standard);
+    const high = writeJxl(image, { effort: 'high' });
+    expect(high.length).toBeLessThan(standard.length);
+    expect(readJxl(high).data).toEqual(readJxl(standard).data);
+  });
+
   it('rejects invalid input', () => {
     const ok = pattern(2, 2);
     expect(() => writeJxl({ ...ok, width: 0 })).toThrow(/dimensions/);
@@ -273,6 +338,9 @@ describe('writeJxl', () => {
     expect(() => writeJxl({ ...ok, width: 1.5 })).toThrow(/dimensions/);
     expect(() => writeJxl({ ...ok, data: new Float32Array(15) })).toThrow(/length/);
     expect(() => writeJxl(ok, { groupSizeShift: 4 })).toThrow(/groupSizeShift/);
+    expect(() => writeJxl(ok, { effort: 'invalid' as 'high' })).toThrow(/effort/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'high' })).toThrow(/only supported for lossless/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'standard' })).not.toThrow();
     expect(() => writeJxl(ok, { bitDepth: 'int7' as 'uint8' })).toThrow(/bitDepth/);
   });
 });
