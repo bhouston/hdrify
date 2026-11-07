@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HDRify · HDR rendering comparison</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font: 15px system-ui;
+      background: #161616;
+      color: #eee;
+    }
+    body {
+      max-width: 1000px;
+      margin: 32px auto;
+      padding: 0 20px;
+    }
+    h1 {
+      font-size: 26px;
+    }
+    h2 {
+      font-size: 18px;
+    }
+    p {
+      line-height: 1.5;
+    }
+    button {
+      padding: 8px 14px;
+      margin-right: 8px;
+    }
+    canvas,
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      image-rendering: pixelated;
+    }
+    section {
+      border-top: 1px solid #555;
+      margin-top: 24px;
+      padding-top: 12px;
+    }
+    pre {
+      overflow: auto;
+      font-size: 12px;
+    }
+    .white {
+      background: white;
+      color: black;
+      display: inline-block;
+      padding: 8px;
+    }
+  </style>
+  <h1>HDRify · HDR rendering comparison</h1>
+  <p>
+    Linear HDR pixels with exposure only. Values above 1 are preserved. Each surface reports storage and
+    extended-presentation support independently. Browser screenshots are diagnostic SDR previews, not proof of HDR
+    output.
+  </p>
+  <p><button id="ramp">Reference patches</button><button id="sample">Load memorial.hdr</button></p>
+  <p>
+    <label
+      >Exposure <input id="exposure" type="range" min="-5" max="5" step="0.5" value="0" />
+      <output id="ev">0 EV</output></label
+    >
+  </p>
+  <p>Patch values: 0 · 0.18 · 0.5 · 1 · 2 · 4. <span class="white">CSS SDR white</span></p>
+  <section>
+    <h2>WebGPU · FP16 extended output</h2>
+    <p id="gpu-status"></p>
+    <div id="gpu-surface"></div>
+  </section>
+  <h2>Canvas 2D · FP16 output encodings</h2>
+  <div id="surfaces"></div>
+  <section>
+    <h2>SDR reference · Neutral tone mapping</h2>
+    <canvas id="reference"></canvas>
+  </section>
+  <section>
+    <h2>Native HDR images</h2>
+    <p>Transcode the current image and exposure, then let the browser render it. Encoding runs on demand.</p>
+    <button id="transcode">Transcode current view</button>
+    <div id="native-surfaces"></div>
+    <h3>Existing npm logo · PQ ICC PNG</h3>
+    <img
+      id="hdr-logo"
+      src="/logo.png"
+      alt="HDRify HDR PNG logo"
+      width="192"
+      height="192"
+      style="dynamic-range-limit: no-limit"
+    />
+  </section>
+  <section>
+    <h2>Capabilities</h2>
+    <pre id="diagnostics"></pre>
+  </section>
+  <script type="module" src="/prototype.js"></script>
+</html>

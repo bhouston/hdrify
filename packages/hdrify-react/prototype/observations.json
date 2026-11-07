@@ -1,0 +1,792 @@
+{
+  "recordedDate": "2026-11-07",
+  "playwright": "1.65.0",
+  "physicalHdrOutputVerified": false,
+  "observations": [
+    {
+      "name": "chromium",
+      "version": "158.0.8127.18",
+      "status": "passed",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)",
+      "hdrDisplay": true,
+      "p3Display": true,
+      "canvas2d": [
+        {
+          "space": "display-p3-linear",
+          "supported": true,
+          "extended": false
+        },
+        {
+          "space": "srgb-linear",
+          "supported": true,
+          "extended": false
+        },
+        {
+          "space": "display-p3",
+          "supported": true,
+          "extended": false
+        },
+        {
+          "space": "srgb",
+          "supported": true,
+          "extended": false
+        }
+      ],
+      "webgpu": {
+        "supported": true,
+        "extended": true,
+        "adapter": {
+          "vendor": "apple",
+          "architecture": "metal-3",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false
+        },
+        "configuration": {
+          "colorSpace": "display-p3-linear",
+          "format": "rgba16float",
+          "alphaMode": "opaque",
+          "toneMapping": {
+            "mode": "extended"
+          }
+        }
+      },
+      "canvas2dChecks": {
+        "count": 12,
+        "maxError": 0.006514052780005386
+      },
+      "gpuChecks": {
+        "supported": true,
+        "checks": [
+          {
+            "exposure": 0,
+            "linearReadback": [0, 0.179931640625, 0.5, 1, 2, 4],
+            "maxError": 0.00006835937499999334
+          },
+          {
+            "exposure": 1,
+            "linearReadback": [0, 0.35986328125, 1, 2, 4, 8],
+            "maxError": 0.00013671874999998668
+          },
+          {
+            "exposure": -1,
+            "linearReadback": [0, 0.0899658203125, 0.25, 0.5, 1, 2],
+            "maxError": 0.00003417968749999667
+          }
+        ]
+      },
+      "nativeChecks": [
+        {
+          "name": "Gain-map JPEG",
+          "bytes": 7387,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": false,
+            "linearPatches1x2x4x": [0.87109375, 0.95556640625, 0.98193359375]
+          }
+        },
+        {
+          "name": "Float16 JPEG XL",
+          "bytes": 171,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": false,
+            "linearPatches1x2x4x": [1, 2, 4]
+          }
+        },
+        {
+          "name": "16-bit PQ PNG · 1 = 203 nits",
+          "bytes": 5826,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": false,
+            "linearPatches1x2x4x": [0.499267578125, 0.7451171875, 0.943359375]
+          }
+        }
+      ],
+      "screenshot": {
+        "bitDepth": 8,
+        "chunks": ["IHDR", "IDAT", "IEND"],
+        "patches": [
+          {
+            "space": "display-p3-linear",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "srgb-linear",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "display-p3",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "srgb",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "webgpu",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Gain-map JPEG",
+            "rgb": [
+              [241, 241, 241],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Float16 JPEG XL",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "16-bit PQ PNG · 1 = 203 nits",
+            "rgb": [
+              [193, 193, 193],
+              [232, 232, 232],
+              [255, 255, 255]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "chrome",
+      "version": "156.0.8078.80",
+      "status": "passed",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)",
+      "hdrDisplay": true,
+      "p3Display": true,
+      "canvas2d": [
+        {
+          "space": "display-p3-linear",
+          "supported": false,
+          "extended": false,
+          "error": "TypeError: Failed to execute 'getContext' on 'HTMLCanvasElement': The provided value 'display-p3-linear' is not a valid enum value of the type PredefinedColorSpace."
+        },
+        {
+          "space": "srgb-linear",
+          "supported": false,
+          "extended": false,
+          "error": "TypeError: Failed to execute 'getContext' on 'HTMLCanvasElement': The provided value 'srgb-linear' is not a valid enum value of the type PredefinedColorSpace."
+        },
+        {
+          "space": "display-p3",
+          "supported": true,
+          "extended": false
+        },
+        {
+          "space": "srgb",
+          "supported": true,
+          "extended": false
+        }
+      ],
+      "webgpu": {
+        "supported": true,
+        "extended": true,
+        "adapter": {
+          "vendor": "apple",
+          "architecture": "metal-3",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false
+        },
+        "configuration": {
+          "colorSpace": "display-p3",
+          "format": "rgba16float",
+          "alphaMode": "opaque",
+          "toneMapping": {
+            "mode": "extended"
+          }
+        }
+      },
+      "canvas2dChecks": {
+        "count": 6,
+        "maxError": 0.006514052780005386
+      },
+      "gpuChecks": {
+        "supported": true,
+        "checks": [
+          {
+            "exposure": 0,
+            "linearReadback": [
+              0, 0.17985405157408355, 0.4999917700079194, 0.998889577856287, 1.9975570528630573, 3.9970511473557466
+            ],
+            "maxError": 0.0029488526442533747
+          },
+          {
+            "exposure": 1,
+            "linearReadback": [
+              0, 0.3594190385914726, 0.998889577856287, 1.9975570528630573, 3.9970511473557466, 7.991570257100497
+            ],
+            "maxError": 0.008429742899503267
+          },
+          {
+            "exposure": -1,
+            "linearReadback": [
+              0, 0.08997604037743168, 0.24951626271815558, 0.4999917700079194, 0.998889577856287, 1.9975570528630573
+            ],
+            "maxError": 0.002442947136942708
+          }
+        ]
+      },
+      "nativeChecks": [
+        {
+          "name": "Gain-map JPEG",
+          "bytes": 7387,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb",
+            "extended": false,
+            "linearPatches1x2x4x": [0.8708245428314115, 0.9550613432562983, 0.9812205990722945]
+          }
+        },
+        {
+          "name": "Float16 JPEG XL",
+          "bytes": 171,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb",
+            "extended": false,
+            "linearPatches1x2x4x": [1, 1.9975570528630573, 3.9970511473557466]
+          }
+        },
+        {
+          "name": "16-bit PQ PNG · 1 = 203 nits",
+          "bytes": 5826,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb",
+            "extended": false,
+            "linearPatches1x2x4x": [0.4992507396706433, 0.7444430655899716, 0.9432092883949956]
+          }
+        }
+      ],
+      "screenshot": {
+        "bitDepth": 8,
+        "chunks": ["IHDR", "IDAT", "IEND"],
+        "patches": [
+          {
+            "space": "display-p3",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "srgb",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "webgpu",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Gain-map JPEG",
+            "rgb": [
+              [247, 247, 247],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Float16 JPEG XL",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "16-bit PQ PNG · 1 = 203 nits",
+            "rgb": [
+              [233, 233, 233],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "webkit",
+      "version": "27.2",
+      "status": "passed",
+      "renderer": "Apple GPU",
+      "hdrDisplay": true,
+      "p3Display": true,
+      "canvas2d": [
+        {
+          "space": "display-p3-linear",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        },
+        {
+          "space": "srgb-linear",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        },
+        {
+          "space": "display-p3",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        },
+        {
+          "space": "srgb",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        }
+      ],
+      "webgpu": {
+        "supported": true,
+        "extended": true,
+        "adapter": {
+          "vendor": "apple",
+          "architecture": "apple",
+          "device": "apple",
+          "description": "apple",
+          "isFallbackAdapter": false
+        },
+        "configuration": {
+          "colorSpace": "display-p3-linear",
+          "format": "rgba16float",
+          "alphaMode": "opaque",
+          "toneMapping": {
+            "mode": "extended"
+          }
+        }
+      },
+      "canvas2dChecks": {
+        "count": 0,
+        "maxError": 0
+      },
+      "gpuChecks": {
+        "supported": true,
+        "checks": [
+          {
+            "exposure": 0,
+            "linearReadback": [0, 0.179931640625, 0.5, 1, 2, 4],
+            "maxError": 0.00006835937499999334
+          },
+          {
+            "exposure": 1,
+            "linearReadback": [0, 0.35986328125, 1, 2, 4, 8],
+            "maxError": 0.00013671874999998668
+          },
+          {
+            "exposure": -1,
+            "linearReadback": [0, 0.0899658203125, 0.25, 0.5, 1, 2],
+            "maxError": 0.00003417968749999667
+          }
+        ]
+      },
+      "nativeChecks": [
+        {
+          "name": "Gain-map JPEG",
+          "bytes": 7387,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        },
+        {
+          "name": "Float16 JPEG XL",
+          "bytes": 171,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        },
+        {
+          "name": "16-bit PQ PNG · 1 = 203 nits",
+          "bytes": 5649,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        }
+      ],
+      "screenshot": {
+        "bitDepth": 8,
+        "chunks": ["IHDR", "sRGB", "eXIf", "IDAT", "IEND"],
+        "patches": [
+          {
+            "space": "webgpu",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Gain-map JPEG",
+            "rgb": [
+              [240, 240, 240],
+              [250, 250, 250],
+              [253, 253, 253]
+            ]
+          },
+          {
+            "space": "Float16 JPEG XL",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "16-bit PQ PNG · 1 = 203 nits",
+            "rgb": [
+              [188, 188, 188],
+              [224, 224, 224],
+              [249, 249, 249]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "firefox",
+      "version": "159.0",
+      "status": "passed",
+      "renderer": "Apple M1, or similar",
+      "hdrDisplay": false,
+      "p3Display": false,
+      "canvas2d": [
+        {
+          "space": "display-p3-linear",
+          "supported": false,
+          "extended": false,
+          "error": "TypeError: 'display-p3-linear' (value of 'colorSpace' member of CanvasRenderingContext2DSettings) is not a valid value for enumeration PredefinedColorSpace."
+        },
+        {
+          "space": "srgb-linear",
+          "supported": false,
+          "extended": false,
+          "error": "TypeError: 'srgb-linear' (value of 'colorSpace' member of CanvasRenderingContext2DSettings) is not a valid value for enumeration PredefinedColorSpace."
+        },
+        {
+          "space": "display-p3",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        },
+        {
+          "space": "srgb",
+          "supported": false,
+          "extended": false,
+          "error": "Error: FP16 backing store not acknowledged"
+        }
+      ],
+      "webgpu": {
+        "supported": false,
+        "extended": false,
+        "adapter": {
+          "vendor": "",
+          "architecture": "",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false
+        },
+        "error": "Error: No FP16 canvas configuration accepted"
+      },
+      "canvas2dChecks": {
+        "count": 0,
+        "maxError": 0
+      },
+      "gpuChecks": {
+        "supported": false,
+        "error": "Error: No FP16 canvas configuration accepted"
+      },
+      "nativeChecks": [
+        {
+          "name": "Gain-map JPEG",
+          "bytes": 7387,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        },
+        {
+          "name": "Float16 JPEG XL",
+          "bytes": 171,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        },
+        {
+          "name": "16-bit PQ PNG · 1 = 203 nits",
+          "bytes": 6592,
+          "decoded": true,
+          "width": 600,
+          "height": 80
+        }
+      ],
+      "screenshot": {
+        "bitDepth": 8,
+        "chunks": ["IHDR", "IDAT", "IEND"],
+        "patches": [
+          {
+            "space": "Gain-map JPEG",
+            "rgb": [
+              [240, 240, 240],
+              [250, 250, 250],
+              [253, 253, 253]
+            ]
+          },
+          {
+            "space": "Float16 JPEG XL",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "16-bit PQ PNG · 1 = 203 nits",
+            "rgb": [
+              [148, 148, 148],
+              [167, 167, 167],
+              [186, 186, 186]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "chromium-experimental",
+      "version": "158.0.8127.18",
+      "status": "passed",
+      "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)",
+      "hdrDisplay": true,
+      "p3Display": true,
+      "canvas2d": [
+        {
+          "space": "display-p3-linear",
+          "supported": true,
+          "extended": true
+        },
+        {
+          "space": "srgb-linear",
+          "supported": true,
+          "extended": true
+        },
+        {
+          "space": "display-p3",
+          "supported": true,
+          "extended": true
+        },
+        {
+          "space": "srgb",
+          "supported": true,
+          "extended": true
+        }
+      ],
+      "webgpu": {
+        "supported": true,
+        "extended": true,
+        "adapter": {
+          "vendor": "apple",
+          "architecture": "metal-3",
+          "device": "",
+          "description": "",
+          "isFallbackAdapter": false
+        },
+        "configuration": {
+          "colorSpace": "display-p3-linear",
+          "format": "rgba16float",
+          "alphaMode": "opaque",
+          "toneMapping": {
+            "mode": "extended"
+          }
+        }
+      },
+      "canvas2dChecks": {
+        "count": 12,
+        "maxError": 0.006514052780005386
+      },
+      "gpuChecks": {
+        "supported": true,
+        "checks": [
+          {
+            "exposure": 0,
+            "linearReadback": [0, 0.179931640625, 0.5, 1, 2, 4],
+            "maxError": 0.00006835937499999334
+          },
+          {
+            "exposure": 1,
+            "linearReadback": [0, 0.35986328125, 1, 2, 4, 8],
+            "maxError": 0.00013671874999998668
+          },
+          {
+            "exposure": -1,
+            "linearReadback": [0, 0.0899658203125, 0.25, 0.5, 1, 2],
+            "maxError": 0.00003417968749999667
+          }
+        ]
+      },
+      "nativeChecks": [
+        {
+          "name": "Gain-map JPEG",
+          "bytes": 7387,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": true,
+            "linearPatches1x2x4x": [0.87109375, 0.95556640625, 0.98193359375]
+          }
+        },
+        {
+          "name": "Float16 JPEG XL",
+          "bytes": 171,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": true,
+            "linearPatches1x2x4x": [1, 2, 4]
+          }
+        },
+        {
+          "name": "16-bit PQ PNG · 1 = 203 nits",
+          "bytes": 5826,
+          "decoded": true,
+          "width": 600,
+          "height": 80,
+          "canvasDecoderProbe": {
+            "colorSpace": "srgb-linear",
+            "extended": true,
+            "linearPatches1x2x4x": [0.499267578125, 0.7451171875, 0.943359375]
+          }
+        }
+      ],
+      "screenshot": {
+        "bitDepth": 8,
+        "chunks": ["IHDR", "IDAT", "IEND"],
+        "patches": [
+          {
+            "space": "display-p3-linear",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "srgb-linear",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "display-p3",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "srgb",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "webgpu",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Gain-map JPEG",
+            "rgb": [
+              [247, 247, 247],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "Float16 JPEG XL",
+            "rgb": [
+              [255, 255, 255],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          },
+          {
+            "space": "16-bit PQ PNG · 1 = 203 nits",
+            "rgb": [
+              [233, 233, 233],
+              [255, 255, 255],
+              [255, 255, 255]
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "safari",
+      "status": "unavailable",
+      "error": "Error: {\"error\":\"session not created\",\"message\":\"Could not create a session: The session timed out while connecting to a Safari instance. The following asynchronous operation timed out: Request creation of a new automation session\",\"stacktrace\":\"\"}"
+    }
+  ]
+}
