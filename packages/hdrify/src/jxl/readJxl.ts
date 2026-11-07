@@ -368,7 +368,7 @@ export function* decodeDisplayedFrames(
       if (tf) for (const p of [r, g, b]) for (let i = 0; i < n; i++) p[i] = tf.fromLinear(p[i]!);
     } else {
       linear = false;
-      if (fr.vardct && fh.doYCbCr) ycbcrToRgb(r, g, b, n);
+      if (fh.doYCbCr) ycbcrToRgb(r, g, b, n);
       if (fr.vardct && h.colorEncoding.colorSpace === 'gray') {
         g.set(r);
         b.set(r);
