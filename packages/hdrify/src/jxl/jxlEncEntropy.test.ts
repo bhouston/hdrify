@@ -150,6 +150,46 @@ describe('JxlEncEntropyCode round-trips through the decoder', () => {
     expect(Math.abs(estimateStreamBits(stream, 1) - actual) / actual).toBeLessThan(0.02);
   });
 
+  it('copies overlapping matches and repeated sequences across contexts, resetting between streams', () => {
+    const sequence = [0xffffffff, 17, 0, 42, 3, 65535, 8, 1, 19, 600];
+    const values = [
+      ...Array.from({ length: 12000 }, (_, i) => sequence[i % sequence.length]),
+      ...Array.from({ length: 10000 }, () => 7),
+    ];
+    const streams = [0, 1].map((shift) => ({
+      contexts: Uint8Array.from(values, (_, i) => (i + shift) % 3),
+      values,
+    }));
+    const code = JxlEncEntropyCode.buildModular(3, streams);
+    const header = new JxlBitWriter();
+    code.writeHeader(header);
+    expect(new JxlBitReader(header.finish()).readBool()).toBe(true);
+    for (const stream of streams) {
+      const w = new JxlBitWriter();
+      code.writeHeader(w);
+      code.writeStream(w, stream);
+      w.writeBits(13, 0x1abc);
+      expect(w.bitPosition).toBeLessThan(2000);
+      const br = new JxlBitReader(w.finish());
+      const dec = JxlEntropyDecoder.read(br, 3);
+      dec.begin(br);
+      for (let i = 0; i < values.length; i++) expect(dec.readUint(br, stream.contexts[i], 64)).toBe(values[i]);
+      dec.finish();
+      expect(br.readBits(13)).toBe(0x1abc);
+    }
+    expect(() => code.writeStream(new JxlBitWriter(), { contexts: [], values: [] })).toThrow(/not included/);
+  });
+
+  it('retains plain coding when LZ77 headers would cost more than they save', () => {
+    const stream = { contexts: new Uint8Array(1000), values: new Uint32Array(1000) };
+    const code = JxlEncEntropyCode.buildModular(1, [stream]);
+    const w = new JxlBitWriter();
+    code.writeHeader(w);
+    code.writeStream(w, stream);
+    const br = new JxlBitReader(w.finish());
+    expect(br.readBool()).toBe(false); // a zero-bit prefix symbol already codes every sample
+  });
+
   it('clusters many logical HF contexts into a small set of prefix histograms', () => {
     const contextMap = Uint8Array.from({ length: 495 }, (_, c) => (c < 37 ? 0 : 1 + (c & 1)));
     const stream = { contexts: [0, 494, 37, 12, 490, 140], values: [63, 0, 0xffffffff, 3, 2, 99] };

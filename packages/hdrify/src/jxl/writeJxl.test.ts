@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeFloat16, encodeFloat16 } from '../exr/halfFloat.js';
 import { readExr } from '../exr/readExr.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
+import { readJxl } from './readJxl.js';
 import { type WriteJxlOptions, writeJxl } from './writeJxl.js';
 
 const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
@@ -265,6 +266,30 @@ describe('writeJxl', () => {
   it('writes a bare codestream by default', () => {
     expect(Array.from(writeJxl(pattern(2, 2)).subarray(0, 2))).toEqual([0xff, 0x0a]);
   });
+
+  it('compresses flat and smooth synthetic images below their previous size', () => {
+    const flat = makeImage(256, 256, (x, _y, c) => (c === 3 ? 1 : x < 128 ? 0 : [0.25, 3, 1000][c]));
+    const encoded = writeJxl(flat);
+    expect(encoded.length).toBeLessThan(512);
+    const decoded = readJxl(encoded);
+    expect(decoded.data).toEqual(flat.data);
+    const smooth = makeImage(512, 512, (x, y, c) => (c === 3 ? 1 : (x + y * (c + 1)) / 1024));
+    const bytes = writeJxl(smooth);
+    expect(bytes.length).toBeLessThan(60000);
+    const got = readJxl(bytes);
+    expect(got.data).toEqual(Float32Array.from(smooth.data, (v) => expected(v, 'float16')));
+  });
+
+  for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
+    it(`${bitDepth}: prediction and LZ77 retain samples across partial groups and alpha`, () => {
+      const image = pattern(270, 23, (x, y) => ((x + y) % 7) / 6);
+      const decoded = readJxl(writeJxl(image, { bitDepth, groupSizeShift: 0 }));
+      expect([decoded.width, decoded.height]).toEqual([image.width, image.height]);
+      for (let i = 0; i < image.data.length; i++) {
+        expect(decoded.data[i]).toBeCloseTo(expected(image.data[i], bitDepth), 6);
+      }
+    });
+  }
 
   it('rejects invalid input', () => {
     const ok = pattern(2, 2);

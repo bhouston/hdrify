@@ -48,7 +48,7 @@ const PREDICTOR_GRADIENT = 5;
 
 /**
  * Encode an image as lossless Modular or lossy VarDCT JPEG XL.
- * Lossless encoding uses gradient prediction, prefix codes and estimated-cost transforms.
+ * Lossless encoding uses gradient prediction, prefix/LZ77 codes and estimated-cost transforms.
  * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
  * alpha remains lossless in the selected source sample format.
  */
@@ -138,7 +138,7 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     }
   }
   const treeCode = JxlEncEntropyCode.build(6, [tree.stream]);
-  const dataCode = JxlEncEntropyCode.build(tree.numLeaves, [globalStream, ...groupStreams]);
+  const dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
 
   // LfGlobal: dequant defaults, global MA tree + codes, global modular image.
   const lfGlobal = new JxlBitWriter();
