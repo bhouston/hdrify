@@ -1,3 +1,4 @@
+import { getHalfToFloatLut } from '../exr/halfFloat.js';
 import { convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
@@ -175,13 +176,17 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
     const scale = 1 / (2 ** bd.bitsPerSample - 1);
     return (v) => v * scale;
   }
+  if (bd.bitsPerSample === 16 && bd.expBits === 5) {
+    const lut = getHalfToFloatLut();
+    return (v) => lut[v & 0xffff]!;
+  }
   if (bd.bitsPerSample === 32 && bd.expBits === 8) {
     return (v) => {
       i32[0] = v;
       return f32[0]!;
     };
   }
-  // Generic small float (e.g. binary16, bfloat16, 24-bit): sign | exp | mantissa (libjxl dec_modular.cc).
+  // Generic small float (e.g. bfloat16, 24-bit): sign | exp | mantissa (libjxl dec_modular.cc).
   const mantBits = bd.bitsPerSample - bd.expBits - 1;
   const bias = 2 ** (bd.expBits - 1) - 1;
   const expMax = 2 ** bd.expBits - 1;
@@ -193,6 +198,13 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
     if (exp === expMax) return mant ? Number.NaN : sign * Number.POSITIVE_INFINITY;
     return sign * (1 + mant / 2 ** mantBits) * 2 ** (exp - bias);
   };
+}
+
+/** Convert into a fresh plane without typed-array iterator/callback allocation. */
+function convertSamples(data: Int32Array, toFloat: (value: number) => number): Float32Array {
+  const out = new Float32Array(data.length);
+  for (let i = 0; i < data.length; i++) out[i] = toFloat(data[i]!);
+  return out;
 }
 
 /** Float colour planes of a lossy frame (VarDCT, or XYB Modular scaled per libjxl ModularImageToDecodedRect). */
@@ -222,7 +234,7 @@ function framePlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] {
     const toFloat = sampleConverter(h.bitDepth);
     color = [0, 1, 2].map((c) => {
       const channel = fr.channels[nbColor === 1 ? 0 : c]!;
-      let p: Float32Array = Float32Array.from(channel.data, toFloat);
+      let p: Float32Array = convertSamples(channel.data, toFloat);
       let { width, height } = channel;
       if (channel.hshift) {
         p = upsampleChroma2x(p, width, height, true);
@@ -240,7 +252,7 @@ function framePlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] {
     });
   }
   const ecs = h.extraChannels.map((ec, i) =>
-    Float32Array.from(fr.channels[nbColor + i]!.data, sampleConverter(ec.bitDepth)),
+    convertSamples(fr.channels[nbColor + i]!.data, sampleConverter(ec.bitDepth)),
   );
   return [...color, ...ecs];
 }
