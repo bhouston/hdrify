@@ -84,16 +84,18 @@ For EXR or gain map JPEG input, replace `readHdr` with `readExr` or `readJpegGai
 
 ## Component props
 
-| Prop           | Required | Purpose                                       |
-| -------------- | -------- | --------------------------------------------- |
-| `hdrifyImage`  | Yes      | Decoded linear floating point RGBA image      |
-| `toneMapping`  | Yes      | `aces`, `reinhard`, `neutral`, or `agx`       |
-| `exposure`     | Yes      | Linear exposure multiplier; `1` is unchanged  |
-| `className`    | No       | Class applied to the canvas                   |
-| `forwardedRef` | No       | React ref for access to the underlying canvas |
+| Prop           | Required | Purpose                                                                                    |
+| -------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `hdrifyImage`  | Yes      | Decoded linear floating point RGBA image                                                   |
+| `toneMapping`  | No       | `none`, `aces`, `reinhard`, `neutral`, or `agx`; defaults to None for HDR, Neutral for SDR |
+| `exposure`     | Yes      | Linear exposure multiplier; `1` is unchanged                                               |
+| `className`    | No       | Class applied to the canvas wrapper                                                        |
+| `forwardedRef` | No       | React ref for access to the underlying canvas                                              |
 
-The component sizes its drawing buffer to the image dimensions and redraws when the image reference, exposure, or tone mapper changes. Supply a new image object after changing pixels to trigger an update. It renders an opaque, sRGB SDR preview through a 2D canvas; exporting that canvas produces the preview rather than the original HDR values.
+The component renders opaque image pixels and redraws when the image reference, exposure, or tone mapper changes. Supply a new image object after changing pixels to trigger an update. HDR uses an extended FP16 WebGPU canvas sized for the displayed image and device pixel ratio; the 2D SDR fallback retains the source raster and scales it for display.
 
-For downloading a tone-mapped preview, pass `useRef<HTMLCanvasElement | null>(null)` as `forwardedRef` and call `ref.current?.toBlob(...)` from a user action. Use the core HDR writers when exporting the original dynamic range.
+For a portable SDR preview, use `ImageViewer.toBlob()` or `captureImage()` rather than relying on serialization of the active GPU canvas. `forwardedRef` gives access to whichever canvas is active. Use the core HDR writers when exporting the original dynamic range.
 
 See the generated [React API reference](/docs/api/react) for the current prop definitions, and the [live demo](pathname:///hdrify/demo/) for an interactive viewer and converter.
+
+The canvas automatically selects Three.js WebGPU only on an HDR-capable display with acknowledged extended FP16 presentation; otherwise it uses the existing 2D SDR canvas. It redraws when the viewport, source dimensions, or device pixel ratio changes and disposes GPU resources on unmount. `onDraw(image, mode)` reports a completed draw (`hdr` or `sdr`); `forwardedRef` follows the active canvas, including replacement during fallback.

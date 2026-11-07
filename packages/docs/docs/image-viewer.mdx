@@ -60,11 +60,15 @@ The element is 480 pixels tall by default; set its height with CSS. Files fetche
 | Attribute          | Values                                                                                             | Default   |
 | ------------------ | -------------------------------------------------------------------------------------------------- | --------- |
 | `src`              | URL of an EXR, HDR or gain map JPEG, optionally gzipped                                            |           |
-| `tone-mapping`     | `neutral`, `agx`, `aces` or `reinhard`                                                             | `neutral` |
+| `tone-mapping`     | `none`, `neutral`, `agx`, `aces` or `reinhard`                                                     | automatic |
 | `exposure`         | Exposure in stops (EV). `0` leaves the image unchanged; each `+1` doubles the brightness           | `0`       |
 | `fit`              | `contain` scales the image to fit; `actual` shows one image pixel per CSS pixel and scrolls        | `contain` |
 | `settings-panel`   | `closed` (gear shown), `open`, or `hidden` (no gear or panel)                                      | `closed`  |
 | `exposure-control` | Present (and not `"false"`) to show the vertical exposure slider over the left edge, −10 to +10 EV | absent    |
+
+The viewer automatically uses Three.js WebGPU on HDR-capable displays when extended FP16 presentation is supported. With no explicit `tone-mapping`, HDR output uses **None** and the SDR fallback uses **Neutral**. A chosen mapper is honored in either mode; remove `tone-mapping` to restore the automatic default. `settings.toneMapping` is `undefined` while the choice is automatic.
+
+The renderer follows viewport and device-pixel-ratio changes, preserves image proportions, and reallocates its texture when source dimensions change. Device loss falls back to SDR. `whenReady()` waits for the selected renderer to finish drawing. Captures remain SDR; automatic capture uses Neutral, and explicit `none` clips highlights to the output range.
 
 When the user changes a setting with the slider or the options panel, the element updates the matching attribute and fires `settingschange`. Opening or closing the panel updates `settings-panel`.
 
