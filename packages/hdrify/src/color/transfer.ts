@@ -73,3 +73,14 @@ export function displayToLinear(r: number, g: number, b: number, space: DisplayC
     }
   }
 }
+/** SMPTE ST 2084 EOTF. Returns absolute luminance in nits; mirrors negative values like libjxl. */
+export function pqToNits(value: number): number {
+  const p = Math.abs(value) ** (1 / (2523 / 32));
+  return Math.sign(value) * 10000 * (Math.max(0, p - 3424 / 4096) / (2413 / 128 - (2392 / 128) * p)) ** (16384 / 2610);
+}
+
+/** Inverse ST 2084, accepting absolute luminance in nits. */
+export function nitsToPq(value: number): number {
+  const p = (Math.abs(value) / 10000) ** (2610 / 16384);
+  return Math.sign(value) * ((3424 / 4096 + (2413 / 128) * p) / (1 + (2392 / 128) * p)) ** (2523 / 32);
+}

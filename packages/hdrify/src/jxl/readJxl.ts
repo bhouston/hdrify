@@ -1,5 +1,6 @@
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
+import { pqToNits } from '../color/transfer.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -210,6 +211,8 @@ function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefine
       return undefined;
     case 'srgb':
       return sRGBToLinear;
+    case 'pq':
+      return (v) => pqToNits(v) / h.toneMapping.intensityTarget;
     case 'gamma': {
       const g = 1 / ce.gamma!;
       return (v) => (v <= 0 ? 0 : v ** g);
@@ -547,6 +550,7 @@ function displayedImage(
       transferFunction: h.colorEncoding.transferFunction,
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
+      linearReferenceWhiteNits: h.toneMapping.intensityTarget,
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels,
       ...(h.icc && { iccProfile: h.icc }),
@@ -578,6 +582,7 @@ export function readJxlFrames(
 /**
  * Read a JPEG XL codestream or container into linear-light RGBA, applying orientation and returning
  * straight alpha by default. Animations return the first displayed frame; use readJxlFrames for all.
+ * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
