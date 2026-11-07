@@ -123,3 +123,13 @@ djxl "$FEAT/layered.jxl" "$FEAT/layered.ref.pam" --quiet
 cjxl "$SRC/layered.gif" "$FEAT/layered_lossy.jxl" --quiet -d 1
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pam" --quiet
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet
+
+# --- Decoder metadata/output fixtures (requires libjxl development headers and pkg-config). ---
+c++ "$ROOT/scripts/generate-jxl-decoder-assets.cc" $(pkg-config --cflags --libs libjxl) -o "$SRC/decoder-fixtures"
+(cd "$ROOT" && "$SRC/decoder-fixtures")
+for input in "$FEAT"/orientation*.jxl "$FEAT"/extra_channels.jxl "$FEAT"/spot_color.jxl; do
+  djxl "$input" "${input%.jxl}.ref.pfm" --quiet
+done
+# associated_alpha.ref.pfm is emitted by the C API helper with unpremultiplication enabled.
+(cd "$ROOT" && JXL_CRAFT_OUT="$FEAT" pnpm exec vitest run packages/hdrify/src/jxl/jxlDecoderGaps.test.ts -t 'writes the crafted preview' >/dev/null)
+djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
