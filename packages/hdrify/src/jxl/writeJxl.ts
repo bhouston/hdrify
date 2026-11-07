@@ -255,7 +255,23 @@ function transformPlan(source: Int32Array[], width: number, height: number, rct:
   for (let c = 0; c < planes.length; c++) {
     const palette = channelPalette(planes[c]!);
     if (!palette) continue;
-    applyPalette(planes[c]!, palette);
+    const indexed = planes[c]!.slice();
+    applyPalette(indexed, palette);
+    const channel = (plane: Int32Array, w: number, h: number, ctx: number): ChannelRect => ({
+      plane,
+      stride: w,
+      x0: 0,
+      y0: 0,
+      w,
+      h,
+      ctx,
+    });
+    const originalBits = estimateStreamBits(tokenize([channel(planes[c]!, width, height, 0)]), 1);
+    const paletteBits =
+      estimateStreamBits(tokenize([channel(palette, palette.length, 1, 0), channel(indexed, width, height, 1)]), 2) +
+      48; // transform fields and an additional entropy context
+    if (paletteBits >= originalBits) continue;
+    planes[c] = indexed;
     transforms.push({ type: 'palette', beginC: c + metaChannels.length, numColours: palette.length });
     metaChannels.unshift(palette);
   }
@@ -279,23 +295,16 @@ function transformPlan(source: Int32Array[], width: number, height: number, rct:
 /** Largest nb_colours the Palette transform can code. */
 const MAX_PALETTE_COLOURS = 5376 + 0xffff;
 
-/**
- * Sorted distinct values of `plane` when a channel palette compacts it (fewer than a
- * quarter of the values in its range are used), else undefined.
+/** Sorted distinct values, bounded by the format's palette-size limit.
+ * The caller compares residual cost, palette payload and transform overhead.
  */
 function channelPalette(plane: Int32Array): Int32Array | undefined {
   const seen = new Set<number>();
-  let min = plane[0]!;
-  let max = min;
   for (const v of plane) {
     if (seen.has(v)) continue;
     if (seen.size === MAX_PALETTE_COLOURS) return undefined;
     seen.add(v);
-    if (v < min) min = v;
-    if (v > max) max = v;
   }
-  // ponytail: fixed density threshold; libjxl estimates the cost of each option instead.
-  if (seen.size * 4 > max - min + 1) return undefined;
   return Int32Array.from(seen).toSorted();
 }
 
