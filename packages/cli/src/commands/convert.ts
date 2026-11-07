@@ -93,6 +93,11 @@ export const command = defineCommand({
         type: 'number',
         default: 90,
       })
+      .option('jxl-effort', {
+        describe: 'Lossless JPEG XL compression effort: standard (default) or high (also tries ANS)',
+        type: 'string',
+        choices: ['standard', 'high'] as const,
+      })
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
@@ -121,7 +126,20 @@ export const command = defineCommand({
         nargs: 1,
       }),
   handler: async (argv) => {
-    const { input, output, tonemapping, gamma, exposure, quality, compression, format, size, filter, flip } = argv;
+    const {
+      input,
+      output,
+      tonemapping,
+      gamma,
+      exposure,
+      quality,
+      compression,
+      format,
+      size,
+      filter,
+      flip,
+      'jxl-effort': jxlEffort,
+    } = argv;
 
     if (!fs.existsSync(input)) {
       console.error(`Error: Input file not found: ${input}`);
@@ -141,6 +159,11 @@ export const command = defineCommand({
     const supportedOutput = [...HDR_EXTENSIONS, ...SDR_EXTENSIONS].join(', ');
     if (!isHdrExtension(outputExt) && !isSdrExtension(outputExt)) {
       console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: ${supportedOutput}`);
+      process.exit(1);
+    }
+
+    if (jxlEffort !== undefined && outputExt !== '.jxl') {
+      console.error(`Error: --jxl-effort is only valid for JXL output. Output format is ${outputExt}.`);
       process.exit(1);
     }
 
@@ -195,7 +218,7 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
-          outputBuffer = writeJxl(dataToWrite);
+          outputBuffer = writeJxl(dataToWrite, { effort: jxlEffort });
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }

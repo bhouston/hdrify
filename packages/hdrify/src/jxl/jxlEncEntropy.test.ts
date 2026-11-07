@@ -11,7 +11,7 @@ import {
   packSigned,
   type TokenStream,
 } from './jxlEncEntropy.js';
-import { JxlEntropyDecoder } from './jxlEntropy.js';
+import { JxlEntropyDecoder, readContextMap, readHybridUintConfig } from './jxlEntropy.js';
 
 function kraftSum(lengths: Uint8Array): number {
   let sum = 0;
@@ -188,6 +188,46 @@ describe('JxlEncEntropyCode round-trips through the decoder', () => {
     code.writeStream(w, stream);
     const br = new JxlBitReader(w.finish());
     expect(br.readBool()).toBe(false); // a zero-bit prefix symbol already codes every sample
+  });
+
+  it('chooses ANS for a skewed residual distribution when it saves complete coded size', () => {
+    let seed = 12345;
+    const values = Array.from({ length: 20000 }, () => {
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (seed >>> 0) % 20 ? 0 : (seed >>> 8) & 255;
+    });
+    const stream = { contexts: new Uint8Array(values.length), values };
+    const code = JxlEncEntropyCode.buildModular(1, [stream], true);
+    const w = new JxlBitWriter();
+    code.writeHeader(w);
+    code.writeStream(w, stream);
+    const br = new JxlBitReader(w.finish());
+    const lz = br.readBool();
+    if (lz) {
+      br.readU32(224, 512, 4096, { bits: 15, offset: 8 });
+      br.readU32(3, 4, { bits: 2, offset: 5 }, { bits: 8, offset: 9 });
+      readHybridUintConfig(br, 8);
+    }
+    readContextMap(br, lz ? 2 : 1);
+    expect(br.readBool()).toBe(false); // ANS selected
+    const prefix = new JxlBitWriter();
+    const prefixCode = JxlEncEntropyCode.build(1, [stream]);
+    prefixCode.writeHeader(prefix);
+    prefixCode.writeStream(prefix, stream);
+    expect(w.bitPosition).toBeLessThan(prefix.bitPosition * 0.7);
+  });
+
+  it('cached coded sizes include exact headers, hybrid extras and each stream state', () => {
+    for (const values of [[0, 0, 0], Array.from({ length: 2000 }, (_, i) => i % 31), [0xffffffff, 7, 80, 99]]) {
+      const streams = [0, 1].map(() => ({ contexts: new Uint8Array(values.length), values }));
+      const code = JxlEncEntropyCode.buildModular(1, streams, true);
+      const w = new JxlBitWriter();
+      code.writeHeader(w);
+      for (const stream of streams) code.writeStream(w, stream);
+      expect(code.encodedSizeBits).toBe(w.bitPosition);
+    }
   });
 
   it('buildPrefixCode trims the alphabet to the last used token', () => {

@@ -19,6 +19,10 @@ import {
 } from './jxlEncHeaders.js';
 
 export interface WriteJxlOptions {
+  /** Lossless compression search: 'standard' (default) uses prefix codes;
+   * 'high' also tries ANS and selects it only when smaller. High costs more encode work.
+   */
+  effort?: 'standard' | 'high';
   /**
    * Sample format. 'float16' (default) rounds to half floats like EXR HALF; 'float32' is
    * bit-exact; 'uint16'/'uint8' clamp to [0, 1] and quantize.
@@ -64,6 +68,9 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   const format = options.bitDepth ?? 'float16';
   const bitDepth = BIT_DEPTHS[format];
   if (!bitDepth) throw new Error(`writeJxl: unsupported bitDepth ${format}`);
+  if (options.effort !== undefined && options.effort !== 'standard' && options.effort !== 'high') {
+    throw new Error('writeJxl: effort must be standard or high');
+  }
   if (options.sanitize !== false) ensureNonNegativeFinite(data);
 
   let hasAlpha = options.alpha;
@@ -126,7 +133,11 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
       }
     }
   }
-  let dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
+  let dataCode = JxlEncEntropyCode.buildModular(
+    tree.numLeaves,
+    [globalStream, ...groupStreams],
+    options.effort === 'high',
+  );
   const originalStreams = [globalStream, ...groupStreams];
   const weightedStreams = [
     tokenize(globalChannels, true),
@@ -145,17 +156,15 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
       ),
     }));
     const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
-    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams);
-    const size = (code: JxlEncEntropyCode, streams: TokenStream[], treeStream: TokenStream): number => {
+    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams, options.effort === 'high');
+    const size = (code: JxlEncEntropyCode, treeStream: TokenStream): number => {
       const w = new JxlBitWriter();
       const treeCode = JxlEncEntropyCode.build(6, [treeStream]);
       treeCode.writeHeader(w);
       treeCode.writeStream(w, treeStream);
-      code.writeHeader(w);
-      for (const stream of streams) code.writeStream(w, stream);
-      return w.bitPosition;
+      return w.bitPosition + code.encodedSizeBits;
     };
-    if (size(mixedCode, mixedStreams, mixedTree.stream) < size(dataCode, originalStreams, tree.stream)) {
+    if (size(mixedCode, mixedTree.stream) < size(dataCode, tree.stream)) {
       tree = mixedTree;
       dataCode = mixedCode;
       globalStream = mixedStreams[0]!;
