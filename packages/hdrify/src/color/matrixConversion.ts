@@ -64,7 +64,7 @@ export function buildLinearToLinearMatrix(from: Chromaticities, to: Chromaticiti
   return multiply3(mToInv, mFrom);
 }
 
-function multiply3(a: Mat3, b: Mat3): Mat3 {
+export function multiply3(a: Mat3, b: Mat3): Mat3 {
   return [
     [
       a[0][0] * b[0][0] + a[0][1] * b[1][0] + a[0][2] * b[2][0],
@@ -84,7 +84,7 @@ function multiply3(a: Mat3, b: Mat3): Mat3 {
   ];
 }
 
-function invert3(m: Mat3): Mat3 {
+export function invert3(m: Mat3): Mat3 {
   const a = m[0][0];
   const b = m[0][1];
   const c = m[0][2];
@@ -186,4 +186,37 @@ export function getLinearToLinearMatrix(from: LinearColorSpace, to: LinearColorS
   if (from === to) return null;
   const key = `${from}-${to}` as LinearToLinearKey;
   return LINEAR_MATRIX_MAP[key];
+}
+
+/** Bradford chromatic adaptation between white points given as CIE xy coordinates. */
+export function bradfordAdaptation(from: readonly number[], to: readonly number[]): Mat3 {
+  const bradford: Mat3 = [
+    [0.8951, 0.2664, -0.1614],
+    [-0.7502, 1.7135, 0.0367],
+    [0.0389, -0.0685, 1.0296],
+  ];
+  const xyz = (xy: readonly number[]) => [xy[0]! / xy[1]!, 1, (1 - xy[0]! - xy[1]!) / xy[1]!];
+  const cone = (xy: readonly number[]) => {
+    const v = xyz(xy);
+    return bradford.map((r) => r[0] * v[0]! + r[1] * v[1]! + r[2] * v[2]!);
+  };
+  const src = cone(from),
+    dst = cone(to);
+  const scale: Mat3 = [
+    [dst[0]! / src[0]!, 0, 0],
+    [0, dst[1]! / src[1]!, 0],
+    [0, 0, dst[2]! / src[2]!],
+  ];
+  return multiply3(invert3(bradford), multiply3(scale, bradford));
+}
+
+/** Convert RGB primaries with Bradford adaptation so neutral colours remain neutral. */
+export function buildAdaptedLinearMatrix(from: Chromaticities, to: Chromaticities): Mat3 {
+  return multiply3(
+    chromaticitiesToXyzRgbMatrix(to),
+    multiply3(
+      bradfordAdaptation([from.whiteX, from.whiteY], [to.whiteX, to.whiteY]),
+      chromaticitiesToRgbXyzMatrix(from),
+    ),
+  );
 }
