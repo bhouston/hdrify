@@ -1,5 +1,4 @@
-import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { convertOutputColor, jxlColorMetadata } from './jxlColor.js';
+import { convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -191,16 +190,6 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
   };
 }
 
-/** Linear ↔ encoded transfer for XYB images: libjxl blends and stores references in the output encoding. */
-function xybTransfer(
-  h: JxlImageHeader,
-): { fromLinear: (v: number) => number; toLinear: (v: number) => number } | undefined {
-  const ce = h.colorEncoding;
-  if (ce.wantIcc || ce.transferFunction === 'linear') return undefined;
-  if (ce.transferFunction === 'srgb') return { fromLinear: linearTosRGB, toLinear: sRGBToLinear };
-  throw new Error(`JXL: not yet supported: multi-frame XYB with transfer function '${ce.transferFunction}'`);
-}
-
 /** Float colour planes of a lossy frame (VarDCT, or XYB Modular scaled per libjxl ModularImageToDecodedRect). */
 function lossyColorPlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] | undefined {
   if (fr.vardct) return fr.vardct.planes;
@@ -358,8 +347,7 @@ export function* decodeDisplayedFrames(
         opsinBias: h.opsinInverse.opsinBias,
         intensityTarget: h.toneMapping.intensityTarget,
       });
-      const tf = linear ? undefined : xybTransfer(h);
-      if (tf) for (const p of [r, g, b]) for (let i = 0; i < n; i++) p[i] = tf.fromLinear(p[i]!);
+      if (!linear) xybFromLinear(h, planes);
     } else {
       linear = false;
       if (fh.doYCbCr) ycbcrToRgb(r, g, b, n);
@@ -462,7 +450,6 @@ function displayedImage(
   if (canvas.width !== width || canvas.height !== height) throw new Error('JXL: displayed frame is not image-sized');
   const n = width * height;
   const out = new Float32Array(n * 4);
-  const toLinear = first.linear || !h.xybEncoded ? undefined : xybTransfer(h)?.toLinear;
   const spots = options.renderSpotColors
     ? h.extraChannels.flatMap((ec, i) => (ec.spotColor ? [{ color: ec.spotColor, plane: canvas.planes[3 + i]! }] : []))
     : [];
@@ -475,10 +462,10 @@ function displayedImage(
         const mix = spot.color[3] * spot.plane[i]!;
         value = mix * spot.color[c]! + (1 - mix) * value;
       }
-      out[i * 4 + c] = toLinear ? toLinear(value) : value;
+      out[i * 4 + c] = value;
     }
   }
-  const linearColorSpace = h.xybEncoded ? 'linear-rec709' : convertOutputColor(h, out, false);
+  const linearColorSpace = convertOutputColor(h, out, first.linear);
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   const associated = alphaIdx >= 0 && h.extraChannels[alphaIdx]!.alphaAssociated;
@@ -555,6 +542,8 @@ export function readJxlFrames(
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
  * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
  * use the historical sRGB fallback and metadata.iccColorManaged = false.
+ * XYB frames used for composition or references are converted to the original primaries/transfer
+ * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
