@@ -1,6 +1,7 @@
 import { encodeFloat16 } from '../exr/halfFloat.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
-import { defaultWpHeader, WpState } from './jxlPredictors.js';
+import { factorMaResiduals, learnMaTree, learnedLeaf, type JxlLearnedModel, type JxlMaSample } from './jxlEncMaTree.js';
+import { defaultWpHeader, predictOne, WpState } from './jxlPredictors.js';
 import { writeVardctJxl } from './writeJxlVardct.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import {
@@ -21,7 +22,8 @@ import {
 
 export interface WriteJxlOptions {
   /** Lossless compression search: 'standard' (default) uses prefix codes;
-   * 'high' also tries ANS and selects it only when smaller. High costs more encode work.
+   * 'high' also tries ANS and learned MA trees, retaining the smaller complete model.
+   * High costs more encode work.
    */
   effort?: 'standard' | 'high';
   /** Encode lossy XYB VarDCT instead of lossless Modular (default false). */
@@ -159,10 +161,17 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     options.effort === 'high',
   );
   const originalStreams = [globalStream, ...groupStreams];
-  const weightedStreams = [
-    tokenize(globalChannels, true),
-    ...groupChannels.map((channels) => tokenize(channels, true)),
-  ];
+  const samples: JxlMaSample[] = [];
+  const stride = Math.max(1, Math.ceil(originalStreams.reduce((sum, stream) => sum + stream.values.length, 0) / 65536));
+  const allChannels = [globalChannels, ...groupChannels];
+  const weightedStreams = allChannels.map((channels, i) =>
+    tokenize(
+      channels,
+      true,
+      undefined,
+      options.effort === 'high' ? { stride, samples, gradient: originalStreams[i]! } : undefined,
+    ),
+  );
   const gradientCosts = estimateContextBits(originalStreams, tree.numLeaves);
   const weightedCosts = estimateContextBits(weightedStreams, tree.numLeaves);
   const predictors = Array.from({ length: tree.numLeaves }, (_, ctx) =>
@@ -177,18 +186,27 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     }));
     const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
     const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams, options.effort === 'high');
-    const size = (code: JxlEncEntropyCode, treeStream: TokenStream): number => {
-      const w = new JxlBitWriter();
-      const treeCode = JxlEncEntropyCode.build(6, [treeStream]);
-      treeCode.writeHeader(w);
-      treeCode.writeStream(w, treeStream);
-      return w.bitPosition + code.encodedSizeBits;
-    };
-    if (size(mixedCode, mixedTree.stream) < size(dataCode, tree.stream)) {
+    if (modelSize(mixedCode, mixedTree.stream) < modelSize(dataCode, tree.stream)) {
       tree = mixedTree;
       dataCode = mixedCode;
       globalStream = mixedStreams[0]!;
       groupStreams = mixedStreams.slice(1);
+    }
+  }
+  if (options.effort === 'high') {
+    const learned = learnMaTree(samples, tree.channelContext);
+    if (learned) {
+      const streams = factorMaResiduals(
+        learned,
+        allChannels.map((channels) => tokenize(channels, false, learned)),
+      );
+      const code = JxlEncEntropyCode.buildModular(learned.numLeaves, streams, true);
+      if (modelSize(code, learned.stream) < modelSize(dataCode, tree.stream)) {
+        tree = { ...tree, numLeaves: learned.numLeaves, stream: learned.stream };
+        dataCode = code;
+        globalStream = streams[0]!;
+        groupStreams = streams.slice(1);
+      }
     }
   }
   const treeCode = JxlEncEntropyCode.build(6, [tree.stream]);
@@ -231,6 +249,14 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   for (const s of sections) w.writeBytes(s);
   const codestream = w.finish();
   return options.container ? wrapJxlContainer(codestream) : codestream;
+}
+
+function modelSize(code: JxlEncEntropyCode, treeStream: TokenStream): number {
+  const w = new JxlBitWriter();
+  const treeCode = JxlEncEntropyCode.build(6, [treeStream]);
+  treeCode.writeHeader(w);
+  treeCode.writeStream(w, treeStream);
+  return w.bitPosition + code.encodedSizeBits;
 }
 
 type Transform = { type: 'rct' } | { type: 'palette'; beginC: number; numColours: number };
@@ -454,7 +480,12 @@ interface ChannelRect {
 }
 
 /** Predict channels in order, returning (context, packed residual) per sample. */
-function tokenize(channels: ChannelRect[], weighted = false): TokenStream {
+function tokenize(
+  channels: ChannelRect[],
+  weighted = false,
+  model?: JxlLearnedModel,
+  capture?: { stride: number; samples: JxlMaSample[]; gradient: TokenStream },
+): TokenStream {
   let total = 0;
   for (const ch of channels) total += ch.w * ch.h;
   const contexts = new Uint8Array(total);
@@ -462,7 +493,8 @@ function tokenize(channels: ChannelRect[], weighted = false): TokenStream {
   let k = 0;
   for (const { plane: p, stride, x0, y0, w, h, ctx } of channels) {
     contexts.fill(ctx, k, k + w * h);
-    const wp = weighted ? new WpState(defaultWpHeader(), w) : undefined;
+    const wp = weighted || model?.usesWp[ctx] ? new WpState(defaultWpHeader(), w) : undefined;
+    const properties = new Int32Array(16);
     for (let y = 0; y < h; y++) {
       const row = (y0 + y) * stride + x0;
       const up = row - stride;
@@ -476,15 +508,63 @@ function tokenize(channels: ChannelRect[], weighted = false): TokenStream {
         const hi = Math.max(west, north);
         const northEast = x + 1 < w && y > 0 ? p[up + x + 1]! : north;
         const northNorth = y > 1 ? p[row - stride * 2 + x]! : north;
-        const pred = wp
-          ? wp.predict(x, y, north, west, northEast, northWest, northNorth)
-          : grad < lo
-            ? lo
-            : grad > hi
-              ? hi
-              : grad;
+        const wpPred = wp?.predict(x, y, north, west, northEast, northWest, northNorth) ?? 0;
+        let predictor = weighted ? 6 : 5;
+        const sample = capture && capture.samples.length < 65536 && k % capture.stride === 0;
+        if (model || sample) {
+          properties[4] = Math.abs(north);
+          properties[5] = Math.abs(west);
+          properties[9] = grad;
+          properties[10] = west - northWest;
+          properties[11] = northWest - north;
+          properties[12] = north - northEast;
+          properties[13] = north - northNorth;
+          properties[14] = west - (x > 1 ? p[row + x - 2]! : west);
+          properties[15] = wp?.maxError ?? 0;
+        }
+        let offset = 0;
+        if (model) {
+          const leaf = learnedLeaf(model.roots[ctx]!, properties);
+          contexts[k] = leaf.context;
+          predictor = leaf.predictor;
+          offset = leaf.offset;
+        }
+        const pred =
+          predictor === 6
+            ? wpPred
+            : predictor === 5
+              ? grad < lo
+                ? lo
+                : grad > hi
+                  ? hi
+                  : grad
+              : predictOne(
+                  predictor,
+                  west,
+                  north,
+                  northNorth,
+                  northWest,
+                  northEast,
+                  x > 1 ? p[row + x - 2]! : west,
+                  x + 2 < w && y > 0 ? p[up + x + 2]! : northEast,
+                  wpPred,
+                );
         // Residuals wrap to int32 like the decoder's 32-bit sample arithmetic.
-        values[k++] = packSigned((p[row + x]! - pred) | 0);
+        values[k] = packSigned((p[row + x]! - pred - offset) | 0);
+        if (sample && capture)
+          capture.samples.push({
+            context: ctx,
+            properties: properties.slice(),
+            gradient: capture.gradient.values[k]!,
+            weighted: values[k]!,
+            left: packSigned((p[row + x]! - west) | 0),
+            top: packSigned((p[row + x]! - north) | 0),
+            average: packSigned((p[row + x]! - Math.trunc((west + north) / 2)) | 0),
+            select: packSigned(
+              (p[row + x]! - (Math.abs(north - northWest) < Math.abs(west - northWest) ? west : north)) | 0,
+            ),
+          });
+        k++;
         wp?.update(p[row + x]!, x, y);
       }
     }

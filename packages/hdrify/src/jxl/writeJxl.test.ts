@@ -150,6 +150,19 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
     }
   });
 
+  it('learned offsets and multipliers on the smooth corpus remain bit-exact in djxl', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/reference_gradient.exr', import.meta.url)));
+    expectRgb(image, { effort: 'high' });
+  });
+
+  it('learned high-effort trees preserve float32 signs, extremes and partial-group state in djxl', () => {
+    const extremes = [-0, -1e-45, 1e-45, 3.4e38, -3.4e38, -65504, 0.5];
+    const image = makeImage(270, 23, (x, y, c) =>
+      c === 3 ? ((x + y) % 7) / 6 : extremes[(x * 13 + y * 7 + c) % extremes.length],
+    );
+    expectRgb(image, { bitDepth: 'float32', effort: 'high', sanitize: false, groupSizeShift: 0 });
+  });
+
   it('constant images', () => {
     expectRgb(
       makeImage(40, 30, () => 0),
@@ -329,6 +342,24 @@ describe('writeJxl', () => {
     const high = writeJxl(image, { effort: 'high' });
     expect(high.length).toBeLessThan(standard.length);
     expect(readJxl(high).data).toEqual(readJxl(standard).data);
+  });
+
+  // Full-corpus tree search exceeds 30 seconds under coverage on two-core CI runners.
+  it('learned high-effort contexts reduce memorial without changing samples or standard output', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/memorial.exr', import.meta.url)));
+    const high = writeJxl(image, { effort: 'high' });
+    expect(high.length).toBeLessThan(920000); // ANS without learned contexts was 949,906 bytes.
+    expect(readJxl(high).data).toEqual(readJxl(writeJxl(image)).data);
+    expect(writeJxl(pattern(7, 5), { effort: 'high' })).toEqual(writeJxl(pattern(7, 5), { effort: 'high' }));
+  }, 90_000);
+
+  it('high-effort float32 output keeps every source bit through the public decoder', () => {
+    const values = [-0, -1e-45, 1e-45, 3.4e38, -3.4e38, -65504, 0.5];
+    const image = makeImage(270, 23, (x, y, c) => (c === 3 ? 1 : values[(x * 13 + y * 7 + c) % values.length]));
+    const decoded = readJxl(
+      writeJxl(image, { bitDepth: 'float32', effort: 'high', sanitize: false, groupSizeShift: 0 }),
+    );
+    expect(new Uint32Array(decoded.data.buffer)).toEqual(new Uint32Array(image.data.buffer));
   });
 
   it('rejects invalid input', () => {

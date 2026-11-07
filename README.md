@@ -135,10 +135,13 @@ fs.writeFileSync('delivery.jxl', writeJxl(imageData, { lossy: true, distance: 1 
 
 For additional lossless compression, use `writeJxl(imageData, { effort: 'high' })`
 or CLI `--jxl-effort high`. The default `standard` effort uses prefix codes;
-`high` also tries ANS and retains it only when the complete entropy header and
-payload are smaller. This trades more encoding work for size: representative
-half-float corpus gains are 0.3–2.8%, with roughly 20–60% longer encoding times
-on the measured host. High effort is currently supported for lossless output only.
+`high` also tries ANS and learned prediction trees, retaining the smaller coded
+model. Training uses at most 65,536 deterministic samples, depth at most 6,
+and at most 255 leaf contexts, with predictors, residual offsets and proven
+power-of-two multipliers. This search can take several times longer than
+standard encoding. Representative half-float sizes improve from 953,620 to
+898,343 bytes for memorial and from 52,952 to 28,161 bytes for the gradient.
+High effort is currently supported for lossless output only.
 
 Lossy encoding uses a fixed DCT8 strategy, default JPEG XL quantization tables,
 uniform quantization, and lossless alpha. `distance` must be greater than 0 and at

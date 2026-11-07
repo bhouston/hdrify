@@ -94,7 +94,7 @@ export const command = defineCommand({
         default: 90,
       })
       .option('jxl-effort', {
-        describe: 'Lossless JPEG XL compression effort: standard (default) or high (also tries ANS)',
+        describe: 'Lossless JPEG XL compression effort: standard (default) or high (more compression search)',
         type: 'string',
         choices: ['standard', 'high'] as const,
       })
