@@ -299,6 +299,20 @@ describe('writeJxl', () => {
     expect(got.data).toEqual(Float32Array.from(image.data, (v) => decodeFloat16(encodeFloat16(v))));
   });
 
+  it('chooses a dense palette by cost and keeps integer samples exact', () => {
+    let seed = 12345;
+    const image = makeImage(64, 64, (_x, _y, c) => {
+      if (c === 3) return 1;
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      return (((seed >>> 0) % 100) * 2) / 255;
+    });
+    const bytes = writeJxl(image, { bitDepth: 'uint8' });
+    expect(bytes.length).toBeLessThan(12000); // The fixed density threshold produced 12,878 bytes.
+    expect(readJxl(bytes).data).toEqual(image.data);
+  });
+
   it('rejects invalid input', () => {
     const ok = pattern(2, 2);
     expect(() => writeJxl({ ...ok, width: 0 })).toThrow(/dimensions/);
