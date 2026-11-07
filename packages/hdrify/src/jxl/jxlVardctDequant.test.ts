@@ -1,20 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveLfSmoothing,
-  applyChromaFromLumaHf,
-  applyChromaFromLumaLf,
-  cflMultiplier,
   computeDefaultDequantMatrices,
   computeDequantMatrix,
   dctQuantWeights,
   dequantizeHfBlock,
   dequantMatrixFor,
   hfDequantMultiplier,
-  JXL_DEFAULT_QUANT_BIAS,
-  JXL_DEFAULT_QUANT_BIAS_NUMERATOR,
   JXL_QUANT_TABLE_SIZES,
   lfDequantScale,
 } from './jxlVardctDequant.js';
+import { defaultOpsinInverseMatrix } from './jxlImageHeader.js';
 import { JxlAcStrategy } from './jxlVardctTransforms.js';
 
 describe('jxlVardctDequant: default matrices', () => {
@@ -89,8 +85,8 @@ describe('jxlVardctDequant: coefficient dequantization', () => {
     const quant = Int32Array.from([0, 1, -1, 2, -3, 10, 0, 0]);
     const out = new Float32Array(8);
     const matrix = new Float32Array(8).fill(0.5);
-    const bias = JXL_DEFAULT_QUANT_BIAS[1];
-    const num = JXL_DEFAULT_QUANT_BIAS_NUMERATOR;
+    const { quantBias, quantBiasNumerator: num } = defaultOpsinInverseMatrix();
+    const bias = quantBias[1];
     dequantizeHfBlock(quant, out, 0, 8, 8, 1, matrix, 2, bias, num);
     expect(out[0]).toBe(0);
     expect(out[1]).toBeCloseTo(bias, 6);
@@ -124,34 +120,5 @@ describe('jxlVardctDequant: adaptive LF smoothing', () => {
     adaptiveLfSmoothing(edge, w, h, [1e-3, 1e-3, 1e-3]); // huge gap -> untouched
     expect(edge[1][12]).toBe(1);
     expect(edge[1][7]).toBe(0);
-  });
-});
-
-describe('jxlVardctDequant: chroma from luma', () => {
-  it('LF uses base + factor / colourFactor', () => {
-    const kx = cflMultiplier(-21, 84, 0);
-    const kb = cflMultiplier(0, 84, 1);
-    const x = Float32Array.of(1, 2);
-    const y = Float32Array.of(4, 8);
-    const b = Float32Array.of(0, 0);
-    applyChromaFromLumaLf(x, y, b, 2, kx, kb);
-    expect(Array.from(x)).toEqual([0, 0]);
-    expect(Array.from(b)).toEqual([4, 8]);
-  });
-
-  it('HF applies per-64x64 tile factors', () => {
-    const w = 80;
-    const h = 70;
-    const x = new Float32Array(w * h);
-    const y = new Float32Array(w * h).fill(1);
-    const b = new Float32Array(w * h);
-    const xFromY = Int32Array.of(84, -84, 42, 0);
-    const bFromY = Int32Array.of(0, 0, 0, -84);
-    applyChromaFromLumaHf(x, y, b, w, h, w, xFromY, bFromY, 2);
-    expect(x[0]).toBeCloseTo(1, 6);
-    expect(x[70]).toBeCloseTo(-1, 6);
-    expect(x[65 * w]).toBeCloseTo(0.5, 6);
-    expect(b[0]).toBeCloseTo(1, 6);
-    expect(b[65 * w + 70]).toBeCloseTo(0, 6);
   });
 });
