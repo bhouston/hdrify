@@ -17,10 +17,9 @@ import { applyInverseTransforms, decodeModularGroup, type ModularChannel, modula
 import {
   advanceFrameIndices,
   blendFrame,
-  canBeReferenced,
   isDisplayedFrame,
   type JxlReferenceFrame,
-  needsBlending,
+  staysLinear,
   saveReference,
   upsampleFrame,
 } from './jxlRender.js';
@@ -90,6 +89,8 @@ export function decodeFrame(
   const fh = readFrameHeader(fbr, h);
   const toc = readToc(fbr, fh);
   const base = fbr.byteOffset;
+  const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
+  if (frameEnd > codestream.length) throw new Error('JXL: truncated frame sections');
   const dims = frameDimensions(fh);
   const vardct = fh.encoding === 'vardct';
 
@@ -97,6 +98,7 @@ export function decodeFrame(
   const single = toc.sizes.length === 1;
   const lf = section(0);
   const lfg = readLfGlobal(lf, h, fh, dims);
+  lf.checkBounds();
   const img = lfg.gmodular;
   const opts = { globalTree: lfg.globalTree, globalDecoder: lfg.globalDecoder };
   const vimg = vardct ? createVardctImage(fh, dims) : undefined;
@@ -113,8 +115,11 @@ export function decodeFrame(
       streamId: modularStreamId('lfGroup', g, dims.numLfGroups),
     });
     if (vimg) readHfMetadata(br, vimg, lfg, dims, g);
+    br.checkBounds();
   }
-  const hfg = vimg ? readHfGlobal(single ? lf : section(1 + dims.numLfGroups), fh, dims, lfg) : undefined;
+  const hf = vimg ? (single ? lf : section(1 + dims.numLfGroups)) : undefined;
+  const hfg = hf ? readHfGlobal(hf, fh, dims, lfg) : undefined;
+  hf?.checkBounds();
   for (let p = 0; p < fh.passes.numPasses; p++) {
     const [minShift, maxShift] = downsamplingBracket(fh.passes, p);
     for (let g = 0; g < dims.numGroups; g++) {
@@ -129,11 +134,11 @@ export function decodeFrame(
         ...opts,
         streamId: modularStreamId('group', g, dims.numLfGroups, dims.numGroups, p),
       });
+      br.checkBounds();
     }
   }
   applyInverseTransforms(img);
   const out = vimg ? reconstructVardct(vimg, lfg, hfg!, h, fh, dims, lfFrames[fh.lfLevel + 1]) : undefined;
-  const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
   return { fh, dims, lfGlobal: lfg, channels: img.channels, vardct: out, frameEnd };
 }
 
@@ -337,8 +342,7 @@ export function* decodeDisplayedFrames(
     }
     const frame: JxlReferenceFrame = { width: w, height: hh, planes };
     const beforeCt = fh.saveBeforeCt ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)) } : frame;
-    // A frame that is neither blended nor referenced goes straight to the output and can stay linear.
-    let linear = !needsBlending(fh) && !canBeReferenced(fh);
+    let linear = staysLinear(fh);
     const [r, g, b] = [planes[0]!, planes[1]!, planes[2]!];
     const n = w * hh;
     if (h.xybEncoded) {
