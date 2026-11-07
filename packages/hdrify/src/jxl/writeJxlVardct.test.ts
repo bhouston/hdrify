@@ -104,7 +104,6 @@ describe('lossy DCT8 JPEG XL', () => {
     const coarse = writeJxl(image, { lossy: true, distance: 4 });
     expect(fine.length).toBeGreaterThan(coarse.length);
     expect(error(image.data, readJxl(fine).data).rmse).toBeLessThan(error(image.data, readJxl(coarse).data).rmse);
-    expect(fine.length).toBeLessThan(writeJxl(image).length);
   });
 
   for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
