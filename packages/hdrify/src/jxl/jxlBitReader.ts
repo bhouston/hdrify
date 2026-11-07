@@ -16,9 +16,23 @@ export class JxlBitReader {
   private readonly endByte: number;
 
   constructor(bytes: Uint8Array, byteOffset = 0, byteLength = bytes.length - byteOffset) {
+    if (
+      !Number.isInteger(byteOffset) ||
+      !Number.isInteger(byteLength) ||
+      byteOffset < 0 ||
+      byteLength < 0 ||
+      byteOffset > bytes.length ||
+      byteLength > bytes.length - byteOffset
+    )
+      throw new Error('JXL: invalid bit-reader range');
     this.bytes = bytes;
     this.bytePos = byteOffset;
     this.endByte = byteOffset + byteLength;
+  }
+
+  /** Validate consumed bits after a header/section; unconsumed entropy lookahead may cross EOF. */
+  checkBounds(): void {
+    if (this.bitPosition > this.bitLength) throw new Error('JXL: unexpected end of bitstream');
   }
 
   /** Bits consumed since the start of the underlying byte array. */
