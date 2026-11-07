@@ -46,7 +46,7 @@ Publishing is not atomic. If a run fails part way, compare the registry versions
 
 ### Published Artifacts
 
-- npm: `hdrify`, `hdrify-cli`, and `hdrify-react`, published in that order with `pnpm publish`. Each GitHub Release attaches their tarballs.
+- npm: `hdrify-icc`, `hdrify`, `hdrify-cli`, and `hdrify-react`, published in that order with `pnpm publish`. Each GitHub Release attaches their tarballs.
 - VS Code Marketplace and Open VSX: `hdrify-vscode-extension` (`packages/hdrify-vscode-extension`), published by `benhouston3d`.
 
 Add each npm package's Trusted Publisher in One-Time Setup step 1.
@@ -69,4 +69,4 @@ After a real release (not a dry run), the `website` job calls `pages.yml` to dep
 ### Local Validation
 
 - `pnpm release:check` tests commit analysis and each npm package's publish readiness (a `LICENSE` and a `files` field that ships `dist`).
-- After `pnpm build`, run `pnpm pack --dry-run` in `packages/hdrify`, `packages/cli`, and `packages/hdrify-react` to inspect tarball contents.
+- After `pnpm build`, run `pnpm pack --dry-run` in `packages/icc`, `packages/hdrify`, `packages/cli`, and `packages/hdrify-react` to inspect tarball contents.
