@@ -3,6 +3,9 @@ import { JxlBitReader } from './jxlBitReader.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import { packSigned } from './jxlEncEntropy.js';
 import { type EntropyOp, writeEntropyStream } from './jxlEntropyTestUtils.js';
+import type { JxlFrameDimensions, JxlFrameHeader } from './jxlFrameHeader.js';
+import type { JxlImageHeader } from './jxlImageHeader.js';
+import { readLfGlobal } from './jxlLfGlobal.js';
 import { filterTree, type MaTree, maTreeLookup, readMaTree } from './jxlMaTree.js';
 import { decodeModularStream } from './jxlModular.js';
 import { Predictor } from './jxlPredictors.js';
@@ -146,6 +149,29 @@ describe('readMaTree', () => {
     const w = new JxlBitWriter();
     writeTree(w, [{ pred: 14 }], [], 1);
     expect(() => readMaTree(new JxlBitReader(w.finish()))).toThrow();
+  });
+
+  it('bounds the global tree by frame size (libjxl 1024 + xsize * ysize * channels / 16)', () => {
+    // LfGlobal of a gray Modular frame: default LF dequant, then a 3001-node global tree.
+    const w = new JxlBitWriter();
+    w.writeBool(true); // default LF dequantization
+    w.writeBool(true); // has global tree
+    writeEntropyStream(
+      w,
+      { numDists: 6, usePrefix: false },
+      treeOps(Array.from({ length: 3001 }, (_, i): Node => (i < 1500 ? { prop: 0, split: 0 } : { pred: 0 }))),
+    );
+    const bytes = w.finish();
+    const h = {
+      colorEncoding: { colorSpace: 'gray' },
+      xybEncoded: false,
+      extraChannels: [],
+    } as unknown as JxlImageHeader;
+    const fh = { encoding: 'modular' } as JxlFrameHeader;
+    const lfGlobal = (width: number, height: number) => () =>
+      readLfGlobal(new JxlBitReader(bytes), h, fh, { width, height } as JxlFrameDimensions);
+    expect(lfGlobal(1, 1)).toThrow(/MA tree too large/); // limit 1024
+    expect(lfGlobal(256, 256)).toThrow(/invalid MA tree/); // limit 5120: read in full, then fails validation
   });
 });
 

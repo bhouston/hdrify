@@ -61,6 +61,7 @@ const CORPUS: Record<string, Frame> = {
   lossless_rgba8: SIMPLE_MODULAR,
   lossless_squeeze: SIMPLE_MODULAR,
   lossy_modular: SIMPLE_MODULAR,
+  lossy_modular_gray: SIMPLE_MODULAR,
   icc_rec2020_pq: SIMPLE_MODULAR,
   vardct_float: SIMPLE_VARDCT,
   vardct_nofilters: ['vardct', 1, 1, false, false, 0, 1, 1],
