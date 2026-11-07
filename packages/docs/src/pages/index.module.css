@@ -34,43 +34,18 @@
 .install {
   font-size: 1rem;
 }
-.visual {
-  position: relative;
+.live {
+  margin: 0;
+}
+.live image-viewer {
   overflow: hidden;
-  border-radius: 1.5rem;
-  background: #142a32;
-  color: #fcfbf7;
+  border-radius: 1rem;
   box-shadow: 0 20px 70px #142a3226;
 }
-.spectrum {
-  height: 3rem;
-  background: linear-gradient(90deg, #172e61, #087c9b, #56c4a5, #f4ce6b, #f0844e, #fdedba);
-}
-.visualContent {
-  padding: 3rem 2rem;
-  text-align: center;
-}
-.visualContent p {
-  font-size: 1.25rem;
-  margin: 1.5rem 0;
-}
-.visualContent code {
-  background: transparent;
-  color: #abd8cc;
-  font-size: 0.8rem;
-  border: none;
-}
-.formats {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-}
-.formats span {
-  border: 1px solid #72e0bd60;
-  border-radius: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-weight: 700;
+.live figcaption {
+  margin-top: 0.75rem;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
 }
 .grid {
   display: grid;

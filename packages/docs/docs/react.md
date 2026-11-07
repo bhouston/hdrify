@@ -5,7 +5,10 @@ sidebar_position: 4
 
 # React previews
 
-`hdrify-react` provides `HdrifyCanvas`, a canvas component that tone maps an already decoded `HdrifyImage`. Your application controls loading, errors, exposure, and tone mapping.
+`hdrify-react` provides two components:
+
+- `ImageViewer`, a complete viewer that loads a file, detects its format, and adds an options panel and an optional exposure slider. It is the React form of the [`<image-viewer>` element](./image-viewer.mdx); see that page for its options.
+- `HdrifyCanvas`, a canvas component that tone maps an already decoded `HdrifyImage`. Your application controls loading, errors, exposure, and tone mapping. The rest of this page covers it.
 
 ```sh
 npm install hdrify hdrify-react

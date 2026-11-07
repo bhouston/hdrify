@@ -11,6 +11,7 @@ export default defineConfig({
       'packages/hdrify-tests/src/**/*.test.ts',
       'packages/cli-tests/src/**/*.test.ts',
       'packages/hdrify-vscode-extension/src/**/*.test.ts',
+      'packages/hdrify-react/src/**/*.test.ts',
     ],
     environment: 'node',
     watch: false,

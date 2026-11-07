@@ -3,6 +3,7 @@ import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import CodeBlock from '@theme/CodeBlock';
+import LiveImageViewer from '../components/LiveImageViewer';
 import styles from './index.module.css';
 
 const snippet = `import { readExr, writeHdr } from 'hdrify';
@@ -45,22 +46,13 @@ export default function Home() {
               <code>npm install hdrify</code>
             </p>
           </div>
-          <div
-            className={styles.visual}
-            aria-label="HDRify converts between EXR, HDR and JPEG gain maps using a shared floating-point RGBA image"
-          >
-            <div className={styles.spectrum} />
-            <div className={styles.visualContent}>
-              <img src={useBaseUrl('/img/hdrify.png')} width="100" height="100" alt="HDRify" />
-              <p>Every highlight. Every channel.</p>
-              <div className={styles.formats}>
-                <span>EXR</span>
-                <span>HDR</span>
-                <span>JPEG-R</span>
-              </div>
-              <code>Float32Array · RGBA · linear light</code>
-            </div>
-          </div>
+          <figure className={styles.live}>
+            <LiveImageViewer exposure-control="" style={{ height: 440 }} />
+            <figcaption>
+              Live: an OpenEXR file in <Link to="/docs/image-viewer/">&lt;image-viewer&gt;</Link>. Drag the slider for
+              exposure; use the gear for tone mapping.
+            </figcaption>
+          </figure>
         </div>
       </header>
       <main className="container">

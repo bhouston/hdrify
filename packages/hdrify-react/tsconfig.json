@@ -9,5 +9,6 @@
       "${configDir}/../../node_modules/@webgpu/types"
     ]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts"]
 }
