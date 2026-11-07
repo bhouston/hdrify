@@ -45,7 +45,7 @@ const config: Config = {
   projectName: 'hdrify',
   trailingSlash: true,
   onBrokenLinks: 'throw',
-  markdown: { format: 'md', hooks: { onBrokenMarkdownLinks: 'throw' } },
+  markdown: { format: 'detect', hooks: { onBrokenMarkdownLinks: 'throw' } },
   presets: [
     [
       'classic',
@@ -113,6 +113,7 @@ const config: Config = {
         { to: '/docs/', label: 'Docs', position: 'left' },
         { to: '/docs/api/core/', label: 'API', position: 'left' },
         { to: '/docs/cli/reference/', label: 'CLI', position: 'left' },
+        { to: '/docs/image-viewer/', label: '<image-viewer>', position: 'left' },
         {
           href: `pathname://${baseUrl}demo/`,
           label: 'Live demo',
@@ -134,6 +135,7 @@ const config: Config = {
           title: 'Build with HDRify',
           items: [
             { to: '/docs/examples/', label: 'Code examples' },
+            { to: '/docs/image-viewer/', label: '<image-viewer>' },
             { to: '/docs/react/', label: 'React integration' },
             { href: 'https://www.npmjs.com/package/hdrify', label: 'npm' },
           ],

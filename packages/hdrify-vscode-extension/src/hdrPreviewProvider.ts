@@ -68,7 +68,7 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
       vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.js'),
     );
 
-    webviewPanel.webview.html = getPreviewHtml(scriptUri);
+    webviewPanel.webview.html = getPreviewHtml(scriptUri, webviewPanel.webview.cspSource);
 
     const send = (): void => {
       this._log.appendLine(`[send] ${document.fileName} (visible=${webviewPanel.visible})`);
@@ -108,91 +108,61 @@ export class HdrPreviewProvider implements vscode.CustomReadonlyEditorProvider<H
   }
 }
 
-function getPreviewHtml(scriptUri: vscode.Uri): string {
+function getPreviewHtml(scriptUri: vscode.Uri, cspSource: string): string {
+  // The viewer's React UI renders inline <style> elements, hence 'unsafe-inline' for styles only.
+  const csp = [
+    "default-src 'none'",
+    `script-src ${cspSource}`,
+    `style-src ${cspSource} 'unsafe-inline'`,
+    'img-src data: blob:',
+  ].join('; ');
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="${csp}">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HDR Image Preview</title>
   <style>
-    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
     body {
-      margin: 0;
-      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       color: var(--vscode-foreground);
       background: var(--vscode-editor-background);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
     }
-    .controls {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 12px;
-      flex-shrink: 0;
-    }
-    .control-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .control-group label { font-weight: 500; min-width: 80px; }
-    input[type="range"] { width: 120px; }
-    select {
-      padding: 4px 8px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
-    }
-    .meta {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 12px;
-      flex-shrink: 0;
-    }
-    .meta dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; }
-    .meta dt { font-weight: 500; color: var(--vscode-foreground); }
-    .meta dd { margin: 0; }
-    .canvas-wrap {
+    /* The shared viewer theme follows VS Code; custom properties inherit into its shadow root. */
+    image-viewer {
       flex: 1;
+      height: auto;
       min-height: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: auto;
+      --hdrify-viewer-background: var(--vscode-editor-background);
+      --hdrify-viewer-foreground: var(--vscode-foreground);
+      --hdrify-viewer-muted-foreground: var(--vscode-descriptionForeground);
+      --hdrify-viewer-popover: var(--vscode-editorWidget-background);
+      --hdrify-viewer-border: var(--vscode-widget-border, var(--vscode-panel-border));
+      --hdrify-viewer-input: var(--vscode-input-background);
+      --hdrify-viewer-primary: var(--vscode-button-background);
+      --hdrify-viewer-ring: var(--vscode-focusBorder);
+      --hdrify-viewer-destructive: var(--vscode-errorForeground);
     }
-    canvas { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .error { color: var(--vscode-errorForeground); padding: 16px; }
+    #status {
+      flex-shrink: 0;
+      padding: 6px 12px;
+      border-top: 1px solid var(--vscode-panel-border, transparent);
+      color: var(--vscode-descriptionForeground);
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+    #status.error { color: var(--vscode-errorForeground); }
   </style>
 </head>
 <body>
-  <div class="controls" id="controls" style="display:none">
-    <div class="control-group">
-      <label for="tonemap">Tone mapping</label>
-      <select id="tonemap">
-        <option value="neutral">Neutral</option>
-        <option value="agx">AgX</option>
-        <option value="aces">ACES</option>
-      </select>
-    </div>
-    <div class="control-group">
-      <label for="exposure">Exposure</label>
-      <input type="range" id="exposure" min="0.1" max="10" step="0.1" value="1">
-      <span id="exposureVal">1.0</span>
-    </div>
-  </div>
-  <div class="meta" id="meta"></div>
-  <div class="canvas-wrap">
-    <canvas id="canvas"></canvas>
-  </div>
-  <div class="error" id="error" style="display:none"></div>
+  <image-viewer exposure-control aria-label="HDR image preview"></image-viewer>
+  <output id="status">Loading…</output>
   <script src="${scriptUri.toString()}"></script>
 </body>
 </html>`;
