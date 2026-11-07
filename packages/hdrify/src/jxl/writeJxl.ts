@@ -15,7 +15,7 @@ import {
 export interface WriteJxlOptions {
   /** Encode lossy XYB VarDCT instead of lossless Modular (default false). */
   lossy?: boolean;
-  /** Quantization distance for lossy output, > 0 (default 1). Smaller values retain more detail.
+  /** Quantization distance for lossy output, > 0 and <= 25 (default 1). Smaller values retain more detail.
    * This initial fixed-DCT encoder does not match libjxl's perceptual distance calibration.
    */
   distance?: number;
@@ -47,9 +47,10 @@ const BIT_DEPTHS: Record<NonNullable<WriteJxlOptions['bitDepth']>, JxlEncBitDept
 const PREDICTOR_GRADIENT = 5;
 
 /**
- * Encode an image as a lossless Modular JPEG XL (prefix codes, gradient predictor,
- * one MA-tree leaf per channel, YCoCg RCT and/or channel palettes chosen by estimated
- * size). Modelled on libjxl's enc_fast_lossless.cc.
+ * Encode an image as lossless Modular or lossy VarDCT JPEG XL.
+ * Lossless encoding uses gradient prediction, prefix codes and estimated-cost transforms.
+ * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
+ * alpha remains lossless in the selected source sample format.
  */
 export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uint8Array {
   const { width, height, data } = image;

@@ -2,7 +2,7 @@ import type { LinearColorSpace } from '../color/colorSpaces.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
 
 /**
- * Codestream header writers for a lossless Modular JPEG XL image: SizeHeader,
+ * Codestream header writers for Modular and VarDCT JPEG XL images: SizeHeader,
  * ImageMetadata (linear colour encoding, optional alpha), FrameHeader and TOC.
  * Field order follows libjxl headers.cc / image_metadata.cc / frame_header.cc / toc.cc
  * (the same layout as the hand-written headers in enc_fast_lossless.cc).
@@ -93,7 +93,7 @@ export function writeImageMetadata(
   w.zeroPadToByte();
 }
 
-/** FrameHeader of the single (last, regular) lossless Modular frame. */
+/** FrameHeader of a single last, regular Modular or XYB VarDCT frame. */
 export function writeFrameHeader(w: JxlBitWriter, hasAlpha: boolean, groupSizeShift: number, vardct = false): void {
   w.writeBool(false); // all_default
   w.writeBits(2, 0); // frame_type = kRegularFrame
