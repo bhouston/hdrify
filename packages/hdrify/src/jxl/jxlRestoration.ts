@@ -10,13 +10,6 @@ export function mirrorCoord(i: number, n: number): number {
   return i;
 }
 
-/** Default Gaborish weights (w1 side, w2 diagonal) per channel. */
-export const JXL_DEFAULT_GABORISH_WEIGHTS: readonly (readonly [number, number])[] = [
-  [0.115169525, 0.061248592],
-  [0.115169525, 0.061248592],
-  [0.115169525, 0.061248592],
-];
-
 /**
  * Gaborish on one `width x height` plane, in place:
  * `out = (c + w1 * sum(side) + w2 * sum(diag)) / (1 + 4 w1 + 4 w2)` with mirrored borders.
@@ -46,7 +39,7 @@ export function applyGaborish(plane: Float32Array, width: number, height: number
   }
 }
 
-/** EPF parameters (RestorationFilter epf_* fields) with libjxl defaults. */
+/** EPF parameters (RestorationFilter epf_* fields). */
 export interface JxlEpfParams {
   /** 1..3 iterations (0 = disabled). */
   readonly iters: number;
@@ -55,14 +48,6 @@ export interface JxlEpfParams {
   readonly pass2SigmaScale: number;
   readonly borderSadMul: number;
 }
-
-export const JXL_DEFAULT_EPF_PARAMS: JxlEpfParams = {
-  iters: 2,
-  channelScale: [40, 5, 3.5],
-  pass0SigmaScale: 0.9,
-  pass2SigmaScale: 6.5,
-  borderSadMul: 2 / 3,
-};
 
 /** Default EPF sharpness LUT (`i / 7`). */
 export const JXL_DEFAULT_EPF_SHARP_LUT: readonly number[] = [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7, 1];
@@ -170,7 +155,7 @@ export function applyEpf(
   height: number,
   sigma: Float32Array,
   sigmaStride: number,
-  params: JxlEpfParams = JXL_DEFAULT_EPF_PARAMS,
+  params: JxlEpfParams,
 ): void {
   if (params.iters <= 0) return;
   const n = width * height;

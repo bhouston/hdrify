@@ -17,7 +17,7 @@ import {
   readTransform,
   type TransformInfo,
 } from './jxlModularTransforms.js';
-import { clampedGradient, predictOne, readWpHeader, type WpHeader, WpState } from './jxlPredictors.js';
+import { clampedGradient, defaultWpHeader, predictOne, readWpHeader, type WpHeader, WpState } from './jxlPredictors.js';
 
 export { applyInverseTransforms } from './jxlModularTransforms.js';
 export type { TransformInfo } from './jxlModularTransforms.js';
@@ -54,8 +54,6 @@ export interface ModularDecodeOptions {
   maxChanSize?: number;
   /** Sample bit depth (for palette); default 8. */
   bitDepth?: number;
-  /** Tolerate a truncated stream: decoding stops at end of data, remaining samples stay 0. */
-  allowPartial?: boolean;
 }
 
 /**
@@ -79,7 +77,7 @@ export function decodeModularStream(
     })),
     nbMetaChannels: 0,
     transforms: [],
-    wpHeader: { p1C: 16, p2C: 10, p3Ca: 7, p3Cb: 7, p3Cc: 7, p3Cd: 0, p3Ce: 0, w: [13, 12, 12, 12] },
+    wpHeader: defaultWpHeader(),
     bitDepth: opts.bitDepth ?? 8,
   };
   if (channels.length === 0) return img;
@@ -117,15 +115,10 @@ export function decodeModularStream(
     decoder = opts.globalDecoder.clone();
   }
   decoder.begin(br);
-  try {
-    for (let i = 0; i < end; i++) {
-      const c = chans[i]!;
-      if (!c.width || !c.height) continue;
-      decodeChannel(br, decoder, img, i, opts.streamId, tree, distMultiplier);
-    }
-  } catch (e) {
-    if (opts.allowPartial && e instanceof Error && /unexpected end/.test(e.message)) return img;
-    throw e;
+  for (let i = 0; i < end; i++) {
+    const c = chans[i]!;
+    if (!c.width || !c.height) continue;
+    decodeChannel(br, decoder, img, i, opts.streamId, tree, distMultiplier);
   }
   decoder.finish();
   return img;
