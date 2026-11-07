@@ -39,3 +39,20 @@ it('marks unsupported LUT profiles and applies the documented integer-sRGB fallb
   expect(rgba[3]).toBe(0.25);
   expect(jxlColorMetadata(h).iccColorManaged).toBe(false);
 });
+
+it('rejects singular embedded ICC matrices instead of returning nonfinite colour pixels', async () => {
+  const { readIccProfile, writeIccProfile } = await import('hdrify-icc');
+  const { JxlBitReader } = await import('./jxlBitReader.js');
+  const { readImageHeader } = await import('./jxlImageHeader.js');
+  const { extractCodestream } = await import('./jxlContainer.js');
+  const { convertOutputColor } = await import('./jxlColor.js');
+  const h = readImageHeader(
+    new JxlBitReader(extractCodestream(fs.readFileSync(new URL('color/adobe_rgb-d0.jxl', ASSETS))).codestream),
+  );
+  const profile = readIccProfile(h.icc!);
+  for (const t of profile.tags) if (['rXYZ', 'gXYZ', 'bXYZ'].includes(t.signature)) t.data.fill(0, 8, 20);
+  h.icc = writeIccProfile(profile);
+  expect(() => convertOutputColor(h, new Float32Array([0.2, 0.4, 0.6, 1]), false)).toThrow(
+    'invalid colour encoding matrix',
+  );
+});

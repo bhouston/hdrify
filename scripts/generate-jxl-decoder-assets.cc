@@ -10,7 +10,7 @@
 #include <vector>
 
 static void Check(JxlEncoderStatus status) { assert(status == JXL_ENC_SUCCESS); }
-static void Encode(const std::string& name, int orientation, bool alpha, bool extra, bool animation, bool spot = false) {
+static void Encode(const std::string& name, int orientation, bool alpha, bool extra, bool animation, bool spot = false, bool rec2020 = false) {
   JxlEncoder* enc = JxlEncoderCreate(nullptr);
   JxlBasicInfo info;
   JxlEncoderInitBasicInfo(&info);
@@ -24,6 +24,7 @@ static void Encode(const std::string& name, int orientation, bool alpha, bool ex
   Check(JxlEncoderSetBasicInfo(enc, &info));
   JxlColorEncoding color;
   JxlColorEncodingSetToLinearSRGB(&color, JXL_FALSE);
+  if (rec2020) color.primaries = JXL_PRIMARIES_2100;
   Check(JxlEncoderSetColorEncoding(enc, &color));
   if (extra) for (int i = 0; i < 2; i++) {
     JxlExtraChannelInfo ec; JxlEncoderInitExtraChannelInfo(i == 0 ? JXL_CHANNEL_DEPTH : JXL_CHANNEL_SELECTION_MASK, &ec);
@@ -74,7 +75,7 @@ static void Encode(const std::string& name, int orientation, bool alpha, bool ex
   Check(JxlEncoderProcessOutput(enc, &next, &avail));
   FILE* f = fopen(("assets/jxl/features/" + name + ".jxl").c_str(), "wb"); assert(f);
   fwrite(output.data(), 1, output.size() - avail, f); fclose(f);
-  if (alpha) {
+  if (alpha && !animation) {
     // djxl drops alpha for PFM without unpremultiplying. Request straight alpha via the public API.
     JxlDecoder* dec = JxlDecoderCreate(nullptr);
     assert(JxlDecoderSetUnpremultiplyAlpha(dec, JXL_TRUE) == JXL_DEC_SUCCESS);
@@ -104,4 +105,5 @@ int main() {
   Encode("extra_channels", 6, false, true, false);
   Encode("animation_timing", 1, false, false, true);
   Encode("spot_color", 1, false, false, false, true);
+  Encode("widegamut_animation", 6, true, false, true, false, true);
 }
