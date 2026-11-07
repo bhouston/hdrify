@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import {
-  applyEpf,
-  applyGaborish,
-  epfSigma,
-  JXL_DEFAULT_EPF_PARAMS,
-  JXL_DEFAULT_GABORISH_WEIGHTS,
-  mirrorCoord,
-} from './jxlRestoration.js';
+import { defaultRestorationFilter } from './jxlFrameHeader.js';
+import { applyEpf, applyGaborish, epfSigma, type JxlEpfParams, mirrorCoord } from './jxlRestoration.js';
 
-const [W1, W2] = JXL_DEFAULT_GABORISH_WEIGHTS[0];
+const RF = defaultRestorationFilter();
+const [W1, W2] = RF.gabWeights;
+const DEFAULT_EPF: JxlEpfParams = {
+  iters: RF.epfIters,
+  channelScale: RF.epfChannelScale,
+  pass0SigmaScale: RF.epfPass0SigmaScale,
+  pass2SigmaScale: RF.epfPass2SigmaScale,
+  borderSadMul: RF.epfBorderSadMul,
+};
 
 function rng(seed: number): () => number {
   let s = seed >>> 0;
@@ -67,7 +69,7 @@ describe('jxlRestoration: EPF', () => {
   it('leaves constant images unchanged for every iteration count', () => {
     for (const iters of [1, 2, 3]) {
       const planes = [0.1, 0.5, -0.2].map((v) => new Float32Array(w * h).fill(v));
-      applyEpf(planes, w, h, new Float32Array(4).fill(2), sigmaStride, { ...JXL_DEFAULT_EPF_PARAMS, iters });
+      applyEpf(planes, w, h, new Float32Array(4).fill(2), sigmaStride, { ...DEFAULT_EPF, iters });
       planes.forEach((p, c) => {
         for (const v of p) expect(v).toBeCloseTo([0.1, 0.5, -0.2][c], 6);
       });
@@ -79,7 +81,7 @@ describe('jxlRestoration: EPF', () => {
     const planes = [0, 1, 2].map(() => Float32Array.from({ length: w * h }, () => 0.5 + (r() - 0.5) * 0.002));
     const orig = planes.map((p) => p.slice());
     const sigma = Float32Array.of(0.1, 5, 5, 5); // block (0,0) disabled
-    applyEpf(planes, w, h, sigma, sigmaStride);
+    applyEpf(planes, w, h, sigma, sigmaStride, DEFAULT_EPF);
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) expect(planes[1][y * w + x]).toBe(orig[1][y * w + x]);
     const variance = (p: Float32Array) => {
       let s = 0;
@@ -91,7 +93,7 @@ describe('jxlRestoration: EPF', () => {
 
   it('preserves strong edges', () => {
     const planes = [0, 1, 2].map(() => Float32Array.from({ length: w * h }, (_, i) => (i % w < 8 ? 0 : 1)));
-    applyEpf(planes, w, h, new Float32Array(4).fill(1), sigmaStride, { ...JXL_DEFAULT_EPF_PARAMS, iters: 3 });
+    applyEpf(planes, w, h, new Float32Array(4).fill(1), sigmaStride, { ...DEFAULT_EPF, iters: 3 });
     for (let y = 0; y < h; y++) {
       expect(planes[0][y * w + 7]).toBeCloseTo(0, 4);
       expect(planes[0][y * w + 8]).toBeCloseTo(1, 4);
@@ -105,8 +107,8 @@ describe('jxlRestoration: EPF', () => {
     const a = base.map((p) => p.slice());
     const b = base.map(flip);
     const sigma = new Float32Array(4).fill(3);
-    applyEpf(a, w, h, sigma, sigmaStride, { ...JXL_DEFAULT_EPF_PARAMS, iters: 3 });
-    applyEpf(b, w, h, sigma, sigmaStride, { ...JXL_DEFAULT_EPF_PARAMS, iters: 3 });
+    applyEpf(a, w, h, sigma, sigmaStride, { ...DEFAULT_EPF, iters: 3 });
+    applyEpf(b, w, h, sigma, sigmaStride, { ...DEFAULT_EPF, iters: 3 });
     const bf = b.map(flip);
     for (let c = 0; c < 3; c++) for (let i = 0; i < w * h; i++) expect(bf[c][i]).toBeCloseTo(a[c][i], 6);
   });

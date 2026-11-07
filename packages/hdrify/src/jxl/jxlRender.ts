@@ -198,6 +198,15 @@ export function canBeReferenced(fh: JxlFrameHeader): boolean {
 }
 
 /**
+ * Whether an XYB frame's planes can stay linear light (libjxl dec_cache.cc adds the from-linear stage only
+ * when NeedsBlending || (CanBeReferenced && !save_before_ct)): a saveBeforeCt reference is stored from
+ * `beforeCt`, so the canvas goes straight to the output.
+ */
+export function staysLinear(fh: JxlFrameHeader): boolean {
+  return !needsBlending(fh) && (!canBeReferenced(fh) || fh.saveBeforeCt);
+}
+
+/**
  * Store a decoded frame into its reference slot (libjxl FrameDecoder::FinalizeFrame). With saveBeforeCt the
  * frame-sized planes from before the color transform are copied (`beforeCt`, after upsampling and noise);
  * otherwise the blended canvas returned by blendFrame is stored. A `beforeCt` already marked `savedBeforeCt`
