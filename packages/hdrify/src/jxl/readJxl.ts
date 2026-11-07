@@ -132,7 +132,7 @@ export function decodeFrame(
     }
   }
   applyInverseTransforms(img);
-  const out = vimg ? reconstructVardct(vimg, lfg, hfg!, h, fh, dims, lfFrames[1]) : undefined;
+  const out = vimg ? reconstructVardct(vimg, lfg, hfg!, h, fh, dims, lfFrames[fh.lfLevel + 1]) : undefined;
   const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
   return { fh, dims, lfGlobal: lfg, channels: img.channels, vardct: out, frameEnd };
 }
@@ -345,7 +345,6 @@ export function* decodeDisplayedFrames(
     pos = fr.frameEnd;
     const { fh } = fr;
     advanceFrameIndices(frameIdx, fh);
-    if (fh.frameType === 'lf' && !h.xybEncoded) throw new Error('JXL: not yet supported: non-XYB LF frames');
     const planes = renderFrame(fr, h, frameIdx, references);
     const { upsampledWidth: w, upsampledHeight: hh } = fr.dims;
     if (fh.frameType === 'lf') {
