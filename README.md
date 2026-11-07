@@ -43,6 +43,7 @@ Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer
 
 - Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
+- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animations return the first frame), and write lossless JPEG XL (float16, float32, uint16, uint8)
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
 - Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
 - Full TypeScript support
@@ -110,6 +111,16 @@ console.log(`Image: ${imageData.width}x${imageData.height}`);
 // imageData.data is linear HDR Float32Array RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
 ```
 
+### Reading and writing JPEG XL
+
+```ts
+import { readJxl, writeJxl } from 'hdrify';
+
+const imageData = readJxl(new Uint8Array(fs.readFileSync('image.jxl')));
+// Lossless; bitDepth: 'float16' (default), 'float32' (bit-exact), 'uint16' or 'uint8'
+fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
+```
+
 ### Converting between formats
 
 ```ts
@@ -156,11 +167,11 @@ The **hdrify-cli** package is a companion command-line tool for converting and i
 pnpm add -g hdrify-cli
 ```
 
-| Command                           | Description                                                  |
-| --------------------------------- | ------------------------------------------------------------ |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
-| `hdrify info <file>`              | Display metadata (format, dimensions, compression)           |
-| `hdrify reference <output>`       | Create synthetic reference test images                       |
+| Command                           | Description                                                           |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG XL, JPEG gain map, PNG, WebP, and JPEG |
+| `hdrify info <file>`              | Display metadata (format, dimensions, compression)                    |
+| `hdrify reference <output>`       | Create synthetic reference test images                                |
 
 ```bash
 hdrify convert input.exr output.hdr

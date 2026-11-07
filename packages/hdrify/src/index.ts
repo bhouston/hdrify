@@ -67,6 +67,11 @@ export type { HDRToLDROptions, ParseHDROptions } from './hdr/readHdr.js';
 export { convertHDRToLDR, hdrToLdr, readHdr } from './hdr/readHdr.js';
 export { writeHdr } from './hdr/writeHdr.js';
 export { ensureNonNegativeFinite, type HdrifyImage } from './hdrifyImage.js';
+// JPEG XL
+export { isJxl } from './jxl/jxlContainer.js';
+export { readJxl } from './jxl/readJxl.js';
+export type { WriteJxlOptions } from './jxl/writeJxl.js';
+export { writeJxl } from './jxl/writeJxl.js';
 export { addRangeMetadata } from './rangeMetadata.js';
 export type { ResizeFilter, ResizeImageOptions } from './resize.js';
 export { RESIZE_FILTERS, resizeImage } from './resize.js';

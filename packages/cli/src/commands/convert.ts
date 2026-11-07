@@ -10,24 +10,26 @@ import {
   readExr,
   readHdr,
   readJpegGainMap,
+  readJxl,
   RESIZE_FILTERS,
   resizeImage,
   writeExr,
   writeHdr,
   writeJpegGainMap,
+  writeJxl,
 } from 'hdrify';
 import sharp from 'sharp';
 import { defineCommand } from 'yargs-file-commands';
 
 const SDR_EXTENSIONS = ['.webp', '.png', '.jpg', '.jpeg'] as const;
-const HDR_EXTENSIONS = ['.exr', '.hdr'] as const;
+const HDR_EXTENSIONS = ['.exr', '.hdr', '.jxl'] as const;
 
 function isSdrExtension(ext: string): ext is (typeof SDR_EXTENSIONS)[number] {
   return SDR_EXTENSIONS.includes(ext as (typeof SDR_EXTENSIONS)[number]);
 }
 
-function isHdrExtension(ext: string): ext is '.exr' | '.hdr' {
-  return ext === '.exr' || ext === '.hdr';
+function isHdrExtension(ext: string): ext is (typeof HDR_EXTENSIONS)[number] {
+  return HDR_EXTENSIONS.includes(ext as (typeof HDR_EXTENSIONS)[number]);
 }
 
 function isJpegGainMapExtension(ext: string): ext is '.jpg' | '.jpeg' {
@@ -58,16 +60,16 @@ function parseFlip(flip: string): { x: 1 | -1; y: 1 | -1 } {
 
 export const command = defineCommand({
   command: 'convert <input> <output>',
-  describe: 'Convert between EXR, HDR, JPEG gain map (Ultra HDR / Adobe), and SDR formats (PNG, WebP, JPEG)',
+  describe: 'Convert between EXR, HDR, JPEG XL, JPEG gain map (Ultra HDR / Adobe), and SDR formats (PNG, WebP, JPEG)',
   builder: (yargs) =>
     yargs
       .positional('input', {
-        describe: 'Input file path (.exr, .hdr, or .jpg/.jpeg with gain map)',
+        describe: 'Input file path (.exr, .hdr, .jxl, or .jpg/.jpeg with gain map)',
         type: 'string',
         demandOption: true,
       })
       .positional('output', {
-        describe: 'Output file path (.exr, .hdr, .png, .webp, .jpg, .jpeg)',
+        describe: 'Output file path (.exr, .hdr, .jxl (lossless), .png, .webp, .jpg, .jpeg)',
         type: 'string',
         demandOption: true,
       })
@@ -129,9 +131,9 @@ export const command = defineCommand({
     const inputExt = path.extname(input).toLowerCase();
     const outputExt = path.extname(output).toLowerCase();
 
-    if (inputExt !== '.exr' && inputExt !== '.hdr' && !isJpegGainMapExtension(inputExt)) {
+    if (!isHdrExtension(inputExt) && !isJpegGainMapExtension(inputExt)) {
       console.error(
-        `Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr, .jpg, .jpeg (gain map)`,
+        `Error: Unsupported input format: ${inputExt}. Supported formats: .exr, .hdr, .jxl, .jpg, .jpeg (gain map)`,
       );
       process.exit(1);
     }
@@ -160,6 +162,8 @@ export const command = defineCommand({
       let imageData: HdrifyImage;
       if (inputExt === '.exr') {
         imageData = readExr(inputBuffer);
+      } else if (inputExt === '.jxl') {
+        imageData = readJxl(inputBuffer);
       } else if (isJpegGainMapExtension(inputExt)) {
         imageData = readJpegGainMap(inputBuffer);
       } else {
@@ -190,6 +194,8 @@ export const command = defineCommand({
         let outputBuffer: Uint8Array;
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
+        } else if (outputExt === '.jxl') {
+          outputBuffer = writeJxl(dataToWrite);
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }

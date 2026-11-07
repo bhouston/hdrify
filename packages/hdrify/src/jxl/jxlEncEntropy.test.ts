@@ -1,0 +1,157 @@
+import { describe, expect, it } from 'vitest';
+import { JxlBitReader } from './jxlBitReader.js';
+import { JxlBitWriter } from './jxlBitWriter.js';
+import {
+  buildCodeLengths,
+  buildPrefixCode,
+  canonicalCodes,
+  estimateStreamBits,
+  hybridUintToken,
+  JxlEncEntropyCode,
+  packSigned,
+  type TokenStream,
+} from './jxlEncEntropy.js';
+import { JxlEntropyDecoder } from './jxlEntropy.js';
+
+function kraftSum(lengths: Uint8Array): number {
+  let sum = 0;
+  for (const l of lengths) if (l > 0) sum += 2 ** -l;
+  return sum;
+}
+
+function rng(seed: number): () => number {
+  return () => {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    return seed / 2 ** 32;
+  };
+}
+
+describe('buildCodeLengths', () => {
+  it('builds optimal lengths for a small known histogram', () => {
+    expect(Array.from(buildCodeLengths([1, 1, 2, 4], 15))).toEqual([3, 3, 2, 1]);
+    expect(Array.from(buildCodeLengths([5, 0, 5], 15))).toEqual([1, 0, 1]);
+  });
+
+  it('satisfies Kraft equality for random histograms', () => {
+    const rand = rng(7);
+    for (let trial = 0; trial < 50; trial++) {
+      const n = 2 + Math.floor(rand() * 70);
+      const freqs = Array.from({ length: n }, () => (rand() < 0.3 ? 0 : Math.floor(rand() ** 4 * 1e6) + 1));
+      freqs[0] = 1;
+      freqs[n - 1] = 3;
+      const lengths = buildCodeLengths(freqs, 15);
+      expect(kraftSum(lengths)).toBe(1);
+      for (let s = 0; s < n; s++) expect(lengths[s] > 0).toBe(freqs[s] > 0);
+    }
+  });
+
+  it('respects the length limit on exponentially skewed histograms', () => {
+    const fib = [1, 1];
+    while (fib.length < 40) fib.push(fib.at(-1)! + fib.at(-2)!);
+    for (const [n, limit] of [
+      [40, 15],
+      [16, 5],
+      [18, 5],
+      [32, 5],
+    ] as const) {
+      const lengths = buildCodeLengths(fib.slice(0, n), limit);
+      expect(Math.max(...lengths)).toBe(limit);
+      expect(kraftSum(lengths)).toBe(1);
+    }
+    expect(() =>
+      buildCodeLengths(
+        Array.from({ length: 33 }, () => 1),
+        5,
+      ),
+    ).toThrow();
+  });
+
+  it('gives a lone symbol length 1 and an empty histogram nothing', () => {
+    expect(Array.from(buildCodeLengths([0, 9, 0], 15))).toEqual([0, 1, 0]);
+    expect(Array.from(buildCodeLengths([0, 0], 15))).toEqual([0, 0]);
+  });
+});
+
+describe('canonicalCodes', () => {
+  it('assigns prefix-free bit-reversed canonical codes', () => {
+    const lengths = new Uint8Array([3, 3, 2, 1, 0]);
+    // Canonical MSB-first: sym3 = 0, sym2 = 10, sym0 = 110, sym1 = 111; stored bit-reversed.
+    expect(Array.from(canonicalCodes(lengths))).toEqual([0b011, 0b111, 0b01, 0b0, 0]);
+    const big = buildCodeLengths(
+      Array.from({ length: 60 }, (_, i) => (i * 37) % 101),
+      15,
+    );
+    const codes = canonicalCodes(big);
+    const words = Array.from(big, (l, s) =>
+      l ? codes[s].toString(2).padStart(l, '0').split('').toReversed().join('') : '',
+    );
+    for (const a of words) {
+      for (const b of words) if (a && b && a !== b) expect(b.startsWith(a)).toBe(false);
+    }
+  });
+});
+
+describe('hybridUintToken / packSigned', () => {
+  it('maps values to split-exponent 4, msb-in-token 1 tokens', () => {
+    expect([0, 15, 16, 23, 24, 31, 32, 48].map(hybridUintToken)).toEqual([0, 15, 16, 16, 17, 17, 18, 19]);
+    expect(hybridUintToken(0xffffffff)).toBe(71);
+    expect([0, -1, 1, -2, 2147483647, -2147483648].map(packSigned)).toEqual([0, 1, 2, 3, 4294967294, 4294967295]);
+  });
+});
+
+describe('JxlEncEntropyCode round-trips through the decoder', () => {
+  function roundTrip(numContexts: number, stream: TokenStream): void {
+    const code = JxlEncEntropyCode.build(numContexts, [stream]);
+    const w = new JxlBitWriter();
+    code.writeHeader(w);
+    code.writeStream(w, stream);
+    w.writeBits(13, 0x1abc); // sentinel: the stream must end exactly where we stopped writing
+    const br = new JxlBitReader(w.finish());
+    const dec = JxlEntropyDecoder.read(br, numContexts);
+    dec.begin(br);
+    for (let i = 0; i < stream.values.length; i++) {
+      expect(dec.readUint(br, stream.contexts[i])).toBe(stream.values[i]);
+    }
+    expect(br.readBits(13)).toBe(0x1abc);
+  }
+
+  it('handles empty, single-symbol and two-symbol contexts', () => {
+    roundTrip(1, { contexts: [0, 0, 0], values: [0, 0, 0] });
+    roundTrip(1, { contexts: [0, 0], values: [5, 5] }); // single non-zero symbol
+    roundTrip(1, { contexts: [0, 0, 0], values: [1, 7, 7] });
+    roundTrip(3, { contexts: [2, 2, 0], values: [3, 1, 40] }); // context 1 unused
+    roundTrip(2, { contexts: [0, 1, 0, 1], values: [4, 4, 4, 4] }); // equal lengths everywhere
+  });
+
+  it('handles random values up to 2^32 - 1 across many contexts', () => {
+    const rand = rng(99);
+    for (const numContexts of [1, 6, 8, 9, 40]) {
+      const n = 3000;
+      const contexts = Array.from({ length: n }, () => Math.floor(rand() * numContexts));
+      const values = Array.from({ length: n }, () => {
+        const r = rand();
+        if (r < 0.6) return Math.floor(rand() * 20);
+        if (r < 0.95) return Math.floor(rand() * 5000);
+        return Math.floor(rand() * 2 ** 32);
+      });
+      values[0] = 0xffffffff;
+      roundTrip(numContexts, { contexts, values });
+    }
+  });
+
+  it('estimateStreamBits is close to the coded size', () => {
+    const rand = rng(3);
+    const values = Array.from({ length: 20000 }, () => Math.floor(rand() ** 3 * 3000));
+    const stream = { contexts: new Uint8Array(values.length), values };
+    const code = JxlEncEntropyCode.build(1, [stream]);
+    const w = new JxlBitWriter();
+    code.writeStream(w, stream);
+    const actual = w.bitPosition;
+    expect(Math.abs(estimateStreamBits(stream, 1) - actual) / actual).toBeLessThan(0.02);
+  });
+
+  it('buildPrefixCode trims the alphabet to the last used token', () => {
+    expect(buildPrefixCode([3, 0, 1, 0, 0]).alphabetSize).toBe(3);
+    expect(buildPrefixCode([0, 0]).alphabetSize).toBe(1);
+  });
+});

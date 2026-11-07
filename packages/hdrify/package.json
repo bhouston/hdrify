@@ -1,7 +1,7 @@
 {
   "name": "hdrify",
   "version": "1.1.4",
-  "description": "Universal EXR, HDR, and gain map image libraries for Node.js and browsers",
+  "description": "Universal EXR, HDR, JPEG XL, and gain map image libraries for Node.js and browsers",
   "keywords": [
     "browser",
     "exr",
@@ -10,6 +10,8 @@
     "hdr",
     "image",
     "jpeg-r",
+    "jpeg-xl",
+    "jxl",
     "openexr",
     "parser",
     "radiance",

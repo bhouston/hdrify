@@ -1,0 +1,78 @@
+import { describe, expect, it } from 'vitest';
+import { JxlBitReader, unpackSigned } from './jxlBitReader.js';
+
+describe('JxlBitReader', () => {
+  it('reads bits LSB-first across byte boundaries', () => {
+    const br = new JxlBitReader(new Uint8Array([0b1010_1101, 0b0000_0011, 0xff, 0xff, 0x12, 0x34]));
+    expect(br.readBits(1)).toBe(1);
+    expect(br.readBits(3)).toBe(0b110);
+    expect(br.readBits(6)).toBe(0b11_1010);
+    expect(br.bitPosition).toBe(10);
+    br.zeroPadToByte();
+    expect(br.readBits(32)).toBe(0x3412ffff);
+  });
+
+  it('reads the JXL signature and peeks/skips', () => {
+    const br = new JxlBitReader(new Uint8Array([0xff, 0x0a]));
+    expect(br.peekBits(16)).toBe(0x0aff);
+    br.skipBits(8);
+    expect(br.readBits(8)).toBe(0x0a);
+  });
+
+  it('decodes U32, U64, Enum and F16 fields', () => {
+    // selector 2 -> BitsOffset(4, 2): bits = 2 (sel) then 4 bits value 5 => 0b0101_10
+    const br = new JxlBitReader(new Uint8Array([0b0101_10 | (0b01 << 6), 0b0000_0011]));
+    expect(br.readU32(0, 1, { bits: 4, offset: 2 }, 7)).toBe(7);
+    // remaining: bits from byte0 >> 6 = 01 => sel 1 => 1 + u(4)
+    expect(br.readU64()).toBe(1 + 0b0011);
+
+    const half = new JxlBitReader(new Uint8Array([0x00, 0x3c]));
+    expect(half.readF16()).toBe(1);
+    const neg = new JxlBitReader(new Uint8Array([0x00, 0xc0]));
+    expect(neg.readF16()).toBe(-2);
+    expect(() => new JxlBitReader(new Uint8Array([0x00, 0x7c])).readF16()).toThrow();
+
+    const e = new JxlBitReader(new Uint8Array([0b1]));
+    expect(e.readEnum()).toBe(1);
+  });
+
+  it('rejects non-zero padding and reading far past the end', () => {
+    const br = new JxlBitReader(new Uint8Array([0b10]));
+    br.readBits(1);
+    expect(() => br.zeroPadToByte()).toThrow();
+    const end = new JxlBitReader(new Uint8Array([1]));
+    expect(() => end.skip(200)).toThrow();
+  });
+
+  it('unpackSigned zig-zags', () => {
+    expect([0, 1, 2, 3, 4].map(unpackSigned)).toEqual([0, -1, 1, -2, 2]);
+  });
+});
+
+describe('JxlBitWriter round-trip', async () => {
+  const { JxlBitWriter } = await import('./jxlBitWriter.js');
+  it('writes what JxlBitReader reads', () => {
+    const w = new JxlBitWriter();
+    w.writeBits(3, 5);
+    w.writeU32(19, 0, 1, { bits: 4, offset: 2 }, { bits: 6, offset: 18 });
+    w.writeU64(0);
+    w.writeU64(9);
+    w.writeU64(200);
+    w.writeU64(123_456_789_012);
+    w.writeEnum(40);
+    w.writeBits(32, 0xdeadbeef);
+    w.writeBool(true);
+    w.zeroPadToByte();
+    w.writeBytes(new Uint8Array([7]));
+    const r = new JxlBitReader(w.finish());
+    expect(r.readBits(3)).toBe(5);
+    expect(r.readU32(0, 1, { bits: 4, offset: 2 }, { bits: 6, offset: 18 })).toBe(19);
+    expect([r.readU64(), r.readU64(), r.readU64(), r.readU64()]).toEqual([0, 9, 200, 123_456_789_012]);
+    expect(r.readEnum()).toBe(40);
+    expect(r.readBits(32)).toBe(0xdeadbeef);
+    expect(r.readBool()).toBe(true);
+    r.zeroPadToByte();
+    expect(r.readBits(8)).toBe(7);
+    expect(() => w.writeU32(99, 0, 1, 2, 3)).toThrow();
+  });
+});
