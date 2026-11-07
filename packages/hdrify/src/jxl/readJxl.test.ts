@@ -1,3 +1,4 @@
+import { decodeFloat16 } from '../exr/halfFloat.js';
 import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
@@ -119,6 +120,19 @@ describe('readJxl ∘ writeJxl round-trip', async () => {
       });
     }
   }
+
+  it('preserves every binary16 value in colour and alpha, including signed zero and non-finite values', () => {
+    const data = new Float32Array(256 * 256 * 4);
+    for (let bits = 0; bits < 65536; bits++) {
+      data[4 * bits] = decodeFloat16(bits);
+      data[4 * bits + 1] = 0.5;
+      data[4 * bits + 2] = 0.25;
+      data[4 * bits + 3] = decodeFloat16((bits + 32768) & 0xffff);
+    }
+    const image = { width: 256, height: 256, data, linearColorSpace: 'linear-rec709' as const };
+    const decoded = readJxl(writeJxl(image, { bitDepth: 'float16', sanitize: false, alpha: true }));
+    expect(new Uint32Array(decoded.data.buffer)).toEqual(new Uint32Array(data.buffer));
+  });
 
   it('preserves P3 and Rec.2020 primaries', () => {
     const src = createHsvRainbowImage({ width: 8, height: 4, value: 1, intensity: 1 });
