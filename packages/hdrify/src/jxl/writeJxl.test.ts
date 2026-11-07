@@ -344,13 +344,14 @@ describe('writeJxl', () => {
     expect(readJxl(high).data).toEqual(readJxl(standard).data);
   });
 
+  // Full-corpus tree search exceeds 30 seconds under coverage on two-core CI runners.
   it('learned high-effort contexts reduce memorial without changing samples or standard output', () => {
     const image = readExr(fs.readFileSync(new URL('../../../../assets/memorial.exr', import.meta.url)));
     const high = writeJxl(image, { effort: 'high' });
     expect(high.length).toBeLessThan(920000); // ANS without learned contexts was 949,906 bytes.
     expect(readJxl(high).data).toEqual(readJxl(writeJxl(image)).data);
     expect(writeJxl(pattern(7, 5), { effort: 'high' })).toEqual(writeJxl(pattern(7, 5), { effort: 'high' }));
-  });
+  }, 90_000);
 
   it('high-effort float32 output keeps every source bit through the public decoder', () => {
     const values = [-0, -1e-45, 1e-45, 3.4e38, -3.4e38, -65504, 0.5];
