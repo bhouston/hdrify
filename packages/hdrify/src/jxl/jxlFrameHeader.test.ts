@@ -69,12 +69,16 @@ const CORPUS: Record<string, Frame> = {
   vardct_resampling: ['vardct', 2, 1, false, true, 3, 1, 1],
   vardct_rgb8: SIMPLE_VARDCT,
   vardct_rgba8: SIMPLE_VARDCT,
+  vardct_grad128: ['vardct', 1, 1, false, true, 3, 1, 1],
+  vardct_d01: ['vardct', 1, 1, false, false, 0, 1, 1],
 };
 
 describe('frame headers and TOC on the corpus', () => {
   it('covers every corpus file', () => {
     const files = fs.readdirSync(ASSETS).filter((f) => f.endsWith('.jxl'));
-    expect(files.map((f) => f.slice(0, -4)).sort()).toEqual([...Object.keys(CORPUS), 'vardct_progressive'].sort());
+    expect(files.map((f) => f.slice(0, -4)).sort()).toEqual(
+      [...Object.keys(CORPUS), 'vardct_progressive', 'vardct_jpeg444', 'vardct_jpeg420'].sort(),
+    );
   });
 
   it.each(Object.entries(CORPUS))('%s', (name, [encoding, upsampling, gss, noise, gab, epf, tocEntries, numGroups]) => {

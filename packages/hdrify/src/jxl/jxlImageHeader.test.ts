@@ -54,6 +54,10 @@ const CORPUS: Record<string, Expect> = {
   vardct_resampling: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],
   vardct_rgb8: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],
   vardct_rgba8: [64, 64, 8, false, true, false, true, 'srgb', 'absolute'],
+  vardct_jpeg444: [96, 48, 8, false, false, false, false, 'srgb', 'relative'],
+  vardct_grad128: [128, 128, 8, false, true, false, false, 'srgb', 'perceptual'],
+  vardct_d01: [96, 48, 8, false, true, false, false, 'srgb', 'perceptual'],
+  vardct_jpeg420: [101, 53, 8, false, false, false, false, 'srgb', 'relative'],
 };
 
 describe('readImageHeader on the corpus', () => {

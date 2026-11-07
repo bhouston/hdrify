@@ -75,12 +75,6 @@ describe('readJxl unsupported inputs fail clearly', () => {
     expect(() => readJxl(new Uint8Array([1, 2, 3, 4]))).toThrow();
   });
 
-  for (const jxl of ['vardct_rgb8.jxl', 'vardct_float.jxl', 'lossy_modular.jxl']) {
-    it(`${jxl} throws "not yet supported"`, () => {
-      expect(() => load(jxl)).toThrow(/not yet supported/);
-    });
-  }
-
   it('decodes ICC-profile images and keeps the profile in metadata', () => {
     const img = load('icc_rec2020_pq.jxl');
     expect((img.metadata!.iccProfile as Uint8Array).length).toBe(456);

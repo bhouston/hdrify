@@ -69,3 +69,45 @@ oiiotool "$A/blouberg_sunrise_2_1k.jpg" --resize 16x8 -d uint8 -o "$SRC/icc_base
 cjxl "$SRC/icc_base.png" "$SRC/icc_tmp.jxl" --quiet -d 0 -x color_space=RGB_D65_202_Rel_PeQ
 djxl "$SRC/icc_tmp.jxl" "$SRC/icc_tmp.png" --quiet --icc_out="$OUT/icc_rec2020_pq.icc"
 cjxl "$SRC/icc_base.png" "$OUT/icc_rec2020_pq.jxl" --quiet -d 0 -x icc_pathname="$OUT/icc_rec2020_pq.icc"
+
+# --- Frame features and multi-frame composition (jxlFeatures / jxlRender). Also requires ImageMagick. ---
+# Written to assets/jxl/features/ (the header corpus tests enumerate assets/jxl/*.jxl).
+FEAT="$OUT/features"
+mkdir -p "$FEAT"
+rm -f "$FEAT"/*
+# Patches: repeated glyph-like marks so cjxl's patch heuristics fire; referenceOnly frame + kAdd/... patches.
+glyphs=()
+for y in 4 18 32; do
+  for x in 4 16 28 40 52 64 76; do
+    glyphs+=(-draw "rectangle $x,$y $((x + 1)),$((y + 7))" -draw "rectangle $((x + 2)),$((y + 3)) $((x + 5)),$((y + 4))"
+      -draw "point $((x + 6)),$((y + 1))")
+  done
+done
+magick -size 96x48 xc:white -fill black "${glyphs[@]}" "$SRC/text.png"
+magick -size 96x48 xc:'rgba(40,80,200,0.25)' -fill 'rgba(0,0,0,0.9)' "${glyphs[@]}" "$SRC/text_rgba.png"
+OUT="$FEAT" enc patches_text text.png ppm -d 0 -e 7 --patches=1
+OUT="$FEAT" enc patches_text_rgba text_rgba.png pam -d 0 -e 7 --patches=1
+# Animation: GIF with optimized (cropped, alpha-blended) frames; one coalesced reference per frame.
+magick -size 32x24 xc:'#204060' -fill '#ff8000' -draw 'rectangle 2,2 10,10' "$SRC/f0.png"
+magick "$SRC/f0.png" -fill '#00ff80' -draw 'rectangle 12,6 20,14' "$SRC/f1.png"
+magick "$SRC/f1.png" -fill '#8000ff' -draw 'circle 24,16 28,18' "$SRC/f2.png"
+magick -delay 10 "$SRC/f0.png" "$SRC/f1.png" "$SRC/f2.png" -loop 0 -layers Optimize "$SRC/anim.gif"
+cjxl "$SRC/anim.gif" "$FEAT/anim_gif.jxl" --quiet -d 0
+djxl "$FEAT/anim_gif.jxl" "$SRC/anim.pam" --quiet --output_frames
+for i in 0 1 2; do mv "$SRC/anim.pam-$i.pam" "$FEAT/anim_gif.ref$i.pam"; done
+# Noise and splines (cjxl never emits splines): crafted by the test suite, decoded by djxl.
+(cd "$ROOT" && JXL_CRAFT_OUT="$FEAT" npx vitest run packages/hdrify/src/jxl/jxlFeatures.test.ts -t 'writes the crafted' >/dev/null)
+djxl "$FEAT/noise_crafted.jxl" "$FEAT/noise_crafted.ref.pfm" --quiet
+djxl "$FEAT/splines_crafted.jxl" "$FEAT/splines_crafted.ref.pfm" --quiet
+
+# --- VarDCT coverage: raw (JPEG) quant tables + YCbCr + LF contexts, large DCTs, custom block contexts ---
+oiiotool "$SRC/rgb8.ppm" --attrib jpeg:subsampling 4:4:4 --attrib Compression jpeg:85 -o "$SRC/rgb8_444.jpg"
+oiiotool --pattern fill:topleft=0.1,0.2,0.8:topright=0.9,0.5,0.1:bottomleft=0.2,0.9,0.3:bottomright=0.5,0.1,0.6 128x128 3 \
+  -d uint8 -o "$SRC/grad128.ppm"
+enc vardct_jpeg444 rgb8_444.jpg pfm --lossless_jpeg=1
+enc vardct_grad128 grad128.ppm pfm -d 4 -e 7
+enc vardct_d01 rgb8.ppm pfm -d 0.1 -e 7
+# JPEG recompression with 4:2:0 chroma subsampling at an odd size (chroma upsampling, mirrored edges).
+oiiotool "$A/blouberg_sunrise_2_1k.jpg" --resize 101x53 -d uint8 -o "$SRC/odd101.ppm"
+oiiotool "$SRC/odd101.ppm" --attrib jpeg:subsampling 4:2:0 --attrib Compression jpeg:85 -o "$SRC/odd_420.jpg"
+enc vardct_jpeg420 odd_420.jpg pfm --lossless_jpeg=1
