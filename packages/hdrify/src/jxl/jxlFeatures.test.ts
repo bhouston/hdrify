@@ -27,8 +27,6 @@ import {
 } from './jxlFeatures.js';
 import { type JxlFrameHeader, readFrameHeader, readToc } from './jxlFrameHeader.js';
 import { type JxlExtraChannelInfo, type JxlImageHeader, readImageHeader } from './jxlImageHeader.js';
-import { readMaTree } from './jxlMaTree.js';
-import { applyInverseTransforms, decodeModularStream } from './jxlModular.js';
 import {
   type JxlReferenceFrame,
   PATCH_ADD,
@@ -36,9 +34,9 @@ import {
   PATCH_MUL,
   PATCH_NONE,
   PATCH_REPLACE,
-  saveReference,
 } from './jxlRender.js';
-import { ASSETS, readPfm, readPnm } from './jxlTestAssets.js';
+import { ASSETS, readPfm } from './jxlTestAssets.js';
+import { decodeFrame } from './readJxl.js';
 import { writeJxl } from './writeJxl.js';
 
 const asset = (name: string) => new Uint8Array(fs.readFileSync(new URL(`features/${name}`, ASSETS)));
@@ -95,8 +93,7 @@ function bigintXorshift(s0: bigint[], s1: bigint[]): bigint[] {
   return out;
 }
 
-const lanes = (u: Uint32Array) =>
-  Array.from({ length: 8 }, (_, i) => (BigInt(u[2 * i + 1]) << 32n) | BigInt(u[2 * i]));
+const lanes = (u: Uint32Array) => Array.from({ length: 8 }, (_, i) => (BigInt(u[2 * i + 1]) << 32n) | BigInt(u[2 * i]));
 
 describe('JxlXorshift128Plus', () => {
   it('matches the libjxl golden values (xorshift128plus_test.cc, seed 12345)', () => {
@@ -703,76 +700,24 @@ describe('applyPatches', () => {
   });
 });
 
-/**
- * Decode a single-section lossless Modular frame including its LfGlobal features (test-only stand-in
- * for readJxl's frame decoder), returning float samples (v / 255) as frame planes.
- */
-function decodeSmallFrame(
-  cs: Uint8Array,
-  pos: number,
-  h: JxlImageHeader,
-  references: (JxlReferenceFrame | undefined)[],
-) {
-  const br = new JxlBitReader(cs, pos);
-  const fh = readFrameHeader(br, h);
-  const toc = readToc(br, fh);
-  expect(toc.sizes.length).toBe(1);
-  const lf = new JxlBitReader(cs, br.byteOffset, toc.sizes[0]);
-  const patches = fh.patches ? readPatches(lf, h, fh) : undefined;
-  if (!lf.readBool()) throw new Error('unexpected LF dequant');
-  const global = lf.readBool() ? readMaTree(lf) : undefined;
-  const nbColor = h.colorEncoding.colorSpace === 'gray' ? 1 : 3;
-  const chans = Array.from({ length: nbColor + h.extraChannels.length }, () => ({
-    width: fh.width,
-    height: fh.height,
-    hshift: 0,
-    vshift: 0,
-  }));
-  const img = decodeModularStream(lf, chans, {
-    globalTree: global?.tree,
-    globalDecoder: global?.decoder,
-    streamId: 0,
-    bitDepth: 8,
-  });
-  applyInverseTransforms(img);
-  const planes = img.channels.map((c) => Float32Array.from(c.data, (v) => v / 255));
-  if (nbColor === 1) planes.splice(1, 0, planes[0].slice(), planes[0].slice()); // libjxl renders gray as 3 planes
-  const frame: JxlReferenceFrame = { width: fh.width, height: fh.height, planes };
-  if (patches) applyPatches(planes, fh.width, fh.height, patches, references, h.extraChannels);
-  return { fh, frame, patches, end: br.byteOffset + toc.sizes[0] };
-}
-
-describe('patch oracles (cjxl --patches=1, lossless)', () => {
-  for (const name of ['patches_text', 'patches_text_rgba']) {
-    it(`${name}.jxl matches djxl`, () => {
+describe('patch oracles (cjxl --patches=1; pixels vs djxl in readJxl.test.ts)', () => {
+  for (const name of ['patches_text', 'patches_text_rgba', 'patches_lossy']) {
+    it(`${name}.jxl adds patches from a reference-only frame saved before the colour transform`, () => {
       const { codestream: cs } = extractCodestream(asset(`${name}.jxl`));
       const br = new JxlBitReader(cs);
       const h = readImageHeader(br);
-      const references: (JxlReferenceFrame | undefined)[] = [];
-      let pos = br.byteOffset;
-      let usedPatches = 0;
-      const modes = new Set<number>();
-      for (;;) {
-        const { fh, frame, patches, end } = decodeSmallFrame(cs, pos, h, references);
-        usedPatches += patches?.length ?? 0;
-        for (const p of patches ?? []) for (const b of p.blending) modes.add(b.mode);
-        pos = end;
-        saveReference(references, fh, frame, frame);
-        if (fh.isLast) {
-          expect(usedPatches).toBeGreaterThan(5);
-          expect(modes.has(PATCH_ADD)).toBe(true); // cjxl subtracts patches from the frame and adds them back
-          const pnm = readPnm(`features/${name}.ref.${h.extraChannels.length ? 'pam' : 'ppm'}`);
-          const chan = (c: number) => (pnm.channels < 3 && c > 0 ? c + 2 : c); // gray (+ alpha) refs
-          let bad = 0;
-          for (let i = 0; i < pnm.width * pnm.height; i++) {
-            for (let c = 0; c < pnm.channels; c++) {
-              if (Math.round(frame.planes[chan(c)][i] * 255) !== pnm.samples[i * pnm.channels + c]) bad++;
-            }
-          }
-          expect(bad).toBe(0);
-          break;
-        }
+      const frames = [];
+      for (let pos = br.byteOffset; ;) {
+        const fr = decodeFrame(cs, pos, h);
+        frames.push(fr);
+        pos = fr.frameEnd;
+        if (fr.fh.isLast) break;
       }
+      expect(frames[0].fh).toMatchObject({ frameType: 'referenceOnly', saveBeforeCt: true });
+      const patches = frames.flatMap((f) => f.lfGlobal.patches ?? []);
+      expect(patches.length).toBeGreaterThan(5);
+      // cjxl subtracts patches from the frame and adds them back
+      expect(patches.some((p) => p.blending.some((b) => b.mode === PATCH_ADD))).toBe(true);
     });
   }
 });

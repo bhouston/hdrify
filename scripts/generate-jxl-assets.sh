@@ -111,3 +111,15 @@ enc vardct_d01 rgb8.ppm pfm -d 0.1 -e 7
 oiiotool "$A/blouberg_sunrise_2_1k.jpg" --resize 101x53 -d uint8 -o "$SRC/odd101.ppm"
 oiiotool "$SRC/odd101.ppm" --attrib jpeg:subsampling 4:2:0 --attrib Compression jpeg:85 -o "$SRC/odd_420.jpg"
 enc vardct_jpeg420 odd_420.jpg pfm --lossless_jpeg=1
+
+# --- Multi-frame decoding through readJxl: lossy (XYB VarDCT) patches, and a zero-duration full-size layer
+# composited with a cropped, alpha-blended frame (djxl writes the first displayed frame by default). ---
+magick -size 96x48 xc:'#d0e0ff' -fill '#802020' "${glyphs[@]}" "$SRC/text_color.png"
+cjxl "$SRC/text_color.png" "$FEAT/patches_lossy.jxl" --quiet -d 1 -e 7 --patches=1
+djxl "$FEAT/patches_lossy.jxl" "$FEAT/patches_lossy.ref.pfm" --quiet
+magick -delay 0 "$SRC/f0.png" -delay 10 "$SRC/f1.png" "$SRC/f2.png" -loop 0 -layers Optimize "$SRC/layered.gif"
+cjxl "$SRC/layered.gif" "$FEAT/layered.jxl" --quiet -d 0
+djxl "$FEAT/layered.jxl" "$FEAT/layered.ref.pam" --quiet
+cjxl "$SRC/layered.gif" "$FEAT/layered_lossy.jxl" --quiet -d 1
+djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pam" --quiet
+djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet

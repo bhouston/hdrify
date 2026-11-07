@@ -21,7 +21,7 @@ import {
 import { ASSETS, readPnm } from './jxlTestAssets.js';
 import { upsamplePlane } from './jxlUpsample.js';
 import { writeJxl } from './writeJxl.js';
-import { decodeModularFrame } from './readJxl.js';
+import { decodeDisplayedFrames } from './readJxl.js';
 
 const alpha = (alphaAssociated = false, dimShift = 0): JxlExtraChannelInfo => ({
   type: 'alpha',
@@ -281,33 +281,19 @@ describe('animation oracle (cjxl from an optimized GIF: cropped, alpha-blended f
     const br = new JxlBitReader(codestream);
     const image = readImageHeader(br);
     expect(image.animation).toBeDefined();
-    const references: (JxlReferenceFrame | undefined)[] = [];
-    let pos = br.byteOffset;
     let shown = 0;
     let cropped = 0;
-    for (;;) {
-      const { channels, fh, frameEnd } = decodeModularFrame(codestream, pos, image);
-      pos = frameEnd;
+    for (const { canvas, fh } of decodeDisplayedFrames(codestream, image, br.byteOffset)) {
       cropped += fh.haveCrop ? 1 : 0;
-      const frame: JxlReferenceFrame = {
-        width: fh.width,
-        height: fh.height,
-        planes: channels.map((c) => Float32Array.from(c.data, (v) => v / 255)),
-      };
-      const canvas = blendFrame(frame, fh, image, references);
-      saveReference(references, fh, frame, canvas);
-      if (isDisplayedFrame(fh)) {
-        const ref = readPnm(`features/anim_gif.ref${shown++}.pam`);
-        expect(ref.channels).toBe(4);
-        let maxErr = 0;
-        for (let i = 0; i < ref.width * ref.height; i++) {
-          for (let c = 0; c < 4; c++) {
-            maxErr = Math.max(maxErr, Math.abs(canvas.planes[c][i] * 255 - ref.samples[i * 4 + c]));
-          }
+      const ref = readPnm(`features/anim_gif.ref${shown++}.pam`);
+      expect(ref.channels).toBe(4);
+      let maxErr = 0;
+      for (let i = 0; i < ref.width * ref.height; i++) {
+        for (let c = 0; c < 4; c++) {
+          maxErr = Math.max(maxErr, Math.abs(canvas.planes[c][i] * 255 - ref.samples[i * 4 + c]));
         }
-        expect(maxErr).toBeLessThan(0.5);
       }
-      if (fh.isLast) break;
+      expect(maxErr).toBeLessThan(0.5);
     }
     expect(shown).toBe(3);
     expect(cropped).toBe(2);

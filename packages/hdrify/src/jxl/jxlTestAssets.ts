@@ -4,7 +4,13 @@ import * as fs from 'node:fs';
 export const ASSETS = new URL('../../../../assets/jxl/', import.meta.url);
 
 /** Parse a binary PNM (P5/P6/P7) into interleaved samples. */
-export function readPnm(name: string): { width: number; height: number; channels: number; samples: number[] } {
+export function readPnm(name: string): {
+  width: number;
+  height: number;
+  channels: number;
+  maxval: number;
+  samples: number[];
+} {
   const buf = fs.readFileSync(new URL(name, ASSETS));
   let pos = 0;
   const token = (): string => {
@@ -35,7 +41,7 @@ export function readPnm(name: string): { width: number; height: number; channels
   const n = width * height * channels;
   const samples: number[] = [];
   for (let i = 0; i < n; i++) samples.push(maxval > 255 ? buf.readUInt16BE(pos + 2 * i) : buf[pos + i]!);
-  return { width, height, channels, samples };
+  return { width, height, channels, maxval, samples };
 }
 
 /** Parse a PFM (rows stored bottom-to-top) into top-to-bottom interleaved floats. */

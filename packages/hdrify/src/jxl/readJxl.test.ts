@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { sRGBToLinear } from '../color/srgb.js';
+import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
 import { ASSETS, readPfm, readPnm } from './jxlTestAssets.js';
 import { readJxl } from './readJxl.js';
 
@@ -115,5 +115,58 @@ describe('readJxl ∘ writeJxl round-trip', async () => {
     for (const cs of ['linear-p3', 'linear-rec2020'] as const) {
       expect(readJxl(writeJxl({ ...src, linearColorSpace: cs })).linearColorSpace).toBe(cs);
     }
+  });
+});
+
+describe('readJxl multi-frame composition vs djxl (first displayed frame)', () => {
+  /** Max |decoded − ref| in 8-bit sRGB units (alpha as is), clamped like djxl's integer output. */
+  function maxErr8(img: ReturnType<typeof readJxl>, ref: string): number {
+    const pnm = readPnm(ref);
+    expect([img.width, img.height]).toEqual([pnm.width, pnm.height]);
+    const chan = (c: number) => (pnm.channels < 3 ? (c < 3 ? 0 : 1) : c); // gray (+ alpha) refs
+    let max = 0;
+    for (let i = 0; i < img.width * img.height; i++) {
+      for (let c = 0; c < (pnm.channels % 2 ? 3 : 4); c++) {
+        const v = img.data[i * 4 + c];
+        const e = Math.min(1, Math.max(0, c < 3 ? linearTosRGB(v) : v)) * 255;
+        const r = (pnm.samples[i * pnm.channels + chan(c)] * 255) / pnm.maxval;
+        max = Math.max(max, Math.abs(e - r));
+      }
+    }
+    return max;
+  }
+
+  it('lossless patches from a reference-only frame (gray and gray + alpha)', () => {
+    expect(maxErr8(load('features/patches_text.jxl'), 'features/patches_text.ref.ppm')).toBeLessThan(0.5);
+    expect(maxErr8(load('features/patches_text_rgba.jxl'), 'features/patches_text_rgba.ref.pam')).toBeLessThan(0.5);
+  });
+
+  /** Max |sRGB(decoded) − ref| over colour against a float djxl PFM. */
+  function maxErrPfm(img: ReturnType<typeof readJxl>, ref: string): number {
+    const pfm = readPfm(ref);
+    let max = 0;
+    for (let i = 0; i < img.width * img.height; i++) {
+      for (let c = 0; c < 3; c++)
+        max = Math.max(max, Math.abs(linearTosRGB(img.data[i * 4 + c]) - pfm.samples[i * 3 + c]));
+    }
+    return max;
+  }
+
+  it('lossy VarDCT patches (reference saved before the XYB colour transform)', () => {
+    expect(maxErrPfm(load('features/patches_lossy.jxl'), 'features/patches_lossy.ref.pfm')).toBeLessThan(0.05 / 255);
+  });
+
+  it('zero-duration layer + cropped alpha-blended frame (lossless, and lossy blended in sRGB)', () => {
+    expect(maxErr8(load('features/layered.jxl'), 'features/layered.ref.pam')).toBeLessThan(0.5);
+    const lossy = load('features/layered_lossy.jxl');
+    expect(maxErrPfm(lossy, 'features/layered_lossy.ref.pfm')).toBeLessThan(0.05 / 255);
+    expect(maxErr8(lossy, 'features/layered_lossy.ref.pam')).toBeLessThanOrEqual(1); // alpha (8-bit ref)
+  });
+
+  it('animations decode the first frame and report frame count and durations', () => {
+    const img = load('features/anim_gif.jxl');
+    expect(maxErr8(img, 'features/anim_gif.ref0.pam')).toBeLessThan(0.5);
+    expect(img.metadata?.animation).toEqual({ frameCount: 3, frameDurations: [0.1, 0.1, 0.1], numLoops: 0 });
+    expect(load('features/layered.jxl').metadata?.animation).toMatchObject({ frameCount: 2 });
   });
 });

@@ -43,7 +43,7 @@ Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer
 
 - Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
-- Read and write JPEG XL (`.jxl`) files: lossless Modular decode/encode in 8/16-bit integer, float16 and float32, with alpha, grayscale and the ISOBMFF container (lossy VarDCT decode is in progress)
+- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animations return the first frame), and write lossless JPEG XL (float16, float32, uint16, uint8)
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
 - Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
 - Full TypeScript support

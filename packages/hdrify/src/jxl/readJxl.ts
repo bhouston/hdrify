@@ -1,5 +1,5 @@
 import type { LinearColorSpace } from '../color/colorSpaces.js';
-import { sRGBToLinear } from '../color/srgb.js';
+import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -12,12 +12,20 @@ import {
   readToc,
 } from './jxlFrameHeader.js';
 import { type JxlBitDepth, type JxlImageHeader, readImageHeader } from './jxlImageHeader.js';
-import { drawSplines, renderNoise } from './jxlFeatures.js';
+import { applyPatches, drawSplines, renderNoise } from './jxlFeatures.js';
 import { type JxlLfGlobal, readLfGlobal } from './jxlLfGlobal.js';
 import { applyInverseTransforms, decodeModularGroup, type ModularChannel, modularStreamId } from './jxlModular.js';
-import { advanceFrameIndices, upsampleFrame } from './jxlRender.js';
+import {
+  advanceFrameIndices,
+  blendFrame,
+  canBeReferenced,
+  isDisplayedFrame,
+  type JxlReferenceFrame,
+  needsBlending,
+  saveReference,
+  upsampleFrame,
+} from './jxlRender.js';
 import { applyEpf, applyGaborish } from './jxlRestoration.js';
-import { upsamplePlane } from './jxlUpsample.js';
 import {
   createVardctImage,
   type JxlVardctOutput,
@@ -212,8 +220,15 @@ function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefine
   }
 }
 
-const upsamplingWeights = (h: JxlImageHeader, k: number) =>
-  k === 2 ? h.upsampling2Weights : k === 4 ? h.upsampling4Weights : h.upsampling8Weights;
+/** Linear ↔ encoded transfer for XYB images: libjxl blends and stores references in the output encoding. */
+function xybTransfer(
+  h: JxlImageHeader,
+): { fromLinear: (v: number) => number; toLinear: (v: number) => number } | undefined {
+  const ce = h.colorEncoding;
+  if (ce.wantIcc || ce.transferFunction === 'linear') return undefined;
+  if (ce.transferFunction === 'srgb') return { fromLinear: linearTosRGB, toLinear: sRGBToLinear };
+  throw new Error(`JXL: not yet supported: multi-frame XYB with transfer function '${ce.transferFunction}'`);
+}
 
 /** Float colour planes of a lossy frame (VarDCT, or XYB Modular scaled per libjxl ModularImageToDecodedRect). */
 function lossyColorPlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] | undefined {
@@ -234,20 +249,34 @@ function lossyColorPlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[
   return planes;
 }
 
+/** Float planes of a frame at coded resolution: 3 colour planes (gray copied to all 3), then extra channels. */
+function framePlanes(fr: JxlDecodedFrame, h: JxlImageHeader): Float32Array[] {
+  const nbColor = fr.lfGlobal.nbColor;
+  let color = lossyColorPlanes(fr, h);
+  if (!color) {
+    const toFloat = sampleConverter(h.bitDepth);
+    color = [0, 1, 2].map((c) => Float32Array.from(fr.channels[nbColor === 1 ? 0 : c]!.data, toFloat));
+  }
+  const ecs = h.extraChannels.map((ec, i) =>
+    Float32Array.from(fr.channels[nbColor + i]!.data, sampleConverter(ec.bitDepth)),
+  );
+  return [...color, ...ecs];
+}
+
 /**
- * Colour render pipeline before the colour transform (libjxl dec_cache.cc PreparePipeline order):
- * gaborish, EPF, splines, upsampling, noise.
+ * Render pipeline before the colour transform (libjxl dec_cache.cc PreparePipeline order): gaborish,
+ * EPF, early (extra channel) upsampling, patches, splines, late upsampling, noise.
  */
-function renderPlanes(
+function renderFrame(
   fr: JxlDecodedFrame,
   h: JxlImageHeader,
-  planes: Float32Array[],
   frameIdx: { visible: number; nonvisible: number },
+  references: readonly (JxlReferenceFrame | undefined)[],
 ): Float32Array[] {
   const { fh, dims, lfGlobal: lfg } = fr;
-  if (lfg.patches) throw new Error('JXL: not yet supported: patches');
   const rf = fh.restorationFilter;
   const { width, height } = dims;
+  let planes = framePlanes(fr, h);
   if (rf.gab) {
     for (let c = 0; c < 3; c++)
       applyGaborish(planes[c]!, width, height, rf.gabWeights[2 * c]!, rf.gabWeights[2 * c + 1]!);
@@ -264,104 +293,138 @@ function renderPlanes(
       borderSadMul: rf.epfBorderSadMul,
     });
   }
+  planes = upsampleFrame(planes, fh, h, 'early');
+  if (lfg.patches) applyPatches(planes, width, height, lfg.patches, references, h.extraChannels);
   const cfl = { yToX: lfg.cfl?.baseCorrelationX ?? 0, yToB: lfg.cfl?.baseCorrelationB ?? 1 };
   if (lfg.splines) drawSplines([planes[0]!, planes[1]!, planes[2]!], width, height, lfg.splines, cfl);
-  const up = upsampleFrame(planes, fh, h, 'late');
+  planes = upsampleFrame(planes, fh, h, 'late');
   if (lfg.noise) {
-    renderNoise([up[0]!, up[1]!, up[2]!], dims.upsampledWidth, dims.upsampledHeight, lfg.noise, {
+    renderNoise([planes[0]!, planes[1]!, planes[2]!], dims.upsampledWidth, dims.upsampledHeight, lfg.noise, {
       visibleFrameIndex: frameIdx.visible,
       nonvisibleFrameIndex: frameIdx.nonvisible,
       groupDim: dims.groupDim,
       ...cfl,
     });
   }
-  return up;
+  return planes;
+}
+
+/** Skip one frame: returns its header and the byte offset after it. */
+function skipFrame(codestream: Uint8Array, pos: number, h: JxlImageHeader): { fh: JxlFrameHeader; end: number } {
+  const br = new JxlBitReader(codestream, pos);
+  const fh = readFrameHeader(br, h);
+  const toc = readToc(br, fh);
+  return { fh, end: br.byteOffset + toc.sizes.reduce((a, b) => a + b, 0) };
+}
+
+/** A displayed (coalesced) frame: image-sized planes in the image's encoded colour space unless `linear`. */
+export interface JxlDisplayedFrame {
+  canvas: JxlReferenceFrame;
+  fh: JxlFrameHeader;
+  /** Planes are linear light (an XYB frame that was neither blended nor referenced). */
+  linear: boolean;
+  /** Byte offset after the frame. */
+  end: number;
 }
 
 /**
- * Read a JPEG XL file (bare codestream or ISOBMFF container) into a linear-light float RGBA image.
- * Decodes single-frame Modular (lossless and lossy XYB) and VarDCT images, including an optional
- * preceding LF frame (progressive DC). XYB images decode to linear sRGB primaries.
+ * Decode frames from `start` (libjxl dec_frame.cc / decode.cc order) and yield each displayed frame
+ * composited onto the canvas: LF frames, reference slots, patches, blending and cropped frames.
  */
-export function readJxl(data: Uint8Array): HdrifyImage {
-  const { codestream, isContainer } = extractCodestream(data);
-  const br = new JxlBitReader(codestream);
-  const h = readImageHeader(br);
-  if (h.preview) throw new Error('JXL: preview frames are not supported yet');
-  if (h.animation) throw new Error('JXL: animations are not supported');
+export function* decodeDisplayedFrames(
+  codestream: Uint8Array,
+  h: JxlImageHeader,
+  start: number,
+): Generator<JxlDisplayedFrame, void> {
   const lfFrames: JxlLfFrame[] = [];
+  const references: (JxlReferenceFrame | undefined)[] = [];
   const frameIdx = { visible: 0, nonvisible: 0 };
-  let pos = br.byteOffset;
-  let fr: JxlDecodedFrame;
+  let pos = start;
   for (;;) {
-    fr = decodeFrame(codestream, pos, h, lfFrames);
+    const fr = decodeFrame(codestream, pos, h, lfFrames);
     pos = fr.frameEnd;
-    advanceFrameIndices(frameIdx, fr.fh);
-    if (fr.fh.frameType !== 'lf') break;
-    const planes = lossyColorPlanes(fr, h);
-    if (!planes) throw new Error('JXL: not yet supported: non-XYB LF frames');
-    lfFrames[fr.fh.lfLevel] = { planes: renderPlanes(fr, h, planes, frameIdx), width: fr.dims.upsampledWidth };
-  }
-  const { channels, fh } = fr;
-  if (!fh.isLast || fh.frameType !== 'regular') throw new Error('JXL: multi-frame images are not supported yet');
-  const { width, height } = h;
-  if (fh.width !== width || fh.height !== height) throw new Error('JXL: cropped frames are not supported yet');
-
-  const n = width * height;
-  const out = new Float32Array(n * 4);
-  const nbColor = fr.lfGlobal.nbColor;
-  const lossy = lossyColorPlanes(fr, h);
-  if (lossy) {
-    const planes = renderPlanes(fr, h, lossy, frameIdx);
-    const r = planes[0]!;
-    const g = planes[1]!;
-    const b = planes[2]!;
+    const { fh } = fr;
+    advanceFrameIndices(frameIdx, fh);
+    if (fh.frameType === 'lf' && !h.xybEncoded) throw new Error('JXL: not yet supported: non-XYB LF frames');
+    const planes = renderFrame(fr, h, frameIdx, references);
+    const { upsampledWidth: w, upsampledHeight: hh } = fr.dims;
+    if (fh.frameType === 'lf') {
+      lfFrames[fh.lfLevel] = { planes, width: w };
+      continue;
+    }
+    const frame: JxlReferenceFrame = { width: w, height: hh, planes };
+    const beforeCt = fh.saveBeforeCt ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)) } : frame;
+    // A frame that is neither blended nor referenced goes straight to the output and can stay linear.
+    let linear = !needsBlending(fh) && !canBeReferenced(fh);
+    const [r, g, b] = [planes[0]!, planes[1]!, planes[2]!];
+    const n = w * hh;
     if (h.xybEncoded) {
       xybToLinearSrgb(r, g, b, n, {
         inverseMatrix: h.opsinInverse.matrix,
         opsinBias: h.opsinInverse.opsinBias,
         intensityTarget: h.toneMapping.intensityTarget,
       });
-    } else if (fh.doYCbCr) {
-      ycbcrToRgb(r, g, b, n);
-    }
-    const toLinear = h.xybEncoded ? undefined : transferToLinear(h);
-    for (let c = 0; c < 3; c++) {
-      const p = planes[h.colorEncoding.colorSpace === 'gray' && !h.xybEncoded ? 0 : c]!;
-      for (let i = 0; i < n; i++) out[i * 4 + c] = toLinear ? toLinear(p[i]!) : p[i]!;
-    }
-  } else {
-    if (fh.upsampling !== 1 || fh.restorationFilter.gab || fh.restorationFilter.epfIters > 0) {
-      throw new Error('JXL: not yet supported: restoration filters / upsampling on non-XYB Modular');
-    }
-    const toFloat = sampleConverter(h.bitDepth);
-    const toLinear = transferToLinear(h);
-    for (let c = 0; c < 3; c++) {
-      const src = channels[nbColor === 1 ? 0 : c]!.data;
-      for (let i = 0; i < n; i++) {
-        const v = toFloat(src[i]!);
-        out[i * 4 + c] = toLinear ? toLinear(v) : v;
+      const tf = linear ? undefined : xybTransfer(h);
+      if (tf) for (const p of [r, g, b]) for (let i = 0; i < n; i++) p[i] = tf.fromLinear(p[i]!);
+    } else {
+      linear = false;
+      if (fr.vardct && fh.doYCbCr) ycbcrToRgb(r, g, b, n);
+      if (fr.vardct && h.colorEncoding.colorSpace === 'gray') {
+        g.set(r);
+        b.set(r);
       }
     }
+    const canvas = blendFrame(frame, fh, h, references);
+    saveReference(references, fh, beforeCt, canvas);
+    if (isDisplayedFrame(fh)) yield { canvas, fh, linear, end: pos };
+    if (fh.isLast) return;
+  }
+}
+
+/**
+ * Read a JPEG XL file (bare codestream or ISOBMFF container) into a linear-light float RGBA image.
+ * Decodes Modular (lossless and lossy XYB) and VarDCT frames with LF frames, patches, splines, noise,
+ * reference frames and blending (libjxl coalesced output). For animations the first displayed frame is
+ * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
+ * sRGB primaries.
+ */
+export function readJxl(data: Uint8Array): HdrifyImage {
+  const { codestream, isContainer } = extractCodestream(data);
+  const br = new JxlBitReader(codestream);
+  const h = readImageHeader(br);
+  if (h.preview) throw new Error('JXL: preview frames are not supported yet');
+  const first = decodeDisplayedFrames(codestream, h, br.byteOffset).next().value;
+  if (!first) throw new Error('JXL: no displayed frame');
+  const { canvas, fh } = first;
+  let pos = first.end;
+  const { width, height } = h;
+  if (canvas.width !== width || canvas.height !== height) throw new Error('JXL: displayed frame is not image-sized');
+
+  let animation: Record<string, unknown> | undefined;
+  if (h.animation) {
+    const ticks = [fh.duration];
+    for (let f = fh; !f.isLast;) {
+      ({ fh: f, end: pos } = skipFrame(codestream, pos, h));
+      if (isDisplayedFrame(f)) ticks.push(f.duration);
+    }
+    const { tpsNumerator, tpsDenominator, numLoops } = h.animation;
+    animation = {
+      frameCount: ticks.length,
+      frameDurations: ticks.map((t) => (t * tpsDenominator) / tpsNumerator),
+      numLoops,
+    };
+  }
+
+  const n = width * height;
+  const out = new Float32Array(n * 4);
+  const toLinear = first.linear ? undefined : h.xybEncoded ? xybTransfer(h)?.toLinear : transferToLinear(h);
+  for (let c = 0; c < 3; c++) {
+    const p = canvas.planes[c]!;
+    for (let i = 0; i < n; i++) out[i * 4 + c] = toLinear ? toLinear(p[i]!) : p[i]!;
   }
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
-  if (alphaIdx < 0) {
-    for (let i = 0; i < n; i++) out[i * 4 + 3] = 1;
-  } else {
-    const ec = h.extraChannels[alphaIdx]!;
-    const src = channels[nbColor + alphaIdx]!;
-    const toAlpha = sampleConverter(ec.bitDepth);
-    let alpha = Float32Array.from(src.data, toAlpha);
-    const k = fh.ecUpsampling[alphaIdx]! << ec.dimShift;
-    if (k === 2 || k === 4 || k === 8) {
-      // Extra-channel upsampling (libjxl UpsamplingStage with the image's kernels), cropped to the frame.
-      const up = upsamplePlane(alpha, src.width, src.height, k, upsamplingWeights(h, k));
-      alpha = new Float32Array(n);
-      for (let y = 0; y < height; y++) alpha.set(up.subarray(y * src.width * k, y * src.width * k + width), y * width);
-    }
-    if (alpha.length !== n) throw new Error('JXL: extra channel size mismatch');
-    for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha[i]!;
-  }
+  const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
+  for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha ? alpha[i]! : 1;
 
   return {
     width,
@@ -379,6 +442,7 @@ export function readJxl(data: Uint8Array): HdrifyImage {
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
       extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
+      ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),
     },
   };
