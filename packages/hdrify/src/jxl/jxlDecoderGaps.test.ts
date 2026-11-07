@@ -70,4 +70,21 @@ describe('JPEG XL decoder gaps', () => {
     for (let i = 0; i < 6; i++)
       for (let c = 0; c < 3; c++) expect(expected.data[i * 4 + c]).toBe(ref.samples[i * 3 + c]);
   });
+
+  for (let orientation = 1; orientation <= 8; orientation++) {
+    it(`applies orientation ${orientation} exactly like djxl, with an opt-out`, () => {
+      const out = readJxl(bytes(`orientation${orientation}`));
+      const ref = readPfm(`features/orientation${orientation}.ref.pfm`);
+      expect([out.width, out.height]).toEqual([ref.width, ref.height]);
+      for (let i = 0; i < out.width * out.height; i++) {
+        expect(Array.from(out.data.subarray(i * 4, i * 4 + 3))).toEqual(
+          Array.from(ref.samples.subarray(i * 3, i * 3 + 3)),
+        );
+      }
+      const raw = readJxl(bytes(`orientation${orientation}`), { applyOrientation: false });
+      expect([raw.width, raw.height]).toEqual([3, 2]);
+      expect(raw.data).toEqual(readJxl(bytes('orientation1')).data);
+      expect(raw.metadata?.orientation).toBe(orientation);
+    });
+  }
 });

@@ -393,7 +393,49 @@ export function* decodeDisplayedFrames(
  * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
  * sRGB primaries.
  */
-export function readJxl(data: Uint8Array): HdrifyImage {
+/** Options shared by still and animation decoding. */
+export interface ReadJxlOptions {
+  /** Apply the stored EXIF orientation to pixels and extra channels (default true). */
+  applyOrientation?: boolean;
+}
+
+/** Apply EXIF orientation to row-major interleaved samples without mutating the source. */
+function orient(
+  data: Float32Array,
+  width: number,
+  height: number,
+  channels: number,
+  orientation: number,
+): Float32Array {
+  if (orientation === 1) return data;
+  const out = new Float32Array(data.length);
+  const outWidth = orientation >= 5 ? height : width;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const tx =
+        orientation === 2 || orientation === 3
+          ? width - 1 - x
+          : orientation === 5 || orientation === 8
+            ? y
+            : orientation === 6 || orientation === 7
+              ? height - 1 - y
+              : x;
+      const ty =
+        orientation === 3 || orientation === 4
+          ? height - 1 - y
+          : orientation === 5 || orientation === 6
+            ? x
+            : orientation === 7 || orientation === 8
+              ? width - 1 - x
+              : y;
+      const from = (y * width + x) * channels;
+      out.set(data.subarray(from, from + channels), (ty * outWidth + tx) * channels);
+    }
+  }
+  return out;
+}
+
+export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
@@ -431,10 +473,11 @@ export function readJxl(data: Uint8Array): HdrifyImage {
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha ? alpha[i]! : 1;
 
+  const orientation = options.applyOrientation === false ? 1 : h.orientation;
   return {
-    width,
-    height,
-    data: out,
+    width: orientation >= 5 ? height : width,
+    height: orientation >= 5 ? width : height,
+    data: orient(out, width, height, 4, orientation),
     linearColorSpace: h.xybEncoded ? 'linear-rec709' : linearColorSpaceOf(h),
     metadata: {
       format: 'JPEG XL',
