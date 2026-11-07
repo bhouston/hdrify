@@ -71,7 +71,9 @@ function learn(samples: JxlMaSample[], depth: number): JxlLearnedNode {
   let best: { property: number; threshold: number; left: JxlMaSample[]; right: JxlMaSample[] } | undefined;
   let bestBits = cost.bits - 16; // discourage splits with little evidence of a gain
   for (const property of PROPERTIES) {
-    const values = samples.map((s) => s.properties[property]!).toSorted((a, b) => a - b);
+    const values = new Int32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) values[i] = samples[i]!.properties[property]!;
+    values.sort();
     let previous: number | undefined;
     for (const q of [0.25, 0.5, 0.75]) {
       const threshold = values[Math.floor((values.length - 1) * q)]!;
@@ -139,7 +141,7 @@ export function learnMaTree(samples: JxlMaSample[], channelContext: number[]): J
     return bits;
   };
   for (const [leaf, values] of residuals) {
-    const median = values.toSorted((a, b) => a - b)[values.length >> 1]!;
+    const median = Int32Array.from(values).sort()[values.length >> 1]!;
     if (median && costOffset(values, median) + 8 < costOffset(values, 0)) leaf.offset = median;
   }
   const channels = (lo: number, hi: number): JxlLearnedNode => {
