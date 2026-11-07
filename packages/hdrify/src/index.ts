@@ -69,7 +69,13 @@ export { writeHdr } from './hdr/writeHdr.js';
 export { ensureNonNegativeFinite, type HdrifyImage } from './hdrifyImage.js';
 // JPEG XL
 export { isJxl } from './jxl/jxlContainer.js';
-export { readJxl } from './jxl/readJxl.js';
+export {
+  readJxl,
+  readJxlFrames,
+  type ReadJxlOptions,
+  type JxlAnimationFrame,
+  type JxlExtraChannel,
+} from './jxl/readJxl.js';
 export type { WriteJxlOptions } from './jxl/writeJxl.js';
 export { writeJxl } from './jxl/writeJxl.js';
 export { addRangeMetadata } from './rangeMetadata.js';
