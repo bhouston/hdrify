@@ -59,7 +59,7 @@ export interface JxlFrameHeader {
   useLfFrame: boolean;
   skipAdaptiveLfSmoothing: boolean;
   doYCbCr: boolean;
-  /** Per-channel (Y, Cb, Cr order as coded) chroma subsampling mode 0..3. */
+  /** Per-channel (Cb, Y, Cr order as coded) chroma subsampling mode 0..3. */
   jpegUpsampling: [number, number, number];
   upsampling: number;
   /** Coded ec_upsampling per extra channel (effective factor is `ecUpsampling[i] << dimShift`). */
