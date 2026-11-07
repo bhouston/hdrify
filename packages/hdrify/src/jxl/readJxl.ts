@@ -1,6 +1,7 @@
-import type { LinearColorSpace } from '../color/colorSpaces.js';
+import { type LinearColorSpace, LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
+import { chromaticitiesToRgbXyzMatrix } from '../color/matrixConversion.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { pqToNits } from '../color/transfer.js';
+import { hlgToScene, applyHlgOotf, pqToNits } from '../color/transfer.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -211,6 +212,8 @@ function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefine
       return undefined;
     case 'srgb':
       return sRGBToLinear;
+    case 'hlg':
+      return hlgToScene;
     case 'pq':
       return (v) => pqToNits(v) / h.toneMapping.intensityTarget;
     case 'gamma': {
@@ -511,6 +514,12 @@ function displayedImage(
       out[i * 4 + c] = toLinear ? toLinear(value) : value;
     }
   }
+  if (!h.xybEncoded && h.colorEncoding.transferFunction === 'hlg')
+    applyHlgOotf(
+      out,
+      h.toneMapping.intensityTarget,
+      chromaticitiesToRgbXyzMatrix(LINEAR_TO_CHROMATICITIES[linearColorSpaceOf(h)])[1],
+    );
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   const associated = alphaIdx >= 0 && h.extraChannels[alphaIdx]!.alphaAssociated;
@@ -551,6 +560,7 @@ function displayedImage(
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
       linearReferenceWhiteNits: h.toneMapping.intensityTarget,
+      ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display' }),
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels,
       ...(h.icc && { iccProfile: h.icc }),
@@ -583,6 +593,7 @@ export function readJxlFrames(
  * Read a JPEG XL codestream or container into linear-light RGBA, applying orientation and returning
  * straight alpha by default. Animations return the first displayed frame; use readJxlFrames for all.
  * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
+ * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {

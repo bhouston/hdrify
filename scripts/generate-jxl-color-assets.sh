@@ -15,7 +15,7 @@ with open(sys.argv[1], 'wb') as f:
             for v in [(x+1)/10, (y+1)/6, (x+y+1)/14]:
                 f.write(struct.pack('>H', round(v*65535)))
 PY
-for spec in 'pq RGB_D65_202_Rel_PeQ'; do
+for spec in 'pq RGB_D65_202_Rel_PeQ' 'hlg RGB_D65_202_Rel_HLG'; do
   read -r name encoding <<< "$spec"
   for distance in 0 1; do
     cjxl "$SRC/input.ppm" "$OUT/$name-d$distance.jxl" --quiet -d "$distance" -x "color_space=$encoding"
