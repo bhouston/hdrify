@@ -341,7 +341,9 @@ export function* decodeDisplayedFrames(
       continue;
     }
     const frame: JxlReferenceFrame = { width: w, height: hh, planes };
-    const beforeCt = fh.saveBeforeCt ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)) } : frame;
+    const beforeCt = fh.saveBeforeCt
+      ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)), savedBeforeCt: true }
+      : frame;
     let linear = staysLinear(fh);
     const [r, g, b] = [planes[0]!, planes[1]!, planes[2]!];
     const n = w * hh;
@@ -436,8 +438,9 @@ function orient(
             : orientation === 7 || orientation === 8
               ? width - 1 - x
               : y;
-      const from = (y * width + x) * channels;
-      out.set(data.subarray(from, from + channels), (ty * outWidth + tx) * channels);
+      const from = (y * width + x) * channels,
+        to = (ty * outWidth + tx) * channels;
+      for (let c = 0; c < channels; c++) out[to + c] = data[from + c]!;
     }
   }
   return out;
@@ -485,12 +488,14 @@ function displayedImage(
   const orientation = options.applyOrientation === false ? 1 : h.orientation;
   const outWidth = orientation >= 5 ? height : width;
   const outHeight = orientation >= 5 ? width : height;
+  // orient() copies unless orientation is 1; then copy so callers never alias canvas/reference planes.
   const extraChannels: JxlExtraChannel[] = h.extraChannels.map((ec, i) => ({
     name: ec.name || ec.type,
     type: ec.type,
     width: outWidth,
     height: outHeight,
-    data: orient(canvas.planes[3 + i]!.slice(), width, height, 1, orientation),
+    data:
+      orientation === 1 ? canvas.planes[3 + i]!.slice() : orient(canvas.planes[3 + i]!, width, height, 1, orientation),
     ...(ec.spotColor && { spotColor: [...ec.spotColor] as [number, number, number, number] }),
     ...(ec.cfaChannel !== undefined && { cfaChannel: ec.cfaChannel }),
   }));

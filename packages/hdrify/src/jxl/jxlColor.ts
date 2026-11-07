@@ -175,36 +175,63 @@ function transform(h: JxlImageHeader): ColorTransform {
   return result;
 }
 
-function matrix(m: Mat3, v: number[]): number[] {
-  if (m === identity) return v; // Preserve native float channels, including nonfinite values and signed zero.
-  return m.map((r) => r[0] * v[0]! + r[1] * v[1]! + r[2] * v[2]!);
-}
-function ootf(v: number[], h: JxlImageHeader, t: ColorTransform, forward: boolean): number[] {
-  if (!t.hlgLuminances) return v;
+/** HLG OOTF luminance weights and gamma, or undefined when the OOTF is a no-op (loop-invariant). */
+function ootfParams(h: JxlImageHeader, t: ColorTransform, forward: boolean) {
+  if (!t.hlgLuminances) return undefined;
   const intensity = h.toneMapping.intensityTarget;
-  if (295 <= intensity && intensity <= 305) return v;
+  if (295 <= intensity && intensity <= 305) return undefined;
   let gamma = 1.2 * 1.111 ** Math.log2(intensity / 1000);
   if (!forward) gamma = 1 / gamma;
-  const y = t.hlgLuminances.reduce((sum, w, c) => sum + w * v[c]!, 0);
-  const ratio = y ** (gamma - 1);
-  if (!Number.isFinite(ratio)) return v;
-  const out = v.map((x) => x * ratio);
+  const w = t.hlgLuminances;
   // libjxl's HLG CMS preserves hue and saturation when gamma < 1 causes an overshoot.
-  if (forward && gamma < 1) {
-    const max = Math.max(...out);
-    if (max > 1) return out.map((x) => x / max);
-  }
-  return out;
+  return { w0: w[0]!, w1: w[1]!, w2: w[2]!, exponent: gamma - 1, normalize: forward && gamma < 1 };
 }
 
 /** Convert linear-sRGB XYB output into the image's encoded space before blending/referencing. */
 export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
   const t = transform(h),
     n = planes[0]!.length;
+  const p0 = planes[0]!,
+    p1 = planes[1]!,
+    p2 = planes[2]!;
+  const e0 = t.encode[0]!,
+    e1 = t.encode[1]!,
+    e2 = t.encode[2]!;
+  const m = t.fromSrgb,
+    id = m === identity;
+  const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
+  const o = ootfParams(h, t, false);
   for (let i = 0; i < n; i++) {
-    let v = matrix(t.fromSrgb, [planes[0]![i]!, planes[1]![i]!, planes[2]![i]!]);
-    v = ootf(v, h, t, false);
-    for (let c = 0; c < 3; c++) planes[c]![i] = t.encode[c]!(v[c]!);
+    let r = p0[i]!,
+      g = p1[i]!,
+      b = p2[i]!;
+    // Identity preserves native float channels, including nonfinite values and signed zero.
+    if (!id) {
+      const x = m00 * r + m01 * g + m02 * b,
+        y = m10 * r + m11 * g + m12 * b;
+      b = m20 * r + m21 * g + m22 * b;
+      r = x;
+      g = y;
+    }
+    if (o) {
+      const ratio = (0 + o.w0 * r + o.w1 * g + o.w2 * b) ** o.exponent;
+      if (Number.isFinite(ratio)) {
+        r *= ratio;
+        g *= ratio;
+        b *= ratio;
+        if (o.normalize) {
+          const max = Math.max(r, g, b);
+          if (max > 1) {
+            r /= max;
+            g /= max;
+            b /= max;
+          }
+        }
+      }
+    }
+    p0[i] = e0(r);
+    p1[i] = e1(g);
+    p2[i] = e2(b);
   }
 }
 
@@ -212,10 +239,42 @@ export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
 export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear: boolean): LinearColorSpace {
   if (linear) return 'linear-rec709';
   const t = transform(h);
+  const d0 = t.decode[0]!,
+    d1 = t.decode[1]!,
+    d2 = t.decode[2]!;
+  const m = t.toOutput,
+    id = m === identity;
+  const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
+  const o = ootfParams(h, t, true);
   for (let i = 0; i < out.length; i += 4) {
-    let v = [t.decode[0]!(out[i]!), t.decode[1]!(out[i + 1]!), t.decode[2]!(out[i + 2]!)];
-    v = matrix(t.toOutput, ootf(v, h, t, true));
-    for (let c = 0; c < 3; c++) out[i + c] = v[c]!;
+    let r = d0(out[i]!),
+      g = d1(out[i + 1]!),
+      b = d2(out[i + 2]!);
+    if (o) {
+      const ratio = (0 + o.w0 * r + o.w1 * g + o.w2 * b) ** o.exponent;
+      if (Number.isFinite(ratio)) {
+        r *= ratio;
+        g *= ratio;
+        b *= ratio;
+        if (o.normalize) {
+          const max = Math.max(r, g, b);
+          if (max > 1) {
+            r /= max;
+            g /= max;
+            b /= max;
+          }
+        }
+      }
+    }
+    if (!id) {
+      out[i] = m00 * r + m01 * g + m02 * b;
+      out[i + 1] = m10 * r + m11 * g + m12 * b;
+      out[i + 2] = m20 * r + m21 * g + m22 * b;
+    } else {
+      out[i] = r;
+      out[i + 1] = g;
+      out[i + 2] = b;
+    }
   }
   return t.space;
 }
