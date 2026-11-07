@@ -11,12 +11,15 @@ export class JxlBitWriter {
     return this.bytePos * 8 + this.accBits;
   }
 
+  private reserve(required: number): void {
+    if (required <= this.bytes.length) return;
+    const grown = new Uint8Array(Math.max(this.bytes.length * 2, required));
+    grown.set(this.bytes.subarray(0, this.bytePos));
+    this.bytes = grown;
+  }
+
   private push(byte: number): void {
-    if (this.bytePos === this.bytes.length) {
-      const grown = new Uint8Array(this.bytes.length * 2);
-      grown.set(this.bytes);
-      this.bytes = grown;
-    }
+    if (this.bytePos === this.bytes.length) this.reserve(this.bytePos + 1);
     this.bytes[this.bytePos++] = byte;
   }
 
@@ -101,7 +104,9 @@ export class JxlBitWriter {
   /** Append whole bytes; the writer must be byte-aligned. */
   writeBytes(data: Uint8Array): void {
     if (this.accBits !== 0) throw new Error('JXL: writer not byte-aligned');
-    for (const b of data) this.push(b);
+    this.reserve(this.bytePos + data.length);
+    this.bytes.set(data, this.bytePos);
+    this.bytePos += data.length;
   }
 
   /** Bytes written so far, zero-padding a partial final byte. */
