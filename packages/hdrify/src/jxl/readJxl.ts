@@ -337,7 +337,9 @@ function skipFrame(
   const br = new JxlBitReader(codestream, pos);
   const fh = readFrameHeader(br, h, isPreview);
   const toc = readToc(br, fh);
-  return { fh, end: br.byteOffset + toc.sizes.reduce((a, b) => a + b, 0) };
+  const end = br.byteOffset + toc.sizes.reduce((a, b) => a + b, 0);
+  if (end > codestream.length) throw new Error('JXL: truncated frame sections');
+  return { fh, end };
 }
 
 /** A displayed (coalesced) frame: image-sized planes in the image's encoded colour space unless `linear`. */
@@ -403,13 +405,16 @@ export function* decodeDisplayedFrames(
   }
 }
 
-/**
- * Read a JPEG XL file (bare codestream or ISOBMFF container) into a linear-light float RGBA image.
- * Decodes Modular (lossless and lossy XYB) and VarDCT frames with LF frames, patches, splines, noise,
- * reference frames and blending (libjxl coalesced output). For animations the first displayed frame is
- * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
- * sRGB primaries.
- */
+/** Options shared by still and animation decoding. */
+export interface ReadJxlOptions {
+  /** Apply the stored EXIF orientation to pixels and extra channels (default true). */
+  applyOrientation?: boolean;
+  /** Preserve associated alpha instead of returning straight alpha (default false). */
+  keepPremultipliedAlpha?: boolean;
+  /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
+  renderSpotColors?: boolean;
+}
+
 /** A full-resolution extra channel in the same orientation as the returned image. */
 export interface JxlExtraChannel {
   name: string;
@@ -423,14 +428,21 @@ export interface JxlExtraChannel {
   cfaChannel?: number;
 }
 
-/** Options shared by still and animation decoding. */
-export interface ReadJxlOptions {
-  /** Apply the stored EXIF orientation to pixels and extra channels (default true). */
-  applyOrientation?: boolean;
-  /** Preserve associated alpha instead of returning straight alpha (default false). */
-  keepPremultipliedAlpha?: boolean;
-  /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
-  renderSpotColors?: boolean;
+export interface JxlAnimationFrame {
+  image: HdrifyImage;
+  /** Frame duration in seconds. Still images have duration zero. */
+  duration: number;
+  /** Original 32-bit animation timecode, when present. */
+  timecode?: number;
+}
+
+function openJxl(data: Uint8Array) {
+  const { codestream, isContainer } = extractCodestream(data);
+  const br = new JxlBitReader(codestream);
+  const h = readImageHeader(br);
+  // A preview is an independent frame and must not populate references or advance noise counters.
+  const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
+  return { codestream, isContainer, h, start };
 }
 
 /** Apply EXIF orientation to row-major interleaved samples without mutating the source. */
@@ -469,33 +481,15 @@ function orient(
   return out;
 }
 
-export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
-  const { codestream, isContainer } = extractCodestream(data);
-  const br = new JxlBitReader(codestream);
-  const h = readImageHeader(br);
-  const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
-  const first = decodeDisplayedFrames(codestream, h, start).next().value;
-  if (!first) throw new Error('JXL: no displayed frame');
+function displayedImage(
+  first: JxlDisplayedFrame,
+  h: JxlImageHeader,
+  isContainer: boolean,
+  options: ReadJxlOptions,
+): HdrifyImage {
   const { canvas, fh } = first;
-  let pos = first.end;
   const { width, height } = h;
   if (canvas.width !== width || canvas.height !== height) throw new Error('JXL: displayed frame is not image-sized');
-
-  let animation: Record<string, unknown> | undefined;
-  if (h.animation) {
-    const ticks = [fh.duration];
-    for (let f = fh; !f.isLast;) {
-      ({ fh: f, end: pos } = skipFrame(codestream, pos, h));
-      if (isDisplayedFrame(f)) ticks.push(f.duration);
-    }
-    const { tpsNumerator, tpsDenominator, numLoops } = h.animation;
-    animation = {
-      frameCount: ticks.length,
-      frameDurations: ticks.map((t) => (t * tpsDenominator) / tpsNumerator),
-      numLoops,
-    };
-  }
-
   const n = width * height;
   const out = new Float32Array(n * 4);
   const toLinear = first.linear ? undefined : h.xybEncoded ? xybTransfer(h)?.toLinear : transferToLinear(h);
@@ -526,20 +520,21 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
       for (let c = 0; c < 3; c++) out[i * 4 + c] = out[i * 4 + c]! * scale;
     }
   }
-
   const orientation = options.applyOrientation === false ? 1 : h.orientation;
+  const outWidth = orientation >= 5 ? height : width;
+  const outHeight = orientation >= 5 ? width : height;
   const extraChannels: JxlExtraChannel[] = h.extraChannels.map((ec, i) => ({
     name: ec.name || ec.type,
     type: ec.type,
-    width: orientation >= 5 ? height : width,
-    height: orientation >= 5 ? width : height,
+    width: outWidth,
+    height: outHeight,
     data: orient(canvas.planes[3 + i]!.slice(), width, height, 1, orientation),
     ...(ec.spotColor && { spotColor: [...ec.spotColor] as [number, number, number, number] }),
     ...(ec.cfaChannel !== undefined && { cfaChannel: ec.cfaChannel }),
   }));
   return {
-    width: orientation >= 5 ? height : width,
-    height: orientation >= 5 ? width : height,
+    width: outWidth,
+    height: outHeight,
     data: orient(out, width, height, 4, orientation),
     linearColorSpace: h.xybEncoded ? 'linear-rec709' : linearColorSpaceOf(h),
     metadata: {
@@ -554,8 +549,54 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
       intensityTarget: h.toneMapping.intensityTarget,
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels,
-      ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),
     },
   };
+}
+
+/**
+ * Decode every coalesced displayed frame into linear-light RGBA, with duration in seconds.
+ * Each frame owns its pixel/extra-channel buffers. This eager API retains the complete animation.
+ */
+export function readJxlFrames(
+  data: Uint8Array,
+  options: ReadJxlOptions = {},
+): { frames: JxlAnimationFrame[]; numLoops: number } {
+  const { codestream, isContainer, h, start } = openJxl(data);
+  const frames: JxlAnimationFrame[] = [];
+  for (const frame of decodeDisplayedFrames(codestream, h, start)) {
+    frames.push({
+      image: displayedImage(frame, h, isContainer, options),
+      duration: h.animation ? (frame.fh.duration * h.animation.tpsDenominator) / h.animation.tpsNumerator : 0,
+      ...(h.animation?.haveTimecodes && { timecode: frame.fh.timecode }),
+    });
+  }
+  if (!frames.length) throw new Error('JXL: no displayed frame');
+  return { frames, numLoops: h.animation?.numLoops ?? 0 };
+}
+
+/**
+ * Read a JPEG XL codestream or container into linear-light RGBA, applying orientation and returning
+ * straight alpha by default. Animations return the first displayed frame; use readJxlFrames for all.
+ * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
+ */
+export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
+  const { codestream, isContainer, h, start } = openJxl(data);
+  const first = decodeDisplayedFrames(codestream, h, start).next().value;
+  if (!first) throw new Error('JXL: no displayed frame');
+  const image = displayedImage(first, h, isContainer, options);
+  if (h.animation) {
+    const ticks = [first.fh.duration];
+    let pos = first.end;
+    for (let f = first.fh; !f.isLast;) {
+      ({ fh: f, end: pos } = skipFrame(codestream, pos, h));
+      if (isDisplayedFrame(f)) ticks.push(f.duration);
+    }
+    image.metadata!.animation = {
+      frameCount: ticks.length,
+      frameDurations: ticks.map((t) => (t * h.animation!.tpsDenominator) / h.animation!.tpsNumerator),
+      numLoops: h.animation.numLoops,
+    };
+  }
+  return image;
 }
