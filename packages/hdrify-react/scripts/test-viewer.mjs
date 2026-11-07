@@ -13,6 +13,10 @@ const bundle = await build({
   define: { 'process.env.NODE_ENV': '"development"' },
 });
 const server = createServer((request, response) => {
+  if (request.url === '/delayed.hdr') {
+    setTimeout(() => response.end(), 1000);
+    return;
+  }
   if (request.url === '/viewer.js') {
     response.setHeader('Content-Type', 'text/javascript');
     response.end(bundle.outputFiles[0].contents);
@@ -273,6 +277,27 @@ try {
         assert.equal(await page.locator(canvasSelector).getAttribute('data-tone-mapping'), 'neutral');
         result.deviceLoss = 'fell back to SDR';
       }
+      await page.evaluate(() => {
+        document.querySelector('image-viewer').image = window.testImage;
+      });
+      await settle(page);
+      await page.evaluate(() => {
+        const viewer = document.querySelector('image-viewer');
+        viewer.image = undefined;
+        viewer.src = '/delayed.hdr';
+      });
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.evaluate(async () => {
+        const viewer = document.querySelector('image-viewer');
+        viewer.image = window.testImage;
+        await Promise.race([
+          viewer.whenReady(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Reusing an image left readiness pending')), 5000),
+          ),
+        ]);
+      });
+      result.reusedImageReadiness = 'passed';
       await page.evaluate(() => {
         const viewer = document.querySelector('image-viewer');
         viewer.remove();
