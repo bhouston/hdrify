@@ -291,6 +291,14 @@ describe('writeJxl', () => {
     });
   }
 
+  it('weighted prediction compresses the gradient corpus without changing half-float samples', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/reference_gradient.exr', import.meta.url)));
+    const bytes = writeJxl(image);
+    expect(bytes.length).toBeLessThan(56000); // Gradient + LZ77 alone was 62,906 bytes.
+    const got = readJxl(bytes);
+    expect(got.data).toEqual(Float32Array.from(image.data, (v) => decodeFloat16(encodeFloat16(v))));
+  });
+
   it('rejects invalid input', () => {
     const ok = pattern(2, 2);
     expect(() => writeJxl({ ...ok, width: 0 })).toThrow(/dimensions/);
