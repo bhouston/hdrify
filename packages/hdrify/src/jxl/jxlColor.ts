@@ -4,6 +4,7 @@ import {
   CHROMATICITIES_REC709,
   type Chromaticities,
 } from '../color/chromaticities.js';
+import { chromaticitiesToRgbXyzMatrix, invert3 } from '../color/matrixConversion.js';
 import type { JxlColorEncoding } from './jxlImageHeader.js';
 /** Chromaticities of the original encoding, retained in metadata when converted to a supported space. */
 export function jxlChromaticities(ce: JxlColorEncoding): Chromaticities {
@@ -25,5 +26,8 @@ export function jxlChromaticities(ce: JxlColorEncoding): Chromaticities {
         : ce.whitePoint === 'e'
           ? [1 / 3, 1 / 3]
           : [0.3127, 0.329];
+  const matrix = chromaticitiesToRgbXyzMatrix(ch);
+  if (![...matrix.flat(), ...invert3(matrix).flat()].every(Number.isFinite))
+    throw new Error('JXL: invalid colour encoding chromaticities');
   return ch;
 }
