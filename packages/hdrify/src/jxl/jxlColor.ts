@@ -12,6 +12,7 @@ import {
   buildAdaptedLinearMatrix,
   chromaticitiesToRgbXyzMatrix,
   chromaticitiesToXyzRgbMatrix,
+  invert3,
   multiply3,
   type Mat3,
 } from '../color/matrixConversion.js';
@@ -30,6 +31,7 @@ interface ColorTransform {
   space: LinearColorSpace;
   toOutput: Mat3;
   toSrgb: Mat3;
+  fromSrgb: Mat3;
   decode: ((v: number) => number)[];
   encode: ((v: number) => number)[];
   hlgLuminances?: number[];
@@ -158,6 +160,7 @@ function transform(h: JxlImageHeader): ColorTransform {
     space,
     toOutput,
     toSrgb,
+    fromSrgb: invert3(toSrgb),
     decode,
     encode,
     iccManaged,
@@ -186,6 +189,17 @@ function ootf(v: number[], h: JxlImageHeader, t: ColorTransform, forward: boolea
     if (max > 1) return out.map((x) => x / max);
   }
   return out;
+}
+
+/** Convert linear-sRGB XYB output into the image's encoded space before blending/referencing. */
+export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
+  const t = transform(h),
+    n = planes[0]!.length;
+  for (let i = 0; i < n; i++) {
+    let v = matrix(t.fromSrgb, [planes[0]![i]!, planes[1]![i]!, planes[2]![i]!]);
+    v = ootf(v, h, t, false);
+    for (let c = 0; c < 3; c++) planes[c]![i] = t.encode[c]!(v[c]!);
+  }
 }
 
 /** Final RGBA conversion. XYB frames kept linear are linear sRGB; encoded canvases retain original primaries. */
