@@ -1,5 +1,4 @@
-import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { convertOutputColor, jxlColorMetadata } from './jxlColor.js';
+import { convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -18,10 +17,9 @@ import { applyInverseTransforms, decodeModularGroup, type ModularChannel, modula
 import {
   advanceFrameIndices,
   blendFrame,
-  canBeReferenced,
   isDisplayedFrame,
   type JxlReferenceFrame,
-  needsBlending,
+  staysLinear,
   saveReference,
   upsampleFrame,
 } from './jxlRender.js';
@@ -91,6 +89,8 @@ export function decodeFrame(
   const fh = readFrameHeader(fbr, h);
   const toc = readToc(fbr, fh);
   const base = fbr.byteOffset;
+  const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
+  if (frameEnd > codestream.length) throw new Error('JXL: truncated frame sections');
   const dims = frameDimensions(fh);
   const vardct = fh.encoding === 'vardct';
 
@@ -98,6 +98,7 @@ export function decodeFrame(
   const single = toc.sizes.length === 1;
   const lf = section(0);
   const lfg = readLfGlobal(lf, h, fh, dims);
+  lf.checkBounds();
   const img = lfg.gmodular;
   const opts = { globalTree: lfg.globalTree, globalDecoder: lfg.globalDecoder };
   const vimg = vardct ? createVardctImage(fh, dims) : undefined;
@@ -114,8 +115,11 @@ export function decodeFrame(
       streamId: modularStreamId('lfGroup', g, dims.numLfGroups),
     });
     if (vimg) readHfMetadata(br, vimg, lfg, dims, g);
+    br.checkBounds();
   }
-  const hfg = vimg ? readHfGlobal(single ? lf : section(1 + dims.numLfGroups), fh, dims, lfg) : undefined;
+  const hf = vimg ? (single ? lf : section(1 + dims.numLfGroups)) : undefined;
+  const hfg = hf ? readHfGlobal(hf, fh, dims, lfg) : undefined;
+  hf?.checkBounds();
   for (let p = 0; p < fh.passes.numPasses; p++) {
     const [minShift, maxShift] = downsamplingBracket(fh.passes, p);
     for (let g = 0; g < dims.numGroups; g++) {
@@ -130,11 +134,11 @@ export function decodeFrame(
         ...opts,
         streamId: modularStreamId('group', g, dims.numLfGroups, dims.numGroups, p),
       });
+      br.checkBounds();
     }
   }
   applyInverseTransforms(img);
   const out = vimg ? reconstructVardct(vimg, lfg, hfg!, h, fh, dims, lfFrames[fh.lfLevel + 1]) : undefined;
-  const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
   return { fh, dims, lfGlobal: lfg, channels: img.channels, vardct: out, frameEnd };
 }
 
@@ -189,16 +193,6 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
     if (exp === expMax) return mant ? Number.NaN : sign * Number.POSITIVE_INFINITY;
     return sign * (1 + mant / 2 ** mantBits) * 2 ** (exp - bias);
   };
-}
-
-/** Linear ↔ encoded transfer for XYB images: libjxl blends and stores references in the output encoding. */
-function xybTransfer(
-  h: JxlImageHeader,
-): { fromLinear: (v: number) => number; toLinear: (v: number) => number } | undefined {
-  const ce = h.colorEncoding;
-  if (ce.wantIcc || ce.transferFunction === 'linear') return undefined;
-  if (ce.transferFunction === 'srgb') return { fromLinear: linearTosRGB, toLinear: sRGBToLinear };
-  throw new Error(`JXL: not yet supported: multi-frame XYB with transfer function '${ce.transferFunction}'`);
 }
 
 /** Float colour planes of a lossy frame (VarDCT, or XYB Modular scaled per libjxl ModularImageToDecodedRect). */
@@ -347,9 +341,10 @@ export function* decodeDisplayedFrames(
       continue;
     }
     const frame: JxlReferenceFrame = { width: w, height: hh, planes };
-    const beforeCt = fh.saveBeforeCt ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)) } : frame;
-    // A frame that is neither blended nor referenced goes straight to the output and can stay linear.
-    let linear = !needsBlending(fh) && !canBeReferenced(fh);
+    const beforeCt = fh.saveBeforeCt
+      ? { ...frame, planes: planes.map((p, c) => (c < 3 ? p.slice() : p)), savedBeforeCt: true }
+      : frame;
+    let linear = staysLinear(fh);
     const [r, g, b] = [planes[0]!, planes[1]!, planes[2]!];
     const n = w * hh;
     if (h.xybEncoded) {
@@ -358,8 +353,7 @@ export function* decodeDisplayedFrames(
         opsinBias: h.opsinInverse.opsinBias,
         intensityTarget: h.toneMapping.intensityTarget,
       });
-      const tf = linear ? undefined : xybTransfer(h);
-      if (tf) for (const p of [r, g, b]) for (let i = 0; i < n; i++) p[i] = tf.fromLinear(p[i]!);
+      if (!linear) xybFromLinear(h, planes);
     } else {
       linear = false;
       if (fh.doYCbCr) ycbcrToRgb(r, g, b, n);
@@ -444,8 +438,9 @@ function orient(
             : orientation === 7 || orientation === 8
               ? width - 1 - x
               : y;
-      const from = (y * width + x) * channels;
-      out.set(data.subarray(from, from + channels), (ty * outWidth + tx) * channels);
+      const from = (y * width + x) * channels,
+        to = (ty * outWidth + tx) * channels;
+      for (let c = 0; c < channels; c++) out[to + c] = data[from + c]!;
     }
   }
   return out;
@@ -462,7 +457,6 @@ function displayedImage(
   if (canvas.width !== width || canvas.height !== height) throw new Error('JXL: displayed frame is not image-sized');
   const n = width * height;
   const out = new Float32Array(n * 4);
-  const toLinear = first.linear || !h.xybEncoded ? undefined : xybTransfer(h)?.toLinear;
   const spots = options.renderSpotColors
     ? h.extraChannels.flatMap((ec, i) => (ec.spotColor ? [{ color: ec.spotColor, plane: canvas.planes[3 + i]! }] : []))
     : [];
@@ -475,10 +469,10 @@ function displayedImage(
         const mix = spot.color[3] * spot.plane[i]!;
         value = mix * spot.color[c]! + (1 - mix) * value;
       }
-      out[i * 4 + c] = toLinear ? toLinear(value) : value;
+      out[i * 4 + c] = value;
     }
   }
-  const linearColorSpace = h.xybEncoded ? 'linear-rec709' : convertOutputColor(h, out, false);
+  const linearColorSpace = convertOutputColor(h, out, first.linear);
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   const associated = alphaIdx >= 0 && h.extraChannels[alphaIdx]!.alphaAssociated;
@@ -494,12 +488,14 @@ function displayedImage(
   const orientation = options.applyOrientation === false ? 1 : h.orientation;
   const outWidth = orientation >= 5 ? height : width;
   const outHeight = orientation >= 5 ? width : height;
+  // orient() copies unless orientation is 1; then copy so callers never alias canvas/reference planes.
   const extraChannels: JxlExtraChannel[] = h.extraChannels.map((ec, i) => ({
     name: ec.name || ec.type,
     type: ec.type,
     width: outWidth,
     height: outHeight,
-    data: orient(canvas.planes[3 + i]!.slice(), width, height, 1, orientation),
+    data:
+      orientation === 1 ? canvas.planes[3 + i]!.slice() : orient(canvas.planes[3 + i]!, width, height, 1, orientation),
     ...(ec.spotColor && { spotColor: [...ec.spotColor] as [number, number, number, number] }),
     ...(ec.cfaChannel !== undefined && { cfaChannel: ec.cfaChannel }),
   }));
@@ -554,7 +550,10 @@ export function readJxlFrames(
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
  * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
- * use the historical sRGB fallback and metadata.iccColorManaged = false.
+ * use the historical sRGB fallback and metadata.iccColorManaged = false. originalChromaticities is
+ * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.
+ * XYB frames used for composition or references are converted to the original primaries/transfer
+ * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {

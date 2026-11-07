@@ -49,6 +49,7 @@ enc lossless_multigroup big8.ppm ppm -d 0 -g 0
 
 # --- Lossy Modular (XYB + squeeze) ---
 enc lossy_modular rgb8.ppm pfm -m 1 -d 1
+enc lossy_modular_gray gray8.pgm pfm -m 1 -d 1
 
 # --- VarDCT ---
 enc vardct_rgb8 rgb8.ppm pfm -d 1
@@ -124,6 +125,10 @@ cjxl "$SRC/layered.gif" "$FEAT/layered_lossy.jxl" --quiet -d 1
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pam" --quiet
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet
 
+# --- Native TypeScript VarDCT writer: independent decoder oracle used even without djxl in CI. ---
+(cd "$ROOT" && JXL_VARDCT_CRAFT_OUT="$FEAT" pnpm vitest run packages/hdrify/src/jxl/writeJxlVardct.test.ts -t 'writes the native VarDCT oracle fixture' --no-coverage >/dev/null)
+djxl "$FEAT/native_dct8_hdr.jxl" "$FEAT/native_dct8_hdr.ref.pfm" --quiet
+
 # --- Decoder metadata/output fixtures (requires libjxl development headers and pkg-config). ---
 c++ "$ROOT/scripts/generate-jxl-decoder-assets.cc" $(pkg-config --cflags --libs libjxl) -o "$SRC/decoder-fixtures"
 (cd "$ROOT" && "$SRC/decoder-fixtures")
@@ -142,7 +147,3 @@ bash "$ROOT/scripts/generate-jxl-color-assets.sh"
 djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
   --color_space=RGB_D65_202_Rel_Lin --output_frames
 for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
-
-# --- Native TypeScript VarDCT writer: independent decoder oracle used even without djxl in CI. ---
-(cd "$ROOT" && JXL_VARDCT_CRAFT_OUT="$FEAT" pnpm vitest run packages/hdrify/src/jxl/writeJxlVardct.test.ts -t 'writes the native VarDCT oracle fixture' --no-coverage >/dev/null)
-djxl "$FEAT/native_dct8_hdr.jxl" "$FEAT/native_dct8_hdr.ref.pfm" --quiet

@@ -199,6 +199,7 @@ describe('readJxl lossy corpus vs djxl (sRGB-encoded refs unless linear)', () =>
     ['vardct_grad128', false],
     ['vardct_d01', false],
     ['lossy_modular', false],
+    ['lossy_modular_gray', false], // gray XYB Modular codes 3 colour channels
   ] as const) {
     it(`${name} matches djxl`, () => {
       const img = load(`${name}.jxl`);
@@ -209,7 +210,7 @@ describe('readJxl lossy corpus vs djxl (sRGB-encoded refs unless linear)', () =>
       for (let i = 0; i < img.width * img.height; i++) {
         for (let c = 0; c < 3; c++) {
           const v = img.data[i * 4 + c];
-          const r = ref.samples[i * 3 + c];
+          const r = ref.samples[i * ref.channels + (ref.channels === 1 ? 0 : c)];
           // Linear HDR: relative error; otherwise compare in sRGB space.
           const e = linear ? Math.abs(v - r) / Math.max(1, Math.abs(r)) : Math.abs(linearToSrgb(v) - r);
           max = Math.max(max, e);

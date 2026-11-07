@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
 import { ASSETS, readPfm, readPnm } from './jxlTestAssets.js';
 import { readJxl } from './readJxl.js';
+import { extractCodestream } from './jxlContainer.js';
 
 const load = (name: string) => readJxl(new Uint8Array(fs.readFileSync(new URL(name, ASSETS))));
 
@@ -71,6 +72,15 @@ describe('readJxl lossless float images (linear)', () => {
 });
 
 describe('readJxl unsupported inputs fail clearly', () => {
+  for (const name of ['lossless_rgb8.jxl', 'lossless_float32.jxl', 'lossless_rgb8_e1.jxl', 'lossless_multigroup.jxl']) {
+    it(`rejects truncated frame sections in ${name}`, () => {
+      const { codestream: data } = extractCodestream(new Uint8Array(fs.readFileSync(new URL(name, ASSETS))));
+      for (const missing of [1, 2, 3, 4]) {
+        expect(() => readJxl(data.subarray(0, data.length - missing))).toThrow(/truncated frame sections/);
+      }
+    });
+  }
+
   it('rejects non-JXL data', () => {
     expect(() => readJxl(new Uint8Array([1, 2, 3, 4]))).toThrow();
   });
@@ -169,4 +179,34 @@ describe('readJxl multi-frame composition vs djxl (first displayed frame)', () =
     expect(img.metadata?.animation).toEqual({ frameCount: 3, frameDurations: [0.1, 0.1, 0.1], numLoops: 0 });
     expect(load('features/layered.jxl').metadata?.animation).toMatchObject({ frameCount: 2 });
   });
+});
+
+describe('readJxl section boundaries', async () => {
+  const { JxlBitReader } = await import('./jxlBitReader.js');
+  const { JxlBitWriter } = await import('./jxlBitWriter.js');
+  const { readImageHeader } = await import('./jxlImageHeader.js');
+  const { readFrameHeader, readToc } = await import('./jxlFrameHeader.js');
+  const { writeToc } = await import('./jxlEncHeaders.js');
+
+  for (const name of ['lossless_rgb8_e1.jxl', 'lossless_float32.jxl']) {
+    it(`rejects consumed zero lookahead in an undersized section of ${name}`, () => {
+      const { codestream } = extractCodestream(new Uint8Array(fs.readFileSync(new URL(name, ASSETS))));
+      const br = new JxlBitReader(codestream);
+      const header = readImageHeader(br);
+      const frame = readFrameHeader(br, header);
+      const tocStart = br.bitPosition;
+      const toc = readToc(br, frame);
+      expect(toc.permutation).toBeUndefined();
+      const payloadStart = br.byteOffset;
+      // Keep all actual payload bytes; only reduce the final section's declared size.
+      const sizes = [...toc.sizes];
+      sizes[sizes.length - 1] -= 4;
+      const w = new JxlBitWriter();
+      w.writeBytes(codestream.subarray(0, Math.floor(tocStart / 8)));
+      w.writeBits(tocStart % 8, codestream[Math.floor(tocStart / 8)]);
+      writeToc(w, sizes);
+      w.writeBytes(codestream.subarray(payloadStart));
+      expect(() => readJxl(w.finish())).toThrow(/unexpected end/);
+    });
+  }
 });
