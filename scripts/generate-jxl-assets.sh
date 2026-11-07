@@ -125,6 +125,10 @@ cjxl "$SRC/layered.gif" "$FEAT/layered_lossy.jxl" --quiet -d 1
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pam" --quiet
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet
 
+# --- Native TypeScript VarDCT writer: independent decoder oracle used even without djxl in CI. ---
+(cd "$ROOT" && JXL_VARDCT_CRAFT_OUT="$FEAT" pnpm vitest run packages/hdrify/src/jxl/writeJxlVardct.test.ts -t 'writes the native VarDCT oracle fixture' --no-coverage >/dev/null)
+djxl "$FEAT/native_dct8_hdr.jxl" "$FEAT/native_dct8_hdr.ref.pfm" --quiet
+
 # --- Decoder metadata/output fixtures (requires libjxl development headers and pkg-config). ---
 c++ "$ROOT/scripts/generate-jxl-decoder-assets.cc" $(pkg-config --cflags --libs libjxl) -o "$SRC/decoder-fixtures"
 (cd "$ROOT" && "$SRC/decoder-fixtures")
