@@ -223,16 +223,3 @@ export function filterTree(tree: MaTree, channel: number, streamId: number): Fil
     usesWp,
   };
 }
-
-/** Walk the tree with the given property vector; returns the leaf node index. */
-export function maTreeLookup(tree: MaTree, props: Int32Array): number {
-  const property = tree.property;
-  const splitVal = tree.splitVal;
-  let n = 0;
-  let p = property[0]!;
-  while (p >= 0) {
-    n = props[p]! > splitVal[n]! ? tree.left[n]! : tree.right[n]!;
-    p = property[n]!;
-  }
-  return n;
-}
