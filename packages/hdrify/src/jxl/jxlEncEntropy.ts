@@ -401,7 +401,7 @@ interface LzStream extends TokenStream {
 function lz77Tokens(stream: TokenStream, distanceContext: number, minSymbol = 224): LzStream {
   const { values } = stream;
   const contexts = new Uint8Array(values.length);
-  const output = new Float64Array(values.length);
+  const output = new Uint32Array(values.length);
   const offsets = new Uint8Array(values.length);
   let count = 0;
   const last = new Int32Array(1 << 16).fill(-1);

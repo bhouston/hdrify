@@ -178,12 +178,13 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     weightedCosts[ctx]! < gradientCosts[ctx]! ? 6 : PREDICTOR_GRADIENT,
   );
   if (predictors.includes(6)) {
-    const mixedStreams = originalStreams.map((stream, j) => ({
-      contexts: stream.contexts,
-      values: Float64Array.from(stream.values, (value, i) =>
-        predictors[stream.contexts[i]!] === 6 ? weightedStreams[j]!.values[i]! : value,
-      ),
-    }));
+    const mixedStreams = originalStreams.map((stream, j) => {
+      const values = new Uint32Array(stream.values.length);
+      const weighted = weightedStreams[j]!.values;
+      for (let i = 0; i < values.length; i++)
+        values[i] = predictors[stream.contexts[i]!] === 6 ? weighted[i]! : stream.values[i]!;
+      return { contexts: stream.contexts, values };
+    });
     const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
     const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams, options.effort === 'high');
     if (modelSize(mixedCode, mixedTree.stream) < modelSize(dataCode, tree.stream)) {
@@ -489,7 +490,7 @@ function tokenize(
   let total = 0;
   for (const ch of channels) total += ch.w * ch.h;
   const contexts = new Uint8Array(total);
-  const values = new Float64Array(total);
+  const values = new Uint32Array(total);
   let k = 0;
   for (const { plane: p, stride, x0, y0, w, h, ctx } of channels) {
     contexts.fill(ctx, k, k + w * h);
