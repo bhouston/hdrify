@@ -1,8 +1,15 @@
 import { encodeFloat16 } from '../exr/halfFloat.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
+import { defaultWpHeader, WpState } from './jxlPredictors.js';
 import { writeVardctJxl } from './writeJxlVardct.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
-import { estimateStreamBits, JxlEncEntropyCode, packSigned, type TokenStream } from './jxlEncEntropy.js';
+import {
+  estimateContextBits,
+  estimateStreamBits,
+  JxlEncEntropyCode,
+  packSigned,
+  type TokenStream,
+} from './jxlEncEntropy.js';
 import {
   type JxlEncBitDepth,
   writeFrameHeader,
@@ -48,7 +55,7 @@ const PREDICTOR_GRADIENT = 5;
 
 /**
  * Encode an image as lossless Modular or lossy VarDCT JPEG XL.
- * Lossless encoding uses gradient prediction, prefix/LZ77 codes and estimated-cost transforms.
+ * Lossless encoding uses Gradient/Weighted prediction, prefix/LZ77 codes and estimated-cost transforms.
  * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
  * alpha remains lossless in the selected source sample format.
  */
@@ -106,7 +113,7 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   const singleGroup = groupsX === 1 && groupsY === 1;
 
   // Tokenize everything first: the global prefix codes are built from all streams.
-  const tree = channelTreeTokens(metaChannels.length + numChannels);
+  let tree = channelTreeTokens(metaChannels.length + numChannels);
   const ctx = (i: number): number => tree.channelContext[i]!;
   // Property 0 is the channel's index within its stream: after the meta channels in the
   // global stream, from 0 in pass groups.
@@ -124,21 +131,57 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     ctx: ctx(i),
   }));
   if (singleGroup) globalChannels.push(...imageChannels(metaChannels.length, 0, 0, width, height));
-  const globalStream = tokenize(globalChannels);
-  const groupStreams: TokenStream[] = [];
+  let globalStream = tokenize(globalChannels);
+  let groupStreams: TokenStream[] = [];
+  const groupChannels: ChannelRect[][] = [];
   if (!singleGroup) {
     for (let gy = 0; gy < groupsY; gy++) {
       for (let gx = 0; gx < groupsX; gx++) {
         const x0 = gx * groupDim;
         const y0 = gy * groupDim;
-        groupStreams.push(
-          tokenize(imageChannels(0, x0, y0, Math.min(groupDim, width - x0), Math.min(groupDim, height - y0))),
-        );
+        const channels = imageChannels(0, x0, y0, Math.min(groupDim, width - x0), Math.min(groupDim, height - y0));
+        groupChannels.push(channels);
+        groupStreams.push(tokenize(channels));
       }
     }
   }
+  let dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
+  const originalStreams = [globalStream, ...groupStreams];
+  const weightedStreams = [
+    tokenize(globalChannels, true),
+    ...groupChannels.map((channels) => tokenize(channels, true)),
+  ];
+  const gradientCosts = estimateContextBits(originalStreams, tree.numLeaves);
+  const weightedCosts = estimateContextBits(weightedStreams, tree.numLeaves);
+  const predictors = Array.from({ length: tree.numLeaves }, (_, ctx) =>
+    weightedCosts[ctx]! < gradientCosts[ctx]! ? 6 : PREDICTOR_GRADIENT,
+  );
+  if (predictors.includes(6)) {
+    const mixedStreams = originalStreams.map((stream, j) => ({
+      contexts: stream.contexts,
+      values: Float64Array.from(stream.values, (value, i) =>
+        predictors[stream.contexts[i]!] === 6 ? weightedStreams[j]!.values[i]! : value,
+      ),
+    }));
+    const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
+    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams);
+    const size = (code: JxlEncEntropyCode, streams: TokenStream[], treeStream: TokenStream): number => {
+      const w = new JxlBitWriter();
+      const treeCode = JxlEncEntropyCode.build(6, [treeStream]);
+      treeCode.writeHeader(w);
+      treeCode.writeStream(w, treeStream);
+      code.writeHeader(w);
+      for (const stream of streams) code.writeStream(w, stream);
+      return w.bitPosition;
+    };
+    if (size(mixedCode, mixedStreams, mixedTree.stream) < size(dataCode, originalStreams, tree.stream)) {
+      tree = mixedTree;
+      dataCode = mixedCode;
+      globalStream = mixedStreams[0]!;
+      groupStreams = mixedStreams.slice(1);
+    }
+  }
   const treeCode = JxlEncEntropyCode.build(6, [tree.stream]);
-  const dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
 
   // LfGlobal: dequant defaults, global MA tree + codes, global modular image.
   const lfGlobal = new JxlBitWriter();
@@ -341,10 +384,13 @@ function channelTree(lo: number, hi: number): TreeNode {
 
 /**
  * MA tree tokens (tree contexts 0..5 as in the spec) for a per-channel tree whose
- * leaves all use the gradient predictor. Nodes are written breadth-first, left
+ * leaves choose gradient or weighted prediction. Nodes are written breadth-first, left
  * (property > value) child first; leaf contexts are numbered in that order.
  */
-function channelTreeTokens(numChannels: number): {
+function channelTreeTokens(
+  numChannels: number,
+  predictors?: number[],
+): {
   stream: TokenStream;
   channelContext: number[];
   numLeaves: number;
@@ -361,9 +407,10 @@ function channelTreeTokens(numChannels: number): {
   for (let i = 0; i < queue.length; i++) {
     const node = queue[i]!;
     if ('channel' in node) {
-      channelContext[node.channel] = numLeaves++;
+      const context = numLeaves++;
+      channelContext[node.channel] = context;
       push(1, 0); // leaf
-      push(2, PREDICTOR_GRADIENT);
+      push(2, predictors?.[context] ?? PREDICTOR_GRADIENT);
       push(3, packSigned(0)); // offset
       push(4, 0); // multiplier log
       push(5, 0); // multiplier bits
@@ -387,8 +434,8 @@ interface ChannelRect {
   ctx: number;
 }
 
-/** Gradient-predict channels in order, returning (context, packed residual) per sample. */
-function tokenize(channels: ChannelRect[]): TokenStream {
+/** Predict channels in order, returning (context, packed residual) per sample. */
+function tokenize(channels: ChannelRect[], weighted = false): TokenStream {
   let total = 0;
   for (const ch of channels) total += ch.w * ch.h;
   const contexts = new Uint8Array(total);
@@ -396,6 +443,7 @@ function tokenize(channels: ChannelRect[]): TokenStream {
   let k = 0;
   for (const { plane: p, stride, x0, y0, w, h, ctx } of channels) {
     contexts.fill(ctx, k, k + w * h);
+    const wp = weighted ? new WpState(defaultWpHeader(), w) : undefined;
     for (let y = 0; y < h; y++) {
       const row = (y0 + y) * stride + x0;
       const up = row - stride;
@@ -407,9 +455,18 @@ function tokenize(channels: ChannelRect[]): TokenStream {
         const grad = west + north - northWest;
         const lo = Math.min(west, north);
         const hi = Math.max(west, north);
-        const pred = grad < lo ? lo : grad > hi ? hi : grad;
+        const northEast = x + 1 < w && y > 0 ? p[up + x + 1]! : north;
+        const northNorth = y > 1 ? p[row - stride * 2 + x]! : north;
+        const pred = wp
+          ? wp.predict(x, y, north, west, northEast, northWest, northNorth)
+          : grad < lo
+            ? lo
+            : grad > hi
+              ? hi
+              : grad;
         // Residuals wrap to int32 like the decoder's 32-bit sample arithmetic.
         values[k++] = packSigned((p[row + x]! - pred) | 0);
+        wp?.update(p[row + x]!, x, y);
       }
     }
   }
