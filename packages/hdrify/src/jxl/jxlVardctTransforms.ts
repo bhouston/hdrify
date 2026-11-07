@@ -9,8 +9,8 @@
  * `block[ky * stride + kx]` holds horizontal frequency `kx` and vertical
  * frequency `ky`. For the 8x8 special transforms (IDENTITY/DCT2/DCT4/4x8/8x4/AFV)
  * the layout is exactly libjxl's `coefficients[y * 8 + x]`. The libjxl
- * transposed storage of DCT blocks with `ROWS >= COLS` is absorbed by
- * {@link coeffOrderToBlockIndices} (jxl-oxide `need_transpose`).
+ * transposed storage of DCT blocks with `ROWS >= COLS` is absorbed when coefficient
+ * orders are mapped to block offsets (`JXL_AC_STRATEGIES[s].transposed`, jxl-oxide `need_transpose`).
  */
 
 /** AC strategy (libjxl `AcStrategyType`, spec `DctSelect`) numeric ids. */
@@ -104,11 +104,6 @@ export const JXL_AC_STRATEGIES: readonly JxlAcStrategyInfo[] = RAW_INFO.map(
   }),
 );
 
-/** True for the 8x8 transforms that are not a plain DCT (they share coefficient order 1). */
-export function isSpecialStrategy(strategy: number): boolean {
-  return JXL_AC_STRATEGIES[strategy]!.orderId === 1;
-}
-
 /** Wide (width >= height) pixel size of each of the 13 coefficient orders. */
 export const JXL_ORDER_BLOCK_SIZES: ReadonlyArray<readonly [number, number]> = [
   [8, 8],
@@ -160,24 +155,6 @@ export function naturalCoeffOrder(orderId: number): Uint16Array {
     }
   }
   naturalOrderCache[orderId] = out;
-  return out;
-}
-
-/**
- * Converts an (optionally permuted) order of `[x, y]` pairs for the strategy's
- * order id into linear indices of the pixel-orientation coefficient block
- * (`stride = blocksX * 8`), applying the transpose for tall/square DCTs.
- */
-export function coeffOrderToBlockIndices(orderXY: Uint16Array, strategy: number): Uint32Array {
-  const info = JXL_AC_STRATEGIES[strategy]!;
-  const stride = info.blocksX * 8;
-  const n = orderXY.length >> 1;
-  const out = new Uint32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = orderXY[i * 2]!;
-    const y = orderXY[i * 2 + 1]!;
-    out[i] = info.transposed ? x * stride + y : y * stride + x;
-  }
   return out;
 }
 
