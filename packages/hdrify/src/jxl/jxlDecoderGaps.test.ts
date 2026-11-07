@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readJxl } from '../index.js';
+import { readJxl, type JxlExtraChannel } from '../index.js';
 import { ASSETS, readPfm } from './jxlTestAssets.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
@@ -102,6 +102,36 @@ describe('JPEG XL decoder gaps', () => {
           associated.data[i * 4 + c] / Math.max(associated.data[i * 4 + 3], 2 ** -26),
           6,
         );
+      }
+  });
+
+  it('retains named depth and selection mask samples in display orientation', () => {
+    const image = readJxl(bytes('extra_channels'));
+    const channels = image.metadata?.extraChannels as JxlExtraChannel[];
+    expect(channels.map(({ name, type, width, height }) => ({ name, type, width, height }))).toEqual([
+      { name: 'Z', type: 'depth', width: 2, height: 3 },
+      { name: 'selection', type: 'selectionMask', width: 2, height: 3 },
+    ]);
+    expect(Array.from(channels[0].data)).toEqual([3, 0, 4, 1, 5, 2]);
+    expect(Array.from(channels[1].data)).toEqual([0, 1, 1, 0, 0, 1]);
+    const raw = readJxl(bytes('extra_channels'), { applyOrientation: false });
+    expect(Array.from((raw.metadata!.extraChannels as JxlExtraChannel[])[0].data)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
+  it('optionally renders spot colours like djxl and retains ink samples and metadata', () => {
+    const file = bytes('spot_color');
+    const raw = readJxl(file);
+    const rendered = readJxl(file, { renderSpotColors: true });
+    const ref = readPfm('features/spot_color.ref.pfm');
+    const channels = rendered.metadata!.extraChannels as JxlExtraChannel[];
+    expect(channels[0].name).toBe('ink');
+    expect(channels[0].type).toBe('spotColor');
+    expect(channels[0].spotColor).toEqual([0.25, 0.75, 0.5, 0.625]);
+    expect(Array.from(channels[0].data)).toEqual([0, 0.25, 0.5, 0.75, 1, 0.125]);
+    for (let i = 0; i < 6; i++)
+      for (let c = 0; c < 3; c++) {
+        expect(rendered.data[i * 4 + c]).toBeCloseTo(ref.samples[i * 3 + c], 6);
+        expect(raw.data[i * 4 + c]).toBe((i + 1 + c) / 16);
       }
   });
 });
