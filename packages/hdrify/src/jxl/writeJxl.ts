@@ -37,7 +37,7 @@ const BIT_DEPTHS: Record<NonNullable<WriteJxlOptions['bitDepth']>, JxlEncBitDept
 const PREDICTOR_GRADIENT = 5;
 
 /**
- * Encode an image as a lossless Modular JPEG XL (prefix codes, gradient predictor,
+ * Encode an image as a lossless Modular JPEG XL (prefix codes and optional LZ77, gradient predictor,
  * one MA-tree leaf per channel, YCoCg RCT and/or channel palettes chosen by estimated
  * size). Modelled on libjxl's enc_fast_lossless.cc.
  */
@@ -119,7 +119,7 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     }
   }
   const treeCode = JxlEncEntropyCode.build(6, [tree.stream]);
-  const dataCode = JxlEncEntropyCode.build(tree.numLeaves, [globalStream, ...groupStreams]);
+  const dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
 
   // LfGlobal: dequant defaults, global MA tree + codes, global modular image.
   const lfGlobal = new JxlBitWriter();
