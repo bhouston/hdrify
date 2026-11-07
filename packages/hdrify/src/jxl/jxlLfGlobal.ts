@@ -147,12 +147,26 @@ export function readLfGlobal(
   const quantizer = vardct ? readQuantizer(br) : undefined;
   const blockCtx = vardct ? readHfBlockContext(br) : undefined;
   const cfl = vardct ? readLfChannelCorrelation(br) : undefined;
-  const global = br.readBool() ? readMaTree(br) : undefined;
+  // libjxl DecodeGlobalInfo: one colour channel only for gray without a colour transform (XYB/YCbCr).
+  const nbChans = h.colorEncoding.colorSpace === 'gray' && !h.xybEncoded && !fh.doYCbCr ? 1 : 3;
+  const treeLimit = 1024 + Math.floor((dims.width * dims.height * (nbChans + h.extraChannels.length)) / 16);
+  const global = br.readBool() ? readMaTree(br, treeLimit) : undefined;
 
   const chans: ModularChannelInfo[] = [];
-  const nbColor = vardct ? 0 : h.colorEncoding.colorSpace === 'gray' && !fh.doYCbCr ? 1 : 3;
-  if (nbColor && fh.jpegUpsampling.some((m) => m !== 0)) throw new Error('JXL: not yet supported: chroma subsampling');
-  for (let c = 0; c < nbColor; c++) chans.push({ width: dims.width, height: dims.height, hshift: 0, vshift: 0 });
+  const nbColor = vardct ? 0 : nbChans;
+  // Subsampling modes encode relative JPEG sampling factors, not absolute shifts.
+  const hFactors = [0, 1, 1, 0];
+  const vFactors = [0, 1, 0, 1];
+  for (let c = 0; c < nbColor; c++) {
+    const hshift = dims.maxHShift - hFactors[fh.jpegUpsampling[c]!]!;
+    const vshift = dims.maxVShift - vFactors[fh.jpegUpsampling[c]!]!;
+    chans.push({
+      width: Math.ceil(dims.width / 2 ** hshift),
+      height: Math.ceil(dims.height / 2 ** vshift),
+      hshift,
+      vshift,
+    });
+  }
   const upShift = Math.log2(fh.upsampling);
   h.extraChannels.forEach((ec, i) => {
     const ecUp = fh.ecUpsampling[i]! << ec.dimShift;

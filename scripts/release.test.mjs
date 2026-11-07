@@ -8,7 +8,7 @@ import { checkPullRequest } from './check-pr.mjs';
 // Published via pnpm publish directly (see release.config.js): pnpm rewrites
 // workspace:* deps and packs the `files` field natively, so these packages
 // just need a real LICENSE and a `files` field that ships `dist`.
-const packages = ['packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
+const packages = ['packages/icc', 'packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
 
 for (const path of packages) {
   void test(`${path} is ready for pnpm publish`, () => {

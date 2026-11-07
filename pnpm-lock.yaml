@@ -345,6 +345,9 @@ importers:
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
+      hdrify-icc:
+        specifier: workspace:*
+        version: link:../icc
       jpeg-js:
         specifier: ^0.4.4
         version: 0.4.4
@@ -417,6 +420,8 @@ importers:
       react-dom:
         specifier: ^19.3.1
         version: 19.3.1(react@19.3.1)
+
+  packages/icc: {}
 
   packages/website:
     dependencies:

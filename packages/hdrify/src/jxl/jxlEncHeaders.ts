@@ -2,7 +2,7 @@ import type { LinearColorSpace } from '../color/colorSpaces.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
 
 /**
- * Codestream header writers for a lossless Modular JPEG XL image: SizeHeader,
+ * Codestream header writers for Modular and VarDCT JPEG XL images: SizeHeader,
  * ImageMetadata (linear colour encoding, optional alpha), FrameHeader and TOC.
  * Field order follows libjxl headers.cc / image_metadata.cc / frame_header.cc / toc.cc
  * (the same layout as the hand-written headers in enc_fast_lossless.cc).
@@ -63,6 +63,7 @@ export function writeImageMetadata(
   bitDepth: JxlEncBitDepth,
   hasAlpha: boolean,
   colorSpace: LinearColorSpace,
+  xybEncoded = false,
 ): void {
   w.writeBool(false); // all_default
   w.writeBool(false); // extra_fields
@@ -77,7 +78,7 @@ export function writeImageMetadata(
     w.writeU32(0, 0, { bits: 4, offset: 0 }, { bits: 5, offset: 16 }, { bits: 10, offset: 48 }); // name_len
     w.writeBool(false); // alpha_associated
   }
-  w.writeBool(false); // xyb_encoded
+  w.writeBool(xybEncoded); // xyb_encoded
   // ColourEncoding
   w.writeBool(false); // all_default
   w.writeBool(false); // want_icc
@@ -92,16 +93,19 @@ export function writeImageMetadata(
   w.zeroPadToByte();
 }
 
-/** FrameHeader of the single (last, regular) lossless Modular frame. */
-export function writeFrameHeader(w: JxlBitWriter, hasAlpha: boolean, groupSizeShift: number): void {
+/** FrameHeader of a single last, regular Modular or XYB VarDCT frame. */
+export function writeFrameHeader(w: JxlBitWriter, hasAlpha: boolean, groupSizeShift: number, vardct = false): void {
   w.writeBool(false); // all_default
   w.writeBits(2, 0); // frame_type = kRegularFrame
-  w.writeBits(1, 1); // encoding = kModular
-  w.writeU64(0); // flags
-  w.writeBool(false); // do_YCbCr
+  w.writeBool(!vardct); // encoding
+  w.writeU64(vardct ? 0x80 : 0); // skip adaptive LF smoothing for VarDCT
+  if (!vardct) w.writeBool(false); // do_YCbCr (implicit false for XYB)
   w.writeU32(1, 1, 2, 4, 8); // upsampling
   if (hasAlpha) w.writeU32(1, 1, 2, 4, 8); // ec_upsampling
-  w.writeBits(2, groupSizeShift);
+  if (vardct) {
+    w.writeBits(3, 3); // x_qm_scale
+    w.writeBits(3, 2); // b_qm_scale
+  } else w.writeBits(2, groupSizeShift);
   w.writeU32(1, 1, 2, 3, { bits: 3, offset: 4 }); // num_passes
   w.writeBool(false); // custom_size_or_origin
   w.writeU32(0, 0, 1, 2, { bits: 2, offset: 3 }); // blending mode = kReplace

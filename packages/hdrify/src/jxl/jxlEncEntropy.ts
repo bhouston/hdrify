@@ -2,7 +2,7 @@ import { JxlBitWriter } from './jxlBitWriter.js';
 
 /**
  * Prefix-code (Huffman) entropy coder for JPEG XL, the encoder side of the
- * spec's "entropy-coded stream": no LZ77, identity context clustering, one
+ * spec's "entropy-coded stream": optional LZ77 and context clustering, one
  * prefix code per context, Brotli-style complex/simple code descriptions.
  * Ports the relevant parts of libjxl enc_ans.cc / enc_huffman*.cc and the
  * hand-written writer in enc_fast_lossless.cc (PrefixCode::WriteTo).
@@ -177,18 +177,18 @@ function writeAlphabetSize(w: JxlBitWriter, size: number): void {
 }
 
 /** Context map with identity clustering (simple form when ≤ 3 bits per entry, else entropy coded). */
-function writeContextMap(w: JxlBitWriter, numContexts: number): void {
+function writeContextMap(w: JxlBitWriter, numContexts: number, map?: Uint8Array): void {
   if (numContexts === 1) return;
-  const nbits = bitsFor(numContexts - 1);
+  const nbits = bitsFor(map ? Math.max(...map) : numContexts - 1);
   if (nbits <= 3) {
     w.writeBool(true); // is_simple
     w.writeBits(2, nbits);
-    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, c);
+    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, map?.[c] ?? c);
     return;
   }
   w.writeBool(false); // not simple
   w.writeBool(false); // no move-to-front
-  const values = Array.from({ length: numContexts }, (_, c) => c);
+  const values = Array.from({ length: numContexts }, (_, c) => map?.[c] ?? c);
   const stream: TokenStream = { contexts: new Uint8Array(numContexts), values };
   const code = JxlEncEntropyCode.build(1, [stream]);
   code.writeHeader(w);
@@ -205,6 +205,7 @@ export interface TokenStream {
 export class JxlEncEntropyCode {
   private constructor(
     private readonly codes: PrefixCode[],
+    private readonly contextMap?: Uint8Array,
     private readonly lzStreams?: Map<TokenStream, LzStream>,
   ) {}
 
@@ -220,7 +221,7 @@ export class JxlEncEntropyCode {
         histograms[stream.contexts[i]!]![hybridUintToken(stream.values[i]!) + stream.offsets[i]!]!++;
       }
     }
-    const lz = new JxlEncEntropyCode(histograms.map(buildPrefixCode), lzStreams);
+    const lz = new JxlEncEntropyCode(histograms.map(buildPrefixCode), undefined, lzStreams);
     const size = (code: JxlEncEntropyCode): number => {
       const w = new JxlBitWriter();
       code.writeHeader(w);
@@ -230,15 +231,17 @@ export class JxlEncEntropyCode {
     return size(lz) < size(plain) ? lz : plain;
   }
 
-  static build(numContexts: number, streams: TokenStream[]): JxlEncEntropyCode {
-    const histograms = Array.from({ length: numContexts }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
+  static build(numContexts: number, streams: TokenStream[], contextMap?: Uint8Array): JxlEncEntropyCode {
+    const numClusters = contextMap ? Math.max(...contextMap) + 1 : numContexts;
+    const histograms = Array.from({ length: numClusters }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
     for (const { contexts, values } of streams) {
-      for (let i = 0; i < values.length; i++) histograms[contexts[i]!]![hybridUintToken(values[i]!)]!++;
+      for (let i = 0; i < values.length; i++)
+        histograms[contextMap?.[contexts[i]!] ?? contexts[i]!]![hybridUintToken(values[i]!)]!++;
     }
-    return new JxlEncEntropyCode(histograms.map(buildPrefixCode));
+    return new JxlEncEntropyCode(histograms.map(buildPrefixCode), contextMap);
   }
 
-  /** Write the stream header: LZ77 off, context map, hybrid uint configs and prefix codes. */
+  /** Write LZ77 parameters, context map, hybrid uint configs and prefix codes. */
   writeHeader(w: JxlBitWriter): void {
     w.writeBool(!!this.lzStreams);
     if (this.lzStreams) {
@@ -248,7 +251,7 @@ export class JxlEncEntropyCode {
       w.writeBits(3, MSB_IN_TOKEN);
       w.writeBits(2, 0);
     }
-    writeContextMap(w, this.codes.length);
+    writeContextMap(w, this.contextMap?.length ?? this.codes.length, this.contextMap);
     w.writeBool(true); // use_prefix_code (log_alphabet_size = 15)
     for (let c = 0; c < this.codes.length; c++) {
       w.writeBits(bitsFor(15), SPLIT_EXPONENT);
@@ -264,7 +267,12 @@ export class JxlEncEntropyCode {
     if (this.lzStreams && !encoded) throw new Error('JXL: stream was not included in LZ77 model');
     const { contexts, values } = encoded ?? stream;
     for (let i = 0; i < values.length; i++) {
-      writeHybridUint(w, this.codes[contexts[i]!]!, values[i]!, encoded?.offsets[i] ?? 0);
+      writeHybridUint(
+        w,
+        this.codes[this.contextMap?.[contexts[i]!] ?? contexts[i]!]!,
+        values[i]!,
+        encoded?.offsets[i] ?? 0,
+      );
     }
   }
 }
