@@ -7,6 +7,7 @@ export default defineConfig({
     fsModuleCache: true,
     include: [
       'packages/hdrify/src/**/*.test.ts',
+      'packages/icc/src/**/*.test.ts',
       'packages/docs/*.test.mjs',
       'packages/hdrify-tests/src/**/*.test.ts',
       'packages/cli-tests/src/**/*.test.ts',
@@ -24,7 +25,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       thresholds: { statements: 89, branches: 72, functions: 93, lines: 89 },
-      include: ['packages/hdrify/src/**/*.ts'],
+      include: ['packages/hdrify/src/**/*.ts', 'packages/icc/src/**/*.ts'],
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         '**/node_modules',

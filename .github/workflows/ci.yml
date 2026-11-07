@@ -36,7 +36,7 @@ jobs:
       # --- repository-specific steps (package-content check, e2e, docs, ...) go here ---
       - name: Verify published packages include dist
         run: |
-          for pkg in packages/hdrify packages/cli packages/hdrify-react; do
+          for pkg in packages/icc packages/hdrify packages/cli packages/hdrify-react; do
             (cd "$pkg" && pnpm pack --dry-run) | grep -qx 'dist/index.js' || {
               echo "::error::dist/index.js missing from the packed tarball for $pkg; the publish step would ship a broken package."
               exit 1
