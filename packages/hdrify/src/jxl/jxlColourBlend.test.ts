@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { pqToNits } from '../color/transfer.js';
 import { describe, expect, it } from 'vitest';
 import { applyMatrix3ToFloat32Array, getLinearToLinearMatrix } from '../color/matrixConversion.js';
 import { ASSETS, readPfm } from './jxlTestAssets.js';
@@ -8,7 +9,7 @@ import { JxlBitReader } from './jxlBitReader.js';
 import { readImageHeader } from './jxlImageHeader.js';
 import { xybFromLinear, convertOutputColor } from './jxlColor.js';
 describe('XYB composition in the original encoded colour space', () => {
-  for (const name of ['p3_layers', 'pq_layers', 'hlg_layers', 'custom_layers']) {
+  for (const name of ['p3_layers', 'pq_layers', 'hlg_layers', 'custom_layers', 'bt709_layers']) {
     it(`${name} matches djxl after encoded-space blending`, () => {
       const file = fs.readFileSync(new URL(`color/${name}.jxl`, ASSETS));
       const h = readImageHeader(new JxlBitReader(extractCodestream(file).codestream));
@@ -23,9 +24,18 @@ describe('XYB composition in the original encoded colour space', () => {
       );
       xybFromLinear(h, planes);
       let err = 0;
-      for (let i = 0; i < ref.samples.length; i++)
-        err = Math.max(err, Math.abs(ref.samples[i] - planes[i % 3][Math.floor(i / 3)]));
-      expect(err).toBeLessThan(0.0002);
+      for (let i = 0; i < ref.samples.length; i++) {
+        const actual = planes[i % 3][Math.floor(i / 3)],
+          expected = ref.samples[i];
+        // Near black, PQ's steep slope magnifies sub-micro-unit linear reconstruction error.
+        // Compare PQ in normalized display light (1.0=intensityTarget nits), rather than code values.
+        const delta =
+          name === 'pq_layers'
+            ? Math.abs(pqToNits(actual) - pqToNits(expected)) / h.toneMapping.intensityTarget
+            : Math.abs(actual - expected);
+        err = Math.max(err, delta);
+      }
+      expect(err).toBeLessThan(name === 'pq_layers' ? 2e-6 : 0.01 / 255);
     });
   }
 });

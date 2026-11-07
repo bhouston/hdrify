@@ -35,7 +35,7 @@ done
 magick -size 8x4 xc:'#3070a0' "$SRC/layer0.png"
 magick "$SRC/layer0.png" -fill '#b08030' -draw 'rectangle 2,1 4,2' "$SRC/layer1.png"
 magick -delay 0 "$SRC/layer0.png" -delay 10 "$SRC/layer1.png" -loop 0 -layers Optimize "$SRC/layers.gif"
-for spec in 'p3_layers RGB_D65_DCI_Rel_SRG' 'pq_layers RGB_D65_202_Rel_PeQ' 'hlg_layers RGB_D65_202_Rel_HLG' 'custom_layers RGB_D50_Ado_Rel_Ado'; do
+for spec in 'p3_layers RGB_D65_DCI_Rel_SRG' 'pq_layers RGB_D65_202_Rel_PeQ' 'hlg_layers RGB_D65_202_Rel_HLG' 'custom_layers RGB_D50_Ado_Rel_Ado' 'bt709_layers RGB_D65_SRG_Rel_709'; do
   read -r name encoding <<< "$spec"
   cjxl "$SRC/layers.gif" "$OUT/$name.jxl" --quiet -d 1 -x "color_space=$encoding"
   # libjxl requires composition in the original encoding; PFM therefore contains encoded RGB here.
