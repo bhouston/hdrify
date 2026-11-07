@@ -410,12 +410,27 @@ export function* decodeDisplayedFrames(
  * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
  * sRGB primaries.
  */
+/** A full-resolution extra channel in the same orientation as the returned image. */
+export interface JxlExtraChannel {
+  name: string;
+  type: JxlImageHeader['extraChannels'][number]['type'];
+  width: number;
+  height: number;
+  data: Float32Array;
+  /** Spot RGB and solidity as stored in the codestream. */
+  spotColor?: [number, number, number, number];
+  /** CFA channel index, when present. */
+  cfaChannel?: number;
+}
+
 /** Options shared by still and animation decoding. */
 export interface ReadJxlOptions {
   /** Apply the stored EXIF orientation to pixels and extra channels (default true). */
   applyOrientation?: boolean;
   /** Preserve associated alpha instead of returning straight alpha (default false). */
   keepPremultipliedAlpha?: boolean;
+  /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
+  renderSpotColors?: boolean;
 }
 
 /** Apply EXIF orientation to row-major interleaved samples without mutating the source. */
@@ -484,9 +499,20 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
   const n = width * height;
   const out = new Float32Array(n * 4);
   const toLinear = first.linear ? undefined : h.xybEncoded ? xybTransfer(h)?.toLinear : transferToLinear(h);
+  const spots = options.renderSpotColors
+    ? h.extraChannels.flatMap((ec, i) => (ec.spotColor ? [{ color: ec.spotColor, plane: canvas.planes[3 + i]! }] : []))
+    : [];
   for (let c = 0; c < 3; c++) {
     const p = canvas.planes[c]!;
-    for (let i = 0; i < n; i++) out[i * 4 + c] = toLinear ? toLinear(p[i]!) : p[i]!;
+    for (let i = 0; i < n; i++) {
+      // libjxl stage_spot runs after coalescing/reference storage and before output colour conversion.
+      let value = p[i]!;
+      for (const spot of spots) {
+        const mix = spot.color[3] * spot.plane[i]!;
+        value = mix * spot.color[c]! + (1 - mix) * value;
+      }
+      out[i * 4 + c] = toLinear ? toLinear(value) : value;
+    }
   }
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
@@ -502,6 +528,15 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
   }
 
   const orientation = options.applyOrientation === false ? 1 : h.orientation;
+  const extraChannels: JxlExtraChannel[] = h.extraChannels.map((ec, i) => ({
+    name: ec.name || ec.type,
+    type: ec.type,
+    width: orientation >= 5 ? height : width,
+    height: orientation >= 5 ? width : height,
+    data: orient(canvas.planes[3 + i]!.slice(), width, height, 1, orientation),
+    ...(ec.spotColor && { spotColor: [...ec.spotColor] as [number, number, number, number] }),
+    ...(ec.cfaChannel !== undefined && { cfaChannel: ec.cfaChannel }),
+  }));
   return {
     width: orientation >= 5 ? height : width,
     height: orientation >= 5 ? width : height,
@@ -518,7 +553,7 @@ export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyI
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
-      extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
+      extraChannels,
       ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),
     },
