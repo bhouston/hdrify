@@ -3,3 +3,4 @@ build/
 docs/api/
 .generated/
 docs/generated-cli/
+static/viewer/

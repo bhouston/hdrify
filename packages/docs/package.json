@@ -6,8 +6,8 @@
     "build": "docusaurus build && node scripts/include-demo.mjs",
     "preview": "docusaurus serve --port 3001",
     "tsc": "tsc --noEmit",
-    "prebuild": "node scripts/generate-cli.mjs",
-    "predev": "node scripts/generate-cli.mjs"
+    "prebuild": "node scripts/generate-cli.mjs && node scripts/copy-viewer.mjs",
+    "predev": "node scripts/generate-cli.mjs && node scripts/copy-viewer.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "^3.10.2",
@@ -24,6 +24,7 @@
     "@types/react": "^19.3.0",
     "docusaurus-plugin-typedoc": "^1.4.3",
     "hdrify-cli": "workspace:*",
+    "hdrify-react": "workspace:*",
     "typedoc": "^0.28.20",
     "typedoc-plugin-markdown": "^4.14.1",
     "typescript": "~5.9.3",

@@ -44,6 +44,7 @@ Readers and writers are synchronous; file loading and saving in this example are
 | ---------------------------------------------------------- | ----------------------------------------------------------- |
 | Understand file formats, precision, and linear pixels      | [Formats and color](/docs/formats)                          |
 | Convert files, create gain maps, or draw a browser preview | [Code examples](/docs/examples)                             |
+| Drop an HDR viewer into any page or framework              | [`<image-viewer>`](/docs/image-viewer)                      |
 | Add an HDR preview to a React application                  | [React](/docs/react)                                        |
 | Convert assets without writing an application              | [Command line](/docs/cli)                                   |
 | Look up exported functions and options                     | [Core API](/docs/api/core) and [React API](/docs/api/react) |

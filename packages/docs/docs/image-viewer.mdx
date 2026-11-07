@@ -1,0 +1,135 @@
+---
+title: <image-viewer>
+sidebar_label: <image-viewer>
+sidebar_position: 4
+---
+
+import LiveImageViewer from '@site/src/components/LiveImageViewer';
+
+# The image-viewer element
+
+<LiveImageViewer exposure-control="" style={{ marginBottom: '1rem' }} />
+
+This is a live `<image-viewer>` showing an OpenEXR file. Drag the slider on the left to change the exposure (double-click it to reset), and use the gear for tone mapping, size and image details. The demo uses the viewer built with this documentation, which may include changes not yet published to npm.
+
+`<image-viewer>` is a web component: it works in plain HTML and in any framework, with no build step. It reads every format HDRify reads, detected from the file's content rather than its name:
+
+- OpenEXR (`.exr`), all compressions HDRify supports
+- Radiance HDR (`.hdr`)
+- JPEG gain maps: Ultra HDR (JPEG-R) and Adobe gain map JPEGs
+- Any of these compressed with gzip, such as `.hdr.gz`
+
+It decodes and tone maps on the CPU and draws an sRGB preview on a 2D canvas, so it needs no WebGL.
+
+## Add it to a page
+
+Load the self-contained bundle from jsDelivr, then add the element:
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/hdrify-react/dist/image-viewer.js"></script>
+<image-viewer src="/images/memorial.exr" exposure-control style="height: 600px"></image-viewer>
+```
+
+This unversioned URL follows the latest published release, subject to CDN and browser caching. Add an exact version, such as `hdrify-react@1.2.0`, to pin one. To self-host, copy `hdrify-react/dist/image-viewer.js` into your site's public files.
+
+With a bundler, install the package and import the element instead. This uses your copies of `react` and `react-dom` and needs no CSS loader:
+
+```sh
+npm install hdrify-react hdrify react react-dom
+```
+
+```js
+import 'hdrify-react/element';
+```
+
+The element is 480 pixels tall by default; set its height with CSS. Files fetched from another origin must allow it with CORS.
+
+## Attributes
+
+```html
+<image-viewer
+  src="/images/memorial.exr"
+  tone-mapping="agx"
+  exposure="1.5"
+  fit="contain"
+  settings-panel="closed"
+  exposure-control
+></image-viewer>
+```
+
+| Attribute          | Values                                                                                             | Default   |
+| ------------------ | -------------------------------------------------------------------------------------------------- | --------- |
+| `src`              | URL of an EXR, HDR or gain map JPEG, optionally gzipped                                            |           |
+| `tone-mapping`     | `neutral`, `agx`, `aces` or `reinhard`                                                             | `neutral` |
+| `exposure`         | Exposure in stops (EV). `0` leaves the image unchanged; each `+1` doubles the brightness           | `0`       |
+| `fit`              | `contain` scales the image to fit; `actual` shows one image pixel per CSS pixel and scrolls        | `contain` |
+| `settings-panel`   | `closed` (gear shown), `open`, or `hidden` (no gear or panel)                                      | `closed`  |
+| `exposure-control` | Present (and not `"false"`) to show the vertical exposure slider over the left edge, −10 to +10 EV | absent    |
+
+When the user changes a setting with the slider or the options panel, the element updates the matching attribute and fires `settingschange`. Opening or closing the panel updates `settings-panel`.
+
+## Load an image from JavaScript
+
+To show a file the user picked, give the element its bytes instead of a URL:
+
+```js
+const viewer = document.querySelector('image-viewer');
+viewer.addEventListener('load', (event) => console.log(event.detail.image.width));
+viewer.addEventListener('error', (event) => console.error(event.detail.message));
+viewer.data = await file.arrayBuffer();
+```
+
+Attach listeners before setting a source.
+
+| Property   | What it takes                                                                                                    |
+| ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src`      | URL to fetch (also an attribute)                                                                                 |
+| `data`     | Encoded file bytes, an `ArrayBuffer` or `Uint8Array`; takes precedence over `src`                                |
+| `image`    | An already decoded `HdrifyImage`, such as one from `readExr`; takes precedence over `data` and `src`             |
+| `settings` | `{ toneMapping, exposure, fit }`. Reading returns a copy; assigning a partial object changes only those settings |
+
+| Event            | `event.detail`                                                                |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `load`           | `{ image }`, the decoded `HdrifyImage`                                        |
+| `error`          | `{ message, error }` for fetch and decode failures; the message is also shown |
+| `settingschange` | `{ settings }` after the user changes a setting                               |
+
+Events bubble and cross the shadow root. Changing the source cancels an unfinished request.
+
+## Match your site's colours
+
+The controls take their colours from `--hdrify-viewer-*` custom properties, set on the element or an ancestor. Without them the viewer uses a dark theme on a black background.
+
+```css
+image-viewer {
+  --hdrify-viewer-background: #101c20;
+  --hdrify-viewer-foreground: #f4f1e8;
+  --hdrify-viewer-popover: rgb(16 28 32 / 90%);
+  --hdrify-viewer-border: #3a4a4f;
+  --hdrify-viewer-input: #1b2a2f;
+  --hdrify-viewer-primary: #f2b134;
+}
+```
+
+The other tokens are `--hdrify-viewer-muted-foreground`, `--hdrify-viewer-ring` (focus outline), `--hdrify-viewer-destructive` (errors), `--hdrify-viewer-radius`, `--hdrify-viewer-font-family` and `--hdrify-viewer-font-size`. The [VS Code extension](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) maps them to the editor's theme colours.
+
+## In React
+
+The element is built on the `ImageViewer` React component from `hdrify-react`. In a React application, use the component directly; it takes the same options as props:
+
+```tsx
+import { ImageViewer } from 'hdrify-react';
+
+<ImageViewer
+  src="/images/memorial.exr"
+  exposureControl
+  toneMapping="agx"
+  style={{ height: 600 }}
+  onLoad={(image) => console.log(image.width, image.height)}
+  onError={(error) => console.error(error)}
+/>;
+```
+
+Settings props (`toneMapping`, `exposure`, `fit`) set the initial values and override the user's choice whenever they change. Use `onSettingsChange` to follow the user's changes. See [React](./react.md) for the lower-level `HdrifyCanvas`, and the [React API reference](/docs/api/react) for every prop.
+
+To decode a file yourself with the same format detection, use `decodeHdrifyImage(bytes)` from `hdrify-react`.

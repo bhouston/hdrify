@@ -22,7 +22,7 @@
     "release:check": "node --test scripts/release.test.mjs",
     "size": "size-limit",
     "docs:build": "pnpm --filter hdrify --filter hdrify-cli --filter hdrify-react --filter website --filter hdrify-docs build",
-    "docs:dev": "pnpm --filter hdrify-cli... build && pnpm --filter hdrify-docs dev"
+    "docs:dev": "pnpm --filter hdrify-cli... --filter hdrify-react... build && pnpm --filter hdrify-docs dev"
   },
   "devDependencies": {
     "@anolilab/semantic-release-pnpm": "^8.1.36",
@@ -73,7 +73,12 @@
         "react",
         "react-dom"
       ],
-      "limit": "22 kB"
+      "limit": "34 kB"
+    },
+    {
+      "name": "<image-viewer> standalone bundle (React included)",
+      "path": "packages/hdrify-react/dist/image-viewer.js",
+      "limit": "95 kB"
     }
   ],
   "engines": {
