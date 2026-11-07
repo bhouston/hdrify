@@ -270,6 +270,25 @@ try {
       assert.equal(blob.type, 'image/png');
       assert.ok(blob.size > 0);
       if (expectHdr) {
+        await page.evaluate(() => {
+          const viewer = document.querySelector('image-viewer');
+          viewer.style.cssText = 'width:328px;height:164px';
+          const data = window.testImage.data.map((value, index) => (index % 4 === 3 ? value : value * 2 ** 20));
+          viewer.settings = { fit: 'contain', toneMapping: 'none', exposure: -20 };
+          viewer.image = { ...window.testImage, data };
+        });
+        await settle(page);
+        await page.waitForFunction(() => window.gpuFrames.at(-1)?.width >= 328);
+        const wide = await page.evaluate(() => window.gpuFrames.at(-1).patches[3][0]);
+        assert.ok(
+          Math.abs(((wide + 0.055) / 1.055) ** 2.4 - 4) < 0.1,
+          'Exposure must recover float32 values above FP16 range',
+        );
+        await change(page, { exposure: -21 });
+        const dimmer = await page.evaluate(() => window.gpuFrames.at(-1).patches[3][0]);
+        assert.ok(Math.abs(((dimmer + 0.055) / 1.055) ** 2.4 - 2) < 0.1);
+        result.wideFloatSource = 'passed';
+        await page.evaluate(() => document.querySelector('image-viewer').removeAttribute('tone-mapping'));
         await page.evaluate(() => window.lastGpuDevice.destroy());
         await page.waitForFunction(
           () => document.querySelector('image-viewer').shadowRoot.querySelector('canvas').dataset.displayMode === 'sdr',

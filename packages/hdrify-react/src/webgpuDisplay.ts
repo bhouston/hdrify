@@ -91,19 +91,25 @@ export async function createWebGPUDisplay(canvas: HTMLCanvasElement, onFailure: 
     let previousImage: HdrifyImage | undefined;
     let previousToneMapping: ViewerToneMapping | undefined;
     let previousExposure: number | undefined;
+    let wideSource = false;
     let size = '';
     return {
       mode: 'hdr',
       draw(image, toneMapping, exposure) {
         if (disposed) return;
-        // Exposure-only changes are a uniform update. Explicit tone mappers use the same HDRify
+        // Ordinary exposure-only changes are a uniform update. Explicit tone mappers use the same HDRify
         // operators as SDR, retaining float output rather than quantizing through an 8-bit preview.
         if (
           previousImage !== image ||
           previousToneMapping !== toneMapping ||
-          (toneMapping !== 'none' && previousExposure !== exposure)
+          ((toneMapping !== 'none' || wideSource) && previousExposure !== exposure)
         ) {
           const pixels = displayPixels(image, toneMapping, toneMapping === 'none' ? 1 : exposure);
+          wideSource =
+            toneMapping === 'none' && pixels.some((value, index) => index % 4 !== 3 && Math.abs(value) > 65504);
+          // Bake exposure for values outside FP16's range, so lowering exposure can recover bright
+          // float32 source highlights rather than magnifying an already-clipped upload.
+          if (wideSource) for (let i = 0; i < pixels.length; i++) if (i % 4 !== 3) pixels[i] = pixels[i]! * exposure;
           const halves = new Uint16Array(pixels.length);
           for (let i = 0; i < pixels.length; i++)
             halves[i] = DataUtils.toHalfFloat(Math.max(-65504, Math.min(65504, pixels[i]!)));
@@ -122,7 +128,7 @@ export async function createWebGPUDisplay(canvas: HTMLCanvasElement, onFailure: 
           previousToneMapping = toneMapping;
         }
         previousExposure = exposure;
-        exposureNode.value = toneMapping === 'none' ? exposure : 1;
+        exposureNode.value = toneMapping === 'none' && !wideSource ? exposure : 1;
         quad.render(renderer);
       },
       resize(width, height, pixelRatio) {
