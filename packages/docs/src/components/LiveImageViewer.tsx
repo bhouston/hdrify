@@ -7,7 +7,11 @@ export default function LiveImageViewer({
   src = '/viewer/memorial.exr',
   style,
   ...attributes
-}: { src?: string; style?: CSSProperties } & Record<string, string>) {
+}: {
+  src?: string;
+  style?: CSSProperties;
+  [attribute: string]: unknown;
+}) {
   const url = useBaseUrl(src);
   const bundleUrl = useBaseUrl('/viewer/image-viewer.js');
   useEffect(() => {
