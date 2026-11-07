@@ -156,6 +156,43 @@ describe('JPEG XL decoder gaps', () => {
     expect(frames[1].image.data).toEqual(second);
   });
 
+  it('combines Rec.2020, rotation, associated alpha and animation against djxl', () => {
+    const file = bytes('widegamut_animation');
+    const associated = readJxlFrames(file, { keepPremultipliedAlpha: true });
+    const straight = readJxlFrames(file);
+    expect(associated.numLoops).toBe(3);
+    expect(associated.frames.map((frame) => frame.duration)).toEqual([0.025, 0.1, 0.25]);
+    expect(associated.frames.map((frame) => frame.timecode)).toEqual([0x01020304, 0x01020305, 0x01020306]);
+    for (let frame = 0; frame < 3; frame++) {
+      const image = associated.frames[frame].image;
+      const ref = readPfm(`features/widegamut_animation.ref${frame}.pfm`);
+      expect([image.width, image.height, image.linearColorSpace]).toEqual([2, 3, 'linear-rec2020']);
+      expect(image.metadata).toMatchObject({ orientation: 6, alphaPremultiplied: true });
+      for (let i = 0; i < 6; i++) {
+        const alpha = image.data[i * 4 + 3];
+        expect(straight.frames[frame].image.data[i * 4 + 3]).toBe(alpha);
+        for (let c = 0; c < 3; c++) {
+          expect(image.data[i * 4 + c]).toBe(ref.samples[i * 3 + c]);
+          expect(straight.frames[frame].image.data[i * 4 + c]).toBeCloseTo(
+            image.data[i * 4 + c] / Math.max(alpha, 2 ** -26),
+            6,
+          );
+        }
+      }
+    }
+    expect(readJxl(file, { keepPremultipliedAlpha: true }).data).toEqual(associated.frames[0].image.data);
+    const stored = readJxlFrames(file, { applyOrientation: false, keepPremultipliedAlpha: true });
+    expect([stored.frames[0].image.width, stored.frames[0].image.height]).toEqual([3, 2]);
+    expect(Array.from(stored.frames[0].image.data).filter((_, i) => i % 4 === 3)).toEqual([
+      0,
+      Math.fround(1e-7),
+      Math.fround(0.4),
+      Math.fround(0.6),
+      Math.fround(0.8),
+      1,
+    ]);
+  });
+
   it('returns nonuniform durations, timecodes, loop count and still images', () => {
     const { frames, numLoops } = readJxlFrames(bytes('animation_timing'));
     expect(numLoops).toBe(3);
