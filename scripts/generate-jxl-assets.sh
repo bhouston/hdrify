@@ -134,6 +134,9 @@ done
 (cd "$ROOT" && JXL_CRAFT_OUT="$FEAT" pnpm exec vitest run packages/hdrify/src/jxl/jxlDecoderGaps.test.ts -t 'writes the crafted preview' >/dev/null)
 djxl "$FEAT/preview.jxl" "$FEAT/preview.ref.pfm" --quiet
 
+# HDR transfer-function and colour-management corpus.
+bash "$ROOT/scripts/generate-jxl-color-assets.sh"
+
 # Combined Rec.2020, orientation, associated alpha and animation output. PFM drops alpha while
 # retaining association, so the oracle is compared using keepPremultipliedAlpha: true.
 djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \

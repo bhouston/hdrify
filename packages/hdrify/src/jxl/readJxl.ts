@@ -1,5 +1,5 @@
-import type { LinearColorSpace } from '../color/colorSpaces.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
+import { convertOutputColor, jxlColorMetadata } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -189,36 +189,6 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
     if (exp === expMax) return mant ? Number.NaN : sign * Number.POSITIVE_INFINITY;
     return sign * (1 + mant / 2 ** mantBits) * 2 ** (exp - bias);
   };
-}
-
-function linearColorSpaceOf(h: JxlImageHeader): LinearColorSpace {
-  const ce = h.colorEncoding;
-  if (ce.wantIcc) return 'linear-rec709'; // ponytail: ICC profile not interpreted (no CMS); assumes sRGB primaries
-  if (ce.colorSpace === 'gray' || ce.primaries === 'srgb') return 'linear-rec709';
-  if (ce.primaries === 'p3') return 'linear-p3';
-  if (ce.primaries === 'bt2100') return 'linear-rec2020';
-  throw new Error('JXL: custom primaries are not supported');
-}
-
-/** Map an encoded (non-linear) value to linear light per the image's transfer function. */
-function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefined {
-  const ce = h.colorEncoding;
-  // ponytail: ICC images assume sRGB transfer for integer samples, linear for float; add a CMS when needed.
-  if (ce.wantIcc) return h.bitDepth.floatSample ? undefined : sRGBToLinear;
-  switch (ce.transferFunction) {
-    case 'linear':
-      return undefined;
-    case 'srgb':
-      return sRGBToLinear;
-    case 'gamma': {
-      const g = 1 / ce.gamma!;
-      return (v) => (v <= 0 ? 0 : v ** g);
-    }
-    case 'bt709':
-      return (v) => (v < 0.081 ? v / 4.5 : ((v + 0.099) / 1.099) ** (1 / 0.45));
-    default:
-      throw new Error(`JXL: transfer function '${ce.transferFunction}' is not supported yet`);
-  }
 }
 
 /** Linear ↔ encoded transfer for XYB images: libjxl blends and stores references in the output encoding. */
@@ -492,7 +462,7 @@ function displayedImage(
   if (canvas.width !== width || canvas.height !== height) throw new Error('JXL: displayed frame is not image-sized');
   const n = width * height;
   const out = new Float32Array(n * 4);
-  const toLinear = first.linear ? undefined : h.xybEncoded ? xybTransfer(h)?.toLinear : transferToLinear(h);
+  const toLinear = first.linear || !h.xybEncoded ? undefined : xybTransfer(h)?.toLinear;
   const spots = options.renderSpotColors
     ? h.extraChannels.flatMap((ec, i) => (ec.spotColor ? [{ color: ec.spotColor, plane: canvas.planes[3 + i]! }] : []))
     : [];
@@ -508,6 +478,7 @@ function displayedImage(
       out[i * 4 + c] = toLinear ? toLinear(value) : value;
     }
   }
+  const linearColorSpace = h.xybEncoded ? 'linear-rec709' : convertOutputColor(h, out, false);
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   const associated = alphaIdx >= 0 && h.extraChannels[alphaIdx]!.alphaAssociated;
@@ -536,7 +507,7 @@ function displayedImage(
     width: outWidth,
     height: outHeight,
     data: orient(out, width, height, 4, orientation),
-    linearColorSpace: h.xybEncoded ? 'linear-rec709' : linearColorSpaceOf(h),
+    linearColorSpace,
     metadata: {
       format: 'JPEG XL',
       container: isContainer,
@@ -546,6 +517,7 @@ function displayedImage(
       colorSpace: h.colorEncoding.colorSpace,
       transferFunction: h.colorEncoding.transferFunction,
       orientation: h.orientation,
+      ...jxlColorMetadata(h),
       intensityTarget: h.toneMapping.intensityTarget,
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels,
@@ -578,6 +550,11 @@ export function readJxlFrames(
 /**
  * Read a JPEG XL codestream or container into linear-light RGBA, applying orientation and returning
  * straight alpha by default. Animations return the first displayed frame; use readJxlFrames for all.
+ * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
+ * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
+ * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
+ * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
+ * use the historical sRGB fallback and metadata.iccColorManaged = false.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {

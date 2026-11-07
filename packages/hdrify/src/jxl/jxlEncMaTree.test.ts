@@ -107,6 +107,15 @@ describe('learned Modular trees', () => {
     for (let i = 0; i < original.length; i++) {
       expect(Math.imul(unpackSigned(factored[0].values[i]), 2 ** log)).toBe(original[i]);
     }
+    const boundary = factorMaResiduals(model, [{ contexts: [context], values: [packSigned(-2147483648)] }]);
+    expect(model.tokenValues[model.leaves[context].multiplierToken]).toBe(30);
+    expect(unpackSigned(boundary[0].values[0])).toBe(-2);
+    const treeBits = new JxlBitWriter();
+    const treeCode = JxlEncEntropyCode.build(6, [model.stream]);
+    treeCode.writeHeader(treeBits);
+    treeCode.writeStream(treeBits, model.stream);
+    JxlEncEntropyCode.build(model.numLeaves, []).writeHeader(treeBits);
+    expect(readMaTree(new JxlBitReader(treeBits.finish())).tree.multiplier).toContain(2 ** 30);
     const withOddValue = [{ contexts: [context, context], values: [packSigned(8), packSigned(7)] }];
     expect(factorMaResiduals(model, withOddValue)).toBe(withOddValue);
     expect(model.tokenValues[model.leaves[context].multiplierToken]).toBe(0);
