@@ -44,6 +44,30 @@ describe('JxlBitReader', () => {
     expect(() => end.skip(200)).toThrow();
   });
 
+  it('allows lookahead beyond EOF but rejects consuming those bits', () => {
+    const br = new JxlBitReader(new Uint8Array([0xa5]));
+    expect(br.peekBits(15)).toBe(0xa5);
+    br.readBits(8);
+    expect(() => br.checkBounds()).not.toThrow();
+    br.skipBits(1);
+    expect(() => br.checkBounds()).toThrow(/unexpected end/);
+  });
+
+  it('validates reader ranges against the supplied view', () => {
+    const bytes = new Uint8Array(8).subarray(2, 6);
+    for (const [offset, length] of [
+      [-1, 1],
+      [0, -1],
+      [3, 2],
+      [5, 0],
+      [0.5, 1],
+      [0, NaN],
+    ]) {
+      expect(() => new JxlBitReader(bytes, offset, length)).toThrow(/range/);
+    }
+    expect(() => new JxlBitReader(bytes, 4, 0)).not.toThrow();
+  });
+
   it('unpackSigned zig-zags', () => {
     expect([0, 1, 2, 3, 4].map(unpackSigned)).toEqual([0, -1, 1, -2, 2]);
   });
@@ -51,6 +75,48 @@ describe('JxlBitReader', () => {
 
 describe('JxlBitWriter round-trip', async () => {
   const { JxlBitWriter } = await import('./jxlBitWriter.js');
+  it('appends offset views across growths and resumes bit writes', () => {
+    const w = new JxlBitWriter();
+    const source = Uint8Array.from({ length: 9002 }, (_, i) => i & 0xff);
+    const view = source.subarray(1, -1);
+    w.writeBits(8, 0xa5);
+    w.writeBytes(new Uint8Array());
+    w.writeBytes(view);
+    // Appends must copy: later changes to the source cannot change encoded bytes.
+    const expected = new Uint8Array([0xa5, ...view, ...view, 0xff]);
+    w.writeBytes(view);
+    source.fill(0);
+    w.writeBits(3, 7);
+    expect(() => w.writeBytes(view)).toThrow(/not byte-aligned/);
+    w.writeBits(5, 31);
+    expect(w.finish()).toEqual(expected);
+    expect(w.bitPosition).toBe(expected.length * 8);
+  });
+
+  for (const capacity of [1024, 2048]) {
+    for (let bits = 1; bits < 8; bits++) {
+      it(`preserves ${bits} pending bits after ${capacity} flushed bytes`, () => {
+        const w = new JxlBitWriter();
+        const prefix = Uint8Array.from({ length: capacity }, (_, i) => i & 0xff);
+        w.writeBytes(prefix);
+        const tail = (1 << bits) - 1;
+        w.writeBits(bits, tail);
+        const finished = w.finish();
+        expect(finished.length).toBe(capacity + 1);
+        expect(finished.subarray(0, capacity)).toEqual(prefix);
+        expect(finished[capacity]).toBe(tail);
+        expect(w.finish()).toEqual(finished);
+        expect(w.bitPosition).toBe(capacity * 8 + bits);
+
+        // finish() leaves the pending bits intact for subsequent writes.
+        w.writeBits(8 - bits, 0);
+        w.writeBytes(new Uint8Array([0xa5]));
+        expect(w.finish()).toEqual(new Uint8Array([...finished, 0xa5]));
+        expect(finished.length).toBe(capacity + 1);
+      });
+    }
+  }
+
   it('writes what JxlBitReader reads', () => {
     const w = new JxlBitWriter();
     w.writeBits(3, 5);

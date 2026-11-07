@@ -425,6 +425,7 @@ export function readImageHeader(br: JxlBitReader): JxlImageHeader {
 
   if (h.colorEncoding.wantIcc) h.icc = readIccProfile(br);
   br.zeroPadToByte();
+  br.checkBounds();
   return h;
 }
 

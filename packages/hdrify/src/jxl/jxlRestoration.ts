@@ -10,13 +10,6 @@ export function mirrorCoord(i: number, n: number): number {
   return i;
 }
 
-/** Default Gaborish weights (w1 side, w2 diagonal) per channel. */
-export const JXL_DEFAULT_GABORISH_WEIGHTS: readonly (readonly [number, number])[] = [
-  [0.115169525, 0.061248592],
-  [0.115169525, 0.061248592],
-  [0.115169525, 0.061248592],
-];
-
 /**
  * Gaborish on one `width x height` plane, in place:
  * `out = (c + w1 * sum(side) + w2 * sum(diag)) / (1 + 4 w1 + 4 w2)` with mirrored borders.
@@ -46,7 +39,7 @@ export function applyGaborish(plane: Float32Array, width: number, height: number
   }
 }
 
-/** EPF parameters (RestorationFilter epf_* fields) with libjxl defaults. */
+/** EPF parameters (RestorationFilter epf_* fields). */
 export interface JxlEpfParams {
   /** 1..3 iterations (0 = disabled). */
   readonly iters: number;
@@ -55,14 +48,6 @@ export interface JxlEpfParams {
   readonly pass2SigmaScale: number;
   readonly borderSadMul: number;
 }
-
-export const JXL_DEFAULT_EPF_PARAMS: JxlEpfParams = {
-  iters: 2,
-  channelScale: [40, 5, 3.5],
-  pass0SigmaScale: 0.9,
-  pass2SigmaScale: 6.5,
-  borderSadMul: 2 / 3,
-};
 
 /** Default EPF sharpness LUT (`i / 7`). */
 export const JXL_DEFAULT_EPF_SHARP_LUT: readonly number[] = [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7, 1];
@@ -111,8 +96,18 @@ function epfStep(
     d1 = dst[1]!,
     d2 = dst[2]!;
   const negInvBase = 6.6 * (Math.SQRT1_2 - 1);
+  const nTaps = kernel.length >> 1;
+  const nDist = dist.length >> 1;
+  // Linear offsets for the interior, where no mirroring can happen (reach = kernel 2 + SAD 1 = 3).
+  const kOff = new Int32Array(nTaps);
+  for (let t = 0; t < nTaps; t++) kOff[t] = kernel[2 * t + 1]! * width + kernel[2 * t]!;
+  const dOff = new Int32Array(nDist);
+  for (let d = 0; d < nDist; d++) dOff[d] = dist[2 * d + 1]! * width + dist[2 * d]!;
+  // Centre SAD neighbour indices: independent of the kernel tap, so computed once per pixel.
+  const bi = new Int32Array(nDist);
   for (let y = 0; y < height; y++) {
     const yBorder = (y & 7) === 0 || (y & 7) === 7;
+    const yInterior = y >= 3 && y < height - 3;
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       const sg = sigma[(y >> 3) * sigmaStride + (x >> 3)]!;
@@ -128,28 +123,52 @@ function epfStep(
       let a0 = s0[i]!,
         a1 = s1[i]!,
         a2 = s2[i]!;
-      for (let k = 0; k < kernel.length; k += 2) {
-        const kx = x + kernel[k]!;
-        const ky = y + kernel[k + 1]!;
-        let e0 = 0,
-          e1 = 0,
-          e2 = 0;
-        for (let d = 0; d < dist.length; d += 2) {
-          const ox = dist[d]!;
-          const oy = dist[d + 1]!;
-          const ki = mirrorCoord(ky + oy, height) * width + mirrorCoord(kx + ox, width);
-          const bi = mirrorCoord(y + oy, height) * width + mirrorCoord(x + ox, width);
-          e0 += Math.abs(s0[ki]! - s0[bi]!);
-          e1 += Math.abs(s1[ki]! - s1[bi]!);
-          e2 += Math.abs(s2[ki]! - s2[bi]!);
+      if (yInterior && x >= 3 && x < width - 3) {
+        for (let t = 0; t < nTaps; t++) {
+          const kc = i + kOff[t]!;
+          let e0 = 0,
+            e1 = 0,
+            e2 = 0;
+          for (let d = 0; d < nDist; d++) {
+            const o = dOff[d]!;
+            const ki = kc + o;
+            const b = i + o;
+            e0 += Math.abs(s0[ki]! - s0[b]!);
+            e1 += Math.abs(s1[ki]! - s1[b]!);
+            e2 += Math.abs(s2[ki]! - s2[b]!);
+          }
+          const w = Math.max(0, 1 + (cs0 * e0 + cs1 * e1 + cs2 * e2) * negInvSigma);
+          if (w === 0) continue;
+          sumW += w;
+          a0 += w * s0[kc]!;
+          a1 += w * s1[kc]!;
+          a2 += w * s2[kc]!;
         }
-        const w = Math.max(0, 1 + (cs0 * e0 + cs1 * e1 + cs2 * e2) * negInvSigma);
-        if (w === 0) continue;
-        const ki = mirrorCoord(ky, height) * width + mirrorCoord(kx, width);
-        sumW += w;
-        a0 += w * s0[ki]!;
-        a1 += w * s1[ki]!;
-        a2 += w * s2[ki]!;
+      } else {
+        for (let d = 0; d < nDist; d++) {
+          bi[d] = mirrorCoord(y + dist[2 * d + 1]!, height) * width + mirrorCoord(x + dist[2 * d]!, width);
+        }
+        for (let k = 0; k < kernel.length; k += 2) {
+          const kx = x + kernel[k]!;
+          const ky = y + kernel[k + 1]!;
+          let e0 = 0,
+            e1 = 0,
+            e2 = 0;
+          for (let d = 0; d < nDist; d++) {
+            const ki = mirrorCoord(ky + dist[2 * d + 1]!, height) * width + mirrorCoord(kx + dist[2 * d]!, width);
+            const b = bi[d]!;
+            e0 += Math.abs(s0[ki]! - s0[b]!);
+            e1 += Math.abs(s1[ki]! - s1[b]!);
+            e2 += Math.abs(s2[ki]! - s2[b]!);
+          }
+          const w = Math.max(0, 1 + (cs0 * e0 + cs1 * e1 + cs2 * e2) * negInvSigma);
+          if (w === 0) continue;
+          const ki = mirrorCoord(ky, height) * width + mirrorCoord(kx, width);
+          sumW += w;
+          a0 += w * s0[ki]!;
+          a1 += w * s1[ki]!;
+          a2 += w * s2[ki]!;
+        }
       }
       d0[i] = a0 / sumW;
       d1[i] = a1 / sumW;
@@ -170,7 +189,7 @@ export function applyEpf(
   height: number,
   sigma: Float32Array,
   sigmaStride: number,
-  params: JxlEpfParams = JXL_DEFAULT_EPF_PARAMS,
+  params: JxlEpfParams,
 ): void {
   if (params.iters <= 0) return;
   const n = width * height;

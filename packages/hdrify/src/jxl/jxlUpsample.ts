@@ -92,6 +92,26 @@ export function upsamplePlane(
   const ow = width * k;
   const oh = height * k;
   const out = new Float32Array(ow * oh);
+  // Flipped kernel per output sub-pixel, built once: full[(dy * k + dx) * 25 + iy * 5 + ix].
+  const full = new Float32Array(k * k * 25);
+  for (let dy = 0; dy < k; dy++) {
+    const flipV = dy >= n;
+    const my = flipV ? k - 1 - dy : dy;
+    for (let dx = 0; dx < k; dx++) {
+      const flipH = dx >= n;
+      const kb = (my * n + (flipH ? k - 1 - dx : dx)) * 25;
+      const fb = (dy * k + dx) * 25;
+      for (let iy = 0; iy < 5; iy++) {
+        const kyy = (flipV ? 4 - iy : iy) * 5;
+        for (let ix = 0; ix < 5; ix++) full[fb + iy * 5 + ix] = kernels[kb + kyy + (flipH ? 4 - ix : ix)]!;
+      }
+    }
+  }
+  // Mirrored coordinate tables for the 2-sample reach on each side.
+  const colIdx = new Int32Array(width + 4);
+  for (let x = 0; x < colIdx.length; x++) colIdx[x] = mirrorCoord(x - 2, width);
+  const rowIdx = new Int32Array(height + 4);
+  for (let y = 0; y < rowIdx.length; y++) rowIdx[y] = mirrorCoord(y - 2, height) * width;
   // 5x5 neighbourhood of the current source pixel (mirrored), reloaded per source pixel.
   const nb = new Float32Array(25);
   for (let sy = 0; sy < height; sy++) {
@@ -99,26 +119,20 @@ export function upsamplePlane(
       let lo = Infinity;
       let hi = -Infinity;
       for (let iy = 0; iy < 5; iy++) {
-        const row = mirrorCoord(sy + iy - 2, height) * width;
+        const row = rowIdx[sy + iy]!;
         for (let ix = 0; ix < 5; ix++) {
-          const v = plane[row + mirrorCoord(sx + ix - 2, width)]!;
+          const v = plane[row + colIdx[sx + ix]!]!;
           nb[iy * 5 + ix] = v;
           if (v < lo) lo = v;
           if (v > hi) hi = v;
         }
       }
       for (let dy = 0; dy < k; dy++) {
-        const flipV = dy >= n;
-        const my = flipV ? k - 1 - dy : dy;
         const orow = (sy * k + dy) * ow + sx * k;
         for (let dx = 0; dx < k; dx++) {
-          const flipH = dx >= n;
-          const kb = (my * n + (flipH ? k - 1 - dx : dx)) * 25;
+          const fb = (dy * k + dx) * 25;
           let sum = 0;
-          for (let iy = 0; iy < 5; iy++) {
-            const kyy = (flipV ? 4 - iy : iy) * 5;
-            for (let ix = 0; ix < 5; ix++) sum += kernels[kb + kyy + (flipH ? 4 - ix : ix)]! * nb[iy * 5 + ix]!;
-          }
+          for (let j = 0; j < 25; j++) sum += full[fb + j]! * nb[j]!;
           out[orow + dx] = sum < lo ? lo : sum > hi ? hi : sum;
         }
       }

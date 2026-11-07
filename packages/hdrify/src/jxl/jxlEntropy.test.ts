@@ -159,6 +159,28 @@ describe('hybrid uint', () => {
     }
   });
 
+  it('matches exact float maths for every token up to n = 32 and rejects results ≥ 2^32', () => {
+    for (const [se, msb, lsb] of configs) {
+      const cfg = hybridConfig(se, msb, lsb);
+      for (const fill of [0x00, 0xff]) {
+        for (let token = 0; ; token++) {
+          const n = token < cfg.split ? 0 : se - msb - lsb + Math.floor((token - cfg.split) / 2 ** (msb + lsb));
+          if (n > 32) break;
+          const br = new JxlBitReader(new Uint8Array(8).fill(fill));
+          if (token < cfg.split) {
+            expect(readHybridUint(br, cfg, token)).toBe(token);
+            continue;
+          }
+          const high = ((token >>> lsb) & ((1 << msb) - 1)) | (1 << msb);
+          const bits = fill ? 2 ** n - 1 : 0;
+          const want = (high * 2 ** n + bits) * 2 ** lsb + (token & ((1 << lsb) - 1));
+          if (want > 0xffffffff) expect(() => readHybridUint(br, cfg, token)).toThrow(/too large/);
+          else expect(readHybridUint(br, cfg, token)).toBe(want);
+        }
+      }
+    }
+  });
+
   it('matches known tokens for config (4, 2, 0)', () => {
     const cfg = hybridConfig(4, 2, 0);
     expect(encodeHybridUint(cfg, 15)).toEqual({ token: 15, nbits: 0, bits: 0 });

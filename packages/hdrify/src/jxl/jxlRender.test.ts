@@ -16,6 +16,7 @@ import {
   PATCH_BLEND_BELOW,
   PATCH_NONE,
   saveReference,
+  staysLinear,
   upsampleFrame,
 } from './jxlRender.js';
 import { ASSETS, readPnm } from './jxlTestAssets.js';
@@ -228,6 +229,18 @@ describe('frame bookkeeping', () => {
     expect(refs[1]!.planes[0][0]).toBe(1);
     saveReference(refs, frameHeader(image, { isLast: true, saveAsReference: 0 }), before, canvas);
     expect(refs[0]).toBeUndefined();
+  });
+
+  it('staysLinear matches libjxl: from-linear only for blending or post-colour-transform references', () => {
+    const ref = { isLast: false, duration: 5, saveAsReference: 1 };
+    const cases = [
+      frameHeader(image, { isLast: true }),
+      frameHeader(image, ref),
+      frameHeader(image, { ...ref, saveBeforeCt: true }),
+      frameHeader(image, { ...ref, saveBeforeCt: true, haveCrop: true }),
+      frameHeader(image, { isLast: true, blendingInfo: bi('add') }),
+    ];
+    expect(cases.map(staysLinear)).toEqual([true, false, true, false, false]);
   });
 });
 
