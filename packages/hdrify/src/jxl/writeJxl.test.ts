@@ -141,6 +141,15 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
 
   it('large groups (groupSizeShift 3)', () => expectRgb(pattern(300, 40), { groupSizeShift: 3 }));
 
+  it('high-effort ANS round trips with djxl for every sample format and partial groups', () => {
+    for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
+      expectRgb(
+        pattern(270, 23, (x, y) => ((x + y) % 7) / 6),
+        { bitDepth, effort: 'high', groupSizeShift: 0 },
+      );
+    }
+  });
+
   it('constant images', () => {
     expectRgb(
       makeImage(40, 30, () => 0),
@@ -313,6 +322,15 @@ describe('writeJxl', () => {
     expect(readJxl(bytes).data).toEqual(image.data);
   });
 
+  it('high effort enables size-gated ANS while standard output remains the default', () => {
+    const image = readExr(fs.readFileSync(new URL('../../../../assets/reference_gradient.exr', import.meta.url)));
+    const standard = writeJxl(image);
+    expect(writeJxl(image, { effort: 'standard' })).toEqual(standard);
+    const high = writeJxl(image, { effort: 'high' });
+    expect(high.length).toBeLessThan(standard.length);
+    expect(readJxl(high).data).toEqual(readJxl(standard).data);
+  });
+
   it('rejects invalid input', () => {
     const ok = pattern(2, 2);
     expect(() => writeJxl({ ...ok, width: 0 })).toThrow(/dimensions/);
@@ -320,6 +338,9 @@ describe('writeJxl', () => {
     expect(() => writeJxl({ ...ok, width: 1.5 })).toThrow(/dimensions/);
     expect(() => writeJxl({ ...ok, data: new Float32Array(15) })).toThrow(/length/);
     expect(() => writeJxl(ok, { groupSizeShift: 4 })).toThrow(/groupSizeShift/);
+    expect(() => writeJxl(ok, { effort: 'invalid' as 'high' })).toThrow(/effort/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'high' })).toThrow(/only supported for lossless/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'standard' })).not.toThrow();
     expect(() => writeJxl(ok, { bitDepth: 'int7' as 'uint8' })).toThrow(/bitDepth/);
   });
 });

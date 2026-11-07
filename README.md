@@ -133,6 +133,13 @@ fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
 fs.writeFileSync('delivery.jxl', writeJxl(imageData, { lossy: true, distance: 1 }));
 ```
 
+For additional lossless compression, use `writeJxl(imageData, { effort: 'high' })`
+or CLI `--jxl-effort high`. The default `standard` effort uses prefix codes;
+`high` also tries ANS and retains it only when the complete entropy header and
+payload are smaller. This trades more encoding work for size: representative
+half-float corpus gains are 0.3–2.8%, with roughly 20–60% longer encoding times
+on the measured host. High effort is currently supported for lossless output only.
+
 Lossy encoding uses a fixed DCT8 strategy, default JPEG XL quantization tables,
 uniform quantization, and lossless alpha. `distance` must be greater than 0 and at
 most 25 (default 1); smaller values retain more detail and produce larger files.

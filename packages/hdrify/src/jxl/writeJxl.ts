@@ -20,6 +20,10 @@ import {
 } from './jxlEncHeaders.js';
 
 export interface WriteJxlOptions {
+  /** Lossless compression search: 'standard' (default) uses prefix codes;
+   * 'high' also tries ANS and selects it only when smaller. High costs more encode work.
+   */
+  effort?: 'standard' | 'high';
   /** Encode lossy XYB VarDCT instead of lossless Modular (default false). */
   lossy?: boolean;
   /** Quantization distance for lossy output, > 0 and <= 25 (default 1). Smaller values retain more detail.
@@ -55,7 +59,7 @@ const PREDICTOR_GRADIENT = 5;
 
 /**
  * Encode an image as lossless Modular or lossy VarDCT JPEG XL.
- * Lossless encoding uses Gradient/Weighted prediction, prefix/LZ77 codes and estimated-cost transforms.
+ * Lossless encoding uses Gradient/Weighted prediction, prefix/LZ77 codes and estimated-cost transforms; high effort also tries ANS.
  * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
  * alpha remains lossless in the selected source sample format.
  */
@@ -75,7 +79,11 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   const format = options.bitDepth ?? 'float16';
   const bitDepth = BIT_DEPTHS[format];
   if (!bitDepth) throw new Error(`writeJxl: unsupported bitDepth ${format}`);
+  if (options.effort !== undefined && options.effort !== 'standard' && options.effort !== 'high') {
+    throw new Error('writeJxl: effort must be standard or high');
+  }
   if (options.lossy) {
+    if (options.effort === 'high') throw new Error('writeJxl: high effort is only supported for lossless output');
     const distance = options.distance ?? 1;
     if (!Number.isFinite(distance) || distance <= 0 || distance > 25) {
       throw new Error('writeJxl: distance must be > 0 and <= 25');
@@ -145,7 +153,11 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
       }
     }
   }
-  let dataCode = JxlEncEntropyCode.buildModular(tree.numLeaves, [globalStream, ...groupStreams]);
+  let dataCode = JxlEncEntropyCode.buildModular(
+    tree.numLeaves,
+    [globalStream, ...groupStreams],
+    options.effort === 'high',
+  );
   const originalStreams = [globalStream, ...groupStreams];
   const weightedStreams = [
     tokenize(globalChannels, true),
@@ -164,17 +176,15 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
       ),
     }));
     const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
-    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams);
-    const size = (code: JxlEncEntropyCode, streams: TokenStream[], treeStream: TokenStream): number => {
+    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams, options.effort === 'high');
+    const size = (code: JxlEncEntropyCode, treeStream: TokenStream): number => {
       const w = new JxlBitWriter();
       const treeCode = JxlEncEntropyCode.build(6, [treeStream]);
       treeCode.writeHeader(w);
       treeCode.writeStream(w, treeStream);
-      code.writeHeader(w);
-      for (const stream of streams) code.writeStream(w, stream);
-      return w.bitPosition;
+      return w.bitPosition + code.encodedSizeBits;
     };
-    if (size(mixedCode, mixedStreams, mixedTree.stream) < size(dataCode, originalStreams, tree.stream)) {
+    if (size(mixedCode, mixedTree.stream) < size(dataCode, tree.stream)) {
       tree = mixedTree;
       dataCode = mixedCode;
       globalStream = mixedStreams[0]!;

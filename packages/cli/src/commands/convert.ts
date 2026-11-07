@@ -93,6 +93,11 @@ export const command = defineCommand({
         type: 'number',
         default: 90,
       })
+      .option('jxl-effort', {
+        describe: 'Lossless JPEG XL compression effort: standard (default) or high (also tries ANS)',
+        type: 'string',
+        choices: ['standard', 'high'] as const,
+      })
       .option('jxl-lossy', {
         describe: 'Write lossy XYB JPEG XL (JXL output only; default is lossless)',
         type: 'boolean',
@@ -142,6 +147,7 @@ export const command = defineCommand({
       size,
       filter,
       flip,
+      'jxl-effort': jxlEffort,
       'jxl-lossy': jxlLossy,
       'jxl-distance': jxlDistance,
     } = argv;
@@ -164,6 +170,11 @@ export const command = defineCommand({
     const supportedOutput = [...HDR_EXTENSIONS, ...SDR_EXTENSIONS].join(', ');
     if (!isHdrExtension(outputExt) && !isSdrExtension(outputExt)) {
       console.error(`Error: Unsupported output format: ${outputExt}. Supported formats: ${supportedOutput}`);
+      process.exit(1);
+    }
+
+    if (jxlEffort !== undefined && outputExt !== '.jxl') {
+      console.error(`Error: --jxl-effort is only valid for JXL output. Output format is ${outputExt}.`);
       process.exit(1);
     }
 
@@ -225,7 +236,11 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
-          outputBuffer = writeJxl(dataToWrite, { lossy: jxlLossy || jxlDistance !== undefined, distance: jxlDistance });
+          outputBuffer = writeJxl(dataToWrite, {
+            effort: jxlEffort,
+            lossy: jxlLossy || jxlDistance !== undefined,
+            distance: jxlDistance,
+          });
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }
