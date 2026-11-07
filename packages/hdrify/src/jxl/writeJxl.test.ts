@@ -339,6 +339,8 @@ describe('writeJxl', () => {
     expect(() => writeJxl({ ...ok, data: new Float32Array(15) })).toThrow(/length/);
     expect(() => writeJxl(ok, { groupSizeShift: 4 })).toThrow(/groupSizeShift/);
     expect(() => writeJxl(ok, { effort: 'invalid' as 'high' })).toThrow(/effort/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'high' })).toThrow(/only supported for lossless/);
+    expect(() => writeJxl(ok, { lossy: true, effort: 'standard' })).not.toThrow();
     expect(() => writeJxl(ok, { bitDepth: 'int7' as 'uint8' })).toThrow(/bitDepth/);
   });
 });

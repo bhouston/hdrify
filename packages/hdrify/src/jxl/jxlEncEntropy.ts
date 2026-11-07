@@ -178,18 +178,18 @@ function writeAlphabetSize(w: JxlBitWriter, size: number): void {
 }
 
 /** Context map with identity clustering (simple form when ≤ 3 bits per entry, else entropy coded). */
-function writeContextMap(w: JxlBitWriter, numContexts: number): void {
+function writeContextMap(w: JxlBitWriter, numContexts: number, map?: Uint8Array): void {
   if (numContexts === 1) return;
-  const nbits = bitsFor(numContexts - 1);
+  const nbits = bitsFor(map ? Math.max(...map) : numContexts - 1);
   if (nbits <= 3) {
     w.writeBool(true); // is_simple
     w.writeBits(2, nbits);
-    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, c);
+    for (let c = 0; c < numContexts; c++) w.writeBits(nbits, map?.[c] ?? c);
     return;
   }
   w.writeBool(false); // not simple
   w.writeBool(false); // no move-to-front
-  const values = Array.from({ length: numContexts }, (_, c) => c);
+  const values = Array.from({ length: numContexts }, (_, c) => map?.[c] ?? c);
   const stream: TokenStream = { contexts: new Uint8Array(numContexts), values };
   const code = JxlEncEntropyCode.build(1, [stream]);
   code.writeHeader(w);
@@ -213,6 +213,7 @@ export class JxlEncEntropyCode {
       ans?: JxlAnsCode;
       minSymbol?: number;
       numContexts?: number;
+      contextMap?: Uint8Array;
     } = {},
   ) {}
 
@@ -300,12 +301,14 @@ export class JxlEncEntropyCode {
     return best;
   }
 
-  static build(numContexts: number, streams: TokenStream[]): JxlEncEntropyCode {
-    const histograms = Array.from({ length: numContexts }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
+  static build(numContexts: number, streams: TokenStream[], contextMap?: Uint8Array): JxlEncEntropyCode {
+    const numClusters = contextMap ? Math.max(...contextMap) + 1 : numContexts;
+    const histograms = Array.from({ length: numClusters }, () => new Uint32Array(JXL_ENC_NUM_TOKENS));
     for (const { contexts, values } of streams) {
-      for (let i = 0; i < values.length; i++) histograms[contexts[i]!]![hybridUintToken(values[i]!)]!++;
+      for (let i = 0; i < values.length; i++)
+        histograms[contextMap?.[contexts[i]!] ?? contexts[i]!]![hybridUintToken(values[i]!)]!++;
     }
-    return new JxlEncEntropyCode(histograms.map(buildPrefixCode));
+    return new JxlEncEntropyCode(histograms.map(buildPrefixCode), { contextMap });
   }
 
   /** Write LZ77 parameters, context map, hybrid uint configs and entropy histograms. */
@@ -318,7 +321,11 @@ export class JxlEncEntropyCode {
       w.writeBits(3, MSB_IN_TOKEN);
       w.writeBits(2, 0);
     }
-    writeContextMap(w, this.options.numContexts ?? this.codes.length);
+    writeContextMap(
+      w,
+      this.options.contextMap?.length ?? this.options.numContexts ?? this.codes.length,
+      this.options.contextMap,
+    );
     w.writeBool(!this.options.ans); // use_prefix_code
     if (this.options.ans) w.writeBits(2, 3); // log alphabet size 8
     for (let c = 0; c < (this.options.numContexts ?? this.codes.length); c++) {
@@ -342,7 +349,12 @@ export class JxlEncEntropyCode {
       return;
     }
     for (let i = 0; i < values.length; i++) {
-      writeHybridUint(w, this.codes[contexts[i]!]!, values[i]!, encoded?.offsets[i] ?? 0);
+      writeHybridUint(
+        w,
+        this.codes[this.options.contextMap?.[contexts[i]!] ?? contexts[i]!]!,
+        values[i]!,
+        encoded?.offsets[i] ?? 0,
+      );
     }
   }
 }

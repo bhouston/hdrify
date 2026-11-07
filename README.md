@@ -43,7 +43,7 @@ Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer
 
 - Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
 - Read and write HDR (Radiance RGBE) files
-- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animations return the first frame), and write lossless JPEG XL (float16, float32, uint16, uint8)
+- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animations return the first frame), and write lossless Modular or lossy DCT8 JPEG XL (float16, float32, uint16, uint8)
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
 - Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
 - Full TypeScript support
@@ -119,7 +119,31 @@ import { readJxl, writeJxl } from 'hdrify';
 const imageData = readJxl(new Uint8Array(fs.readFileSync('image.jxl')));
 // Lossless; bitDepth: 'float16' (default), 'float32' (bit-exact), 'uint16' or 'uint8'
 fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
+// Lossy XYB / DCT8 output, preserving HDR range:
+fs.writeFileSync('delivery.jxl', writeJxl(imageData, { lossy: true, distance: 1 }));
 ```
+
+For additional lossless compression, use `writeJxl(imageData, { effort: 'high' })`
+or CLI `--jxl-effort high`. The default `standard` effort uses prefix codes;
+`high` also tries ANS and retains it only when the complete entropy header and
+payload are smaller. This trades more encoding work for size: representative
+half-float corpus gains are 0.3–2.8%, with roughly 20–60% longer encoding times
+on the measured host. High effort is currently supported for lossless output only.
+
+Lossy encoding uses a fixed DCT8 strategy, default JPEG XL quantization tables,
+uniform quantization, and lossless alpha. `distance` must be greater than 0 and at
+most 25 (default 1); smaller values retain more detail and produce larger files.
+This initial encoder's distance controls quantization strength and is not calibrated
+to libjxl's perceptual distance. Adaptive quantization, larger transforms, and
+restoration filters are future improvements. On the committed half-float synthetic,
+gradient and memorial HDR corpus at distances 0.5–2, output is 2.7–6.3 times the
+size of `cjxl -e 3` at the same distance, with lower measured error. Synthetic
+regression tests require linear RGB RMSE below 0.06 for values up to 8 at distance
+1, and below 0.3 for values up to 100 at distance 0.5; these are corpus checks,
+not a universal perceptual guarantee. Reproduce size and linear/sRGB error
+measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
+For the CLI, use
+`hdrify convert input.exr output.jxl --jxl-lossy` or `--jxl-distance 0.5`.
 
 ### Converting between formats
 

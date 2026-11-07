@@ -1,6 +1,7 @@
 import { encodeFloat16 } from '../exr/halfFloat.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { defaultWpHeader, WpState } from './jxlPredictors.js';
+import { writeVardctJxl } from './writeJxlVardct.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import {
   estimateContextBits,
@@ -23,9 +24,17 @@ export interface WriteJxlOptions {
    * 'high' also tries ANS and selects it only when smaller. High costs more encode work.
    */
   effort?: 'standard' | 'high';
+  /** Encode lossy XYB VarDCT instead of lossless Modular (default false). */
+  lossy?: boolean;
+  /** Quantization distance for lossy output, > 0 and <= 25 (default 1). Smaller values retain more detail.
+   * This initial fixed-DCT encoder does not match libjxl's perceptual distance calibration.
+   */
+  distance?: number;
   /**
-   * Sample format. 'float16' (default) rounds to half floats like EXR HALF; 'float32' is
-   * bit-exact; 'uint16'/'uint8' clamp to [0, 1] and quantize.
+   * Source sample format. 'float16' (default) rounds to half floats like EXR HALF;
+   * 'float32' keeps source precision; 'uint16'/'uint8' clamp to [0, 1] and quantize.
+   * Lossless RGB and alpha preserve these samples exactly. Lossy RGB is additionally
+   * quantized according to distance; alpha still preserves the selected sample format.
    */
   bitDepth?: 'float16' | 'float32' | 'uint16' | 'uint8';
   /** Write an alpha channel. Default: only when some alpha value is not 1. */
@@ -34,7 +43,8 @@ export interface WriteJxlOptions {
   container?: boolean;
   /** Replace negative and non-finite values with 0 in place first, like writeExr (default true). */
   sanitize?: boolean;
-  /** Modular group size is 128 << groupSizeShift pixels (0..3, default 1 → 256). */
+  /** Lossless Modular group size: 128 << groupSizeShift pixels (0..3, default 1 → 256).
+   * Lossy VarDCT supports only the default 256-pixel groups. */
   groupSizeShift?: number;
 }
 
@@ -48,9 +58,10 @@ const BIT_DEPTHS: Record<NonNullable<WriteJxlOptions['bitDepth']>, JxlEncBitDept
 const PREDICTOR_GRADIENT = 5;
 
 /**
- * Encode an image as a lossless Modular JPEG XL (prefix codes and optional LZ77,
- * per-context Gradient/Weighted predictors, YCoCg RCT and channel palettes chosen by
- * estimated size). Modelled on libjxl's enc_fast_lossless.cc.
+ * Encode an image as lossless Modular or lossy VarDCT JPEG XL.
+ * Lossless encoding uses Gradient/Weighted prediction, prefix/LZ77 codes and estimated-cost transforms; high effort also tries ANS.
+ * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
+ * alpha remains lossless in the selected source sample format.
  */
 export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uint8Array {
   const { width, height, data } = image;
@@ -71,6 +82,14 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   if (options.effort !== undefined && options.effort !== 'standard' && options.effort !== 'high') {
     throw new Error('writeJxl: effort must be standard or high');
   }
+  if (options.lossy) {
+    if (options.effort === 'high') throw new Error('writeJxl: high effort is only supported for lossless output');
+    const distance = options.distance ?? 1;
+    if (!Number.isFinite(distance) || distance <= 0 || distance > 25) {
+      throw new Error('writeJxl: distance must be > 0 and <= 25');
+    }
+    if (groupSizeShift !== 1) throw new Error('writeJxl: lossy output requires groupSizeShift 1 (256 pixels)');
+  }
   if (options.sanitize !== false) ensureNonNegativeFinite(data);
 
   let hasAlpha = options.alpha;
@@ -84,6 +103,7 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
     }
   }
 
+  if (options.lossy) return writeVardctJxl(image, options, bitDepth, hasAlpha);
   const numChannels = hasAlpha ? 4 : 3;
   let planes = toPlanes(data, width * height, numChannels, format);
 

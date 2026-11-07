@@ -69,7 +69,7 @@ export const command = defineCommand({
         demandOption: true,
       })
       .positional('output', {
-        describe: 'Output file path (.exr, .hdr, .jxl (lossless), .png, .webp, .jpg, .jpeg)',
+        describe: 'Output file path (.exr, .hdr, .jxl, .png, .webp, .jpg, .jpeg)',
         type: 'string',
         demandOption: true,
       })
@@ -97,6 +97,15 @@ export const command = defineCommand({
         describe: 'Lossless JPEG XL compression effort: standard (default) or high (also tries ANS)',
         type: 'string',
         choices: ['standard', 'high'] as const,
+      })
+      .option('jxl-lossy', {
+        describe: 'Write lossy XYB JPEG XL (JXL output only; default is lossless)',
+        type: 'boolean',
+        default: false,
+      })
+      .option('jxl-distance', {
+        describe: 'JPEG XL quantization distance, > 0 and <= 25; enables lossy output (default: 1)',
+        type: 'number',
       })
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
@@ -139,6 +148,8 @@ export const command = defineCommand({
       filter,
       flip,
       'jxl-effort': jxlEffort,
+      'jxl-lossy': jxlLossy,
+      'jxl-distance': jxlDistance,
     } = argv;
 
     if (!fs.existsSync(input)) {
@@ -164,6 +175,13 @@ export const command = defineCommand({
 
     if (jxlEffort !== undefined && outputExt !== '.jxl') {
       console.error(`Error: --jxl-effort is only valid for JXL output. Output format is ${outputExt}.`);
+      process.exit(1);
+    }
+
+    if ((jxlLossy || jxlDistance !== undefined) && outputExt !== '.jxl') {
+      console.error(
+        `Error: --jxl-lossy and --jxl-distance are only valid for JXL output. Output format is ${outputExt}.`,
+      );
       process.exit(1);
     }
 
@@ -218,7 +236,11 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
-          outputBuffer = writeJxl(dataToWrite, { effort: jxlEffort });
+          outputBuffer = writeJxl(dataToWrite, {
+            effort: jxlEffort,
+            lossy: jxlLossy || jxlDistance !== undefined,
+            distance: jxlDistance,
+          });
         } else {
           outputBuffer = writeHdr(dataToWrite);
         }
