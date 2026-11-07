@@ -248,7 +248,9 @@ export class JxlEncEntropyCode {
       const ansLzStreams = new Map(
         streams.map((stream) => {
           const lz = lzStreams.get(stream)!;
-          return [stream, { ...lz, offsets: Uint8Array.from(lz.offsets, (offset) => (offset ? 128 : 0)) }];
+          const offsets = new Uint8Array(lz.offsets.length);
+          for (let i = 0; i < offsets.length; i++) offsets[i] = lz.offsets[i] ? 128 : 0;
+          return [stream, { ...lz, offsets }];
         }),
       );
       const ansHist = (hist: Uint32Array[], lz = false): Uint32Array[] =>
