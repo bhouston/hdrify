@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   AFV_BASIS,
-  coeffOrderToBlockIndices,
   dctResampleScale,
   forwardDct2d,
   inverseDct2d,
-  isSpecialStrategy,
   JXL_AC_STRATEGIES,
   JXL_ORDER_BLOCK_SIZES,
   JxlAcStrategy,
@@ -64,8 +62,9 @@ function maxErr(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return m;
 }
 
-const DCT_STRATEGIES = JXL_AC_STRATEGIES.map((_, i) => i).filter((i) => !isSpecialStrategy(i));
-const SPECIAL_STRATEGIES = JXL_AC_STRATEGIES.map((_, i) => i).filter((i) => isSpecialStrategy(i));
+// The non-DCT 8x8 transforms share coefficient order 1.
+const DCT_STRATEGIES = JXL_AC_STRATEGIES.map((_, i) => i).filter((i) => JXL_AC_STRATEGIES[i].orderId !== 1);
+const SPECIAL_STRATEGIES = JXL_AC_STRATEGIES.map((_, i) => i).filter((i) => JXL_AC_STRATEGIES[i].orderId === 1);
 
 describe('jxlVardctTransforms: 1D DCT vs naive reference', () => {
   for (const n of [2, 4, 8, 16, 32, 64, 128, 256]) {
@@ -116,19 +115,12 @@ describe('jxlVardctTransforms: natural coefficient order', () => {
     expect(Array.from(naturalCoeffOrder(0).subarray(0, 12))).toEqual([0, 0, 1, 0, 0, 1, 0, 2, 1, 1, 2, 0]);
   });
 
-  it('maps to block indices with transposition for tall / square DCTs', () => {
-    const ord = naturalCoeffOrder(4); // 16x8 wide
-    const wide = coeffOrderToBlockIndices(ord, JxlAcStrategy.DCT8X16); // 16 wide, 8 tall
-    const tall = coeffOrderToBlockIndices(ord, JxlAcStrategy.DCT16X8); // 8 wide, 16 tall
-    for (let i = 0; i < 128; i++) {
-      const x = ord[i * 2];
-      const y = ord[i * 2 + 1];
-      expect(wide[i]).toBe(y * 16 + x);
-      expect(tall[i]).toBe(x * 8 + y);
-    }
+  it('transposes only tall / square DCTs', () => {
+    expect(JXL_AC_STRATEGIES[JxlAcStrategy.DCT8X16].transposed).toBe(false); // 16 wide, 8 tall
+    expect(JXL_AC_STRATEGIES[JxlAcStrategy.DCT16X8].transposed).toBe(true); // 8 wide, 16 tall
     // DCT8 is transposed, IDENTITY (same order) is not.
-    expect(coeffOrderToBlockIndices(naturalCoeffOrder(0), JxlAcStrategy.DCT8)[1]).toBe(8);
-    expect(coeffOrderToBlockIndices(naturalCoeffOrder(1), JxlAcStrategy.IDENTITY)[1]).toBe(1);
+    expect(JXL_AC_STRATEGIES[JxlAcStrategy.DCT8].transposed).toBe(true);
+    expect(JXL_AC_STRATEGIES[JxlAcStrategy.IDENTITY].transposed).toBe(false);
   });
 });
 

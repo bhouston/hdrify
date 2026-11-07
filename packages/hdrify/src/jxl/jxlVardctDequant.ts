@@ -25,8 +25,6 @@ export type JxlQuantEncoding =
   | { readonly mode: 'dct'; readonly dctParams: Params3 }
   | { readonly mode: 'raw'; readonly denominator: number; readonly table: readonly Int32Array[] };
 
-export const JXL_NUM_QUANT_TABLES = 17;
-
 /** Wide (width >= height) matrix size for each quant table (jxl-oxide dequant_matrix_size). */
 export const JXL_QUANT_TABLE_SIZES: ReadonlyArray<readonly [number, number]> = [
   [8, 8],
@@ -373,14 +371,6 @@ export function dequantMatrixFor(set: JxlDequantMatrices, strategy: number, chan
   return (info.transposed ? set.transposed : set.matrices)[info.quantTable]![channel]!;
 }
 
-/** libjxl kDefaultQuantBias (X, Y, B) and numerator. */
-export const JXL_DEFAULT_QUANT_BIAS: readonly number[] = [
-  1 - 0.05465007330715401,
-  1 - 0.07005449891748593,
-  1 - 0.049935103337343655,
-];
-export const JXL_DEFAULT_QUANT_BIAS_NUMERATOR = 0.145;
-
 /**
  * Multiplier applied on top of the matrix for HF coefficients:
  * `65536 / (globalScale * hfMul) * 0.8^(qmScale - 2)` for X/B (`qmScale` from frame header), 1 for Y.
@@ -466,67 +456,6 @@ export function adaptiveLfSmoothing(
         const i = y * width + x;
         const self = src[c]![i]!;
         planes[c]![i] = (wa[c]! - self) * scale + self;
-      }
-    }
-  }
-}
-
-/** Default chroma-from-luma parameters (LfChannelCorrelation). */
-export const JXL_DEFAULT_COLOUR_FACTOR = 84;
-export const JXL_DEFAULT_BASE_CORRELATION_X = 0;
-export const JXL_DEFAULT_BASE_CORRELATION_B = 1;
-
-/** CfL multiplier from a signed factor: `base + factor / colourFactor`. */
-export function cflMultiplier(factor: number, colourFactor: number, baseCorrelation: number): number {
-  return baseCorrelation + factor / colourFactor;
-}
-
-/** Applies LF chroma-from-luma: `x += kx * y`, `b += kb * y` over `n` samples. */
-export function applyChromaFromLumaLf(
-  x: Float32Array,
-  y: Float32Array,
-  b: Float32Array,
-  n: number,
-  kx: number,
-  kb: number,
-): void {
-  for (let i = 0; i < n; i++) {
-    const v = y[i]!;
-    x[i] = x[i]! + kx * v;
-    b[i] = b[i]! + kb * v;
-  }
-}
-
-/**
- * Applies HF chroma-from-luma to dequantized coefficient planes (`width x height`,
- * `stride`) using per-64x64-tile signed factors `xFromY`/`bFromY` (`cflStride` per row,
- * tile (0,0) aligned with pixel (0,0)).
- */
-export function applyChromaFromLumaHf(
-  x: Float32Array,
-  y: Float32Array,
-  b: Float32Array,
-  width: number,
-  height: number,
-  stride: number,
-  xFromY: Int32Array,
-  bFromY: Int32Array,
-  cflStride: number,
-  colourFactor = JXL_DEFAULT_COLOUR_FACTOR,
-  baseX = JXL_DEFAULT_BASE_CORRELATION_X,
-  baseB = JXL_DEFAULT_BASE_CORRELATION_B,
-): void {
-  for (let py = 0; py < height; py++) {
-    const tileRow = (py >> 6) * cflStride;
-    const row = py * stride;
-    for (let tx = 0; tx * 64 < width; tx++) {
-      const kx = baseX + xFromY[tileRow + tx]! / colourFactor;
-      const kb = baseB + bFromY[tileRow + tx]! / colourFactor;
-      const end = Math.min(width, tx * 64 + 64);
-      for (let px = tx * 64; px < end; px++) {
-        const v = y[row + px]!;
-        x[row + px] = x[row + px]! + kx * v;
-        b[row + px] = b[row + px]! + kb * v;
       }
     }
   }
