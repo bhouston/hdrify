@@ -14,7 +14,6 @@ import {
   chromaticitiesToXyzRgbMatrix,
   invert3,
   multiply3,
-  invert3,
   type Mat3,
 } from '../color/matrixConversion.js';
 import { linearToSrgb as linearTosRGB, srgbToLinear as sRGBToLinear } from './jxlXyb.js';
