@@ -69,6 +69,30 @@ describe('JxlBitWriter round-trip', async () => {
     expect(w.bitPosition).toBe(expected.length * 8);
   });
 
+  for (const capacity of [1024, 2048]) {
+    for (let bits = 1; bits < 8; bits++) {
+      it(`preserves ${bits} pending bits after ${capacity} flushed bytes`, () => {
+        const w = new JxlBitWriter();
+        const prefix = Uint8Array.from({ length: capacity }, (_, i) => i & 0xff);
+        w.writeBytes(prefix);
+        const tail = (1 << bits) - 1;
+        w.writeBits(bits, tail);
+        const finished = w.finish();
+        expect(finished.length).toBe(capacity + 1);
+        expect(finished.subarray(0, capacity)).toEqual(prefix);
+        expect(finished[capacity]).toBe(tail);
+        expect(w.finish()).toEqual(finished);
+        expect(w.bitPosition).toBe(capacity * 8 + bits);
+
+        // finish() leaves the pending bits intact for subsequent writes.
+        w.writeBits(8 - bits, 0);
+        w.writeBytes(new Uint8Array([0xa5]));
+        expect(w.finish()).toEqual(new Uint8Array([...finished, 0xa5]));
+        expect(finished.length).toBe(capacity + 1);
+      });
+    }
+  }
+
   it('writes what JxlBitReader reads', () => {
     const w = new JxlBitWriter();
     w.writeBits(3, 5);

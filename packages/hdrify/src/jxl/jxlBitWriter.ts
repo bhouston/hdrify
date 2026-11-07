@@ -111,7 +111,9 @@ export class JxlBitWriter {
 
   /** Bytes written so far, zero-padding a partial final byte. */
   finish(): Uint8Array {
-    const out = this.bytes.slice(0, this.bytePos + (this.accBits > 0 ? 1 : 0));
+    // slice() would clamp to capacity and lose a pending byte when the buffer is full.
+    const out = new Uint8Array(this.bytePos + (this.accBits > 0 ? 1 : 0));
+    out.set(this.bytes.subarray(0, this.bytePos));
     if (this.accBits > 0) out[this.bytePos] = this.acc & 0xff;
     return out;
   }
