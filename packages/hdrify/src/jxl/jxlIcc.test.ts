@@ -56,3 +56,32 @@ it('rejects singular embedded ICC matrices instead of returning nonfinite colour
     'invalid colour encoding matrix',
   );
 });
+
+it('preserves native linear float samples including nonfinite neighbours and signed zero', async () => {
+  const { writeJxl } = await import('./writeJxl.js');
+  const data = new Float32Array([
+    Infinity,
+    0.5,
+    0.25,
+    1,
+    -Infinity,
+    0.125,
+    0.75,
+    1,
+    NaN,
+    0.625,
+    0.875,
+    1,
+    -0,
+    0.25,
+    0.5,
+    1,
+  ]);
+  const encoded = writeJxl(
+    { width: 4, height: 1, data, linearColorSpace: 'linear-rec709' },
+    { bitDepth: 'float32', sanitize: false },
+  );
+  const decoded = readJxl(encoded);
+  expect([...decoded.data]).toEqual([...data]);
+  expect(new Uint32Array(decoded.data.buffer)[12]).toBe(0x80000000);
+});
