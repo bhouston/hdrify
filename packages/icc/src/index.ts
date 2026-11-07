@@ -27,22 +27,71 @@ export function readIccProfile(bytes: Uint8Array): IccProfile {
     size = d.getUint32(0),
     count = d.getUint32(128);
   if (size < 132 || size > bytes.length || count > (size - 132) / 12) throw new Error('ICC: truncated profile');
+  // ICC tags may share or overlap ranges. Own one bounded copy, not one potentially large copy per tag.
+  const owned = new Uint8Array(bytes.subarray(0, size));
   const tags: IccTag[] = [];
   for (let i = 0; i < count; i++) {
     const p = 132 + 12 * i,
       off = d.getUint32(p + 4),
       len = d.getUint32(p + 8);
     if (off < 132 + count * 12 || off > size || len > size - off) throw new Error('ICC: invalid tag bounds');
-    tags.push({ signature: signature(bytes, p), data: bytes.slice(off, off + len) });
+    tags.push({ signature: signature(bytes, p), data: owned.subarray(off, off + len) });
   }
-  return { header: bytes.slice(0, 128), tags };
+  return { header: owned.subarray(0, 128), tags };
 }
 
 /** Serialize a parsed or edited profile, preserving opaque tag payloads. Recomputes lengths and alignment. */
 export function writeIccProfile(profile: IccProfile): Uint8Array {
   if (profile.header.length !== 128 || signature(profile.header, 36) !== 'acsp') throw new Error('ICC: invalid header');
   let size = 132 + profile.tags.length * 12;
-  for (const t of profile.tags) size += (t.data.length + 3) & ~3;
+  if (size > 0xffffffff) throw new Error('ICC: profile exceeds the 32-bit size limit');
+  interface Range {
+    start: number;
+    end: number;
+    tag: number;
+  }
+  interface Chunk {
+    buffer: ArrayBufferLike;
+    start: number;
+    end: number;
+    members: Range[];
+    offset: number;
+  }
+  // Group by buffer and alignment residue, allowing overlapping ranges to share a copy while
+  // keeping every serialized tag offset four-byte aligned (even when callers pass unaligned views).
+  const groups = new Map<ArrayBufferLike, Range[][]>();
+  profile.tags.forEach((t, tag) => {
+    if (t.signature.length !== 4 || !/^[\x20-\x7e]{4}$/.test(t.signature))
+      throw new Error('ICC: tag signatures must be four bytes');
+    let residues = groups.get(t.data.buffer);
+    if (!residues) {
+      residues = [[], [], [], []];
+      groups.set(t.data.buffer, residues);
+    }
+    residues[t.data.byteOffset % 4]!.push({ start: t.data.byteOffset, end: t.data.byteOffset + t.data.length, tag });
+  });
+  const chunks: Chunk[] = [];
+  for (const [buffer, residues] of groups)
+    for (const ranges of residues) {
+      let chunk: Chunk | undefined;
+      for (const range of ranges.toSorted((a, b) => a.start - b.start)) {
+        if (chunk && range.start <= chunk.end) {
+          chunk.end = Math.max(chunk.end, range.end);
+          chunk.members.push(range);
+        } else {
+          chunk = { buffer, start: range.start, end: range.end, members: [range], offset: 0 };
+          chunks.push(chunk);
+        }
+      }
+    }
+  const offsets: number[] = [];
+  for (const chunk of chunks) {
+    const aligned = Math.ceil((chunk.end - chunk.start) / 4) * 4;
+    if (size > 0xffffffff - aligned) throw new Error('ICC: profile exceeds the 32-bit size limit');
+    chunk.offset = size;
+    size += aligned;
+    for (const member of chunk.members) offsets[member.tag] = chunk.offset + member.start - chunk.start;
+  }
   const out = new Uint8Array(size),
     d = view(out);
   out.set(profile.header);
@@ -50,17 +99,14 @@ export function writeIccProfile(profile: IccProfile): Uint8Array {
   d.setUint32(128, profile.tags.length);
   // A modified profile no longer has the old MD5 profile ID (ICC.1 section 7.2.18).
   out.fill(0, 84, 100);
-  let off = 132 + profile.tags.length * 12;
   profile.tags.forEach((t, i) => {
-    if (t.signature.length !== 4 || !/^[\x20-\x7e]{4}$/.test(t.signature))
-      throw new Error('ICC: tag signatures must be four bytes');
     const p = 132 + 12 * i;
+    const off = offsets[i]!;
     for (let c = 0; c < 4; c++) out[p + c] = t.signature.charCodeAt(c);
     d.setUint32(p + 4, off);
     d.setUint32(p + 8, t.data.length);
-    out.set(t.data, off);
-    off += (t.data.length + 3) & ~3;
   });
+  for (const chunk of chunks) out.set(new Uint8Array(chunk.buffer, chunk.start, chunk.end - chunk.start), chunk.offset);
   return out;
 }
 
