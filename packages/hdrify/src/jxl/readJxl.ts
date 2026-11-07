@@ -1,13 +1,5 @@
-import type { LinearColorSpace } from '../color/colorSpaces.js';
-import {
-  applyMatrix3ToFloat32Array,
-  buildAdaptedLinearMatrix,
-  chromaticitiesToRgbXyzMatrix,
-} from '../color/matrixConversion.js';
-import { CHROMATICITIES_REC2020 } from '../color/chromaticities.js';
-import { jxlChromaticities } from './jxlColor.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { hlgToScene, applyHlgOotf, pqToNits } from '../color/transfer.js';
+import { convertOutputColor, jxlColorMetadata } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -198,41 +190,6 @@ function sampleConverter(bd: JxlBitDepth): (v: number) => number {
   };
 }
 
-function linearColorSpaceOf(h: JxlImageHeader): LinearColorSpace {
-  const ce = h.colorEncoding;
-  if (ce.wantIcc) return 'linear-rec709'; // ponytail: ICC profile not interpreted (no CMS); assumes sRGB primaries
-  if (ce.whitePoint !== 'd65' || ce.primaries === 'custom') return 'linear-rec2020';
-  if (ce.colorSpace === 'gray' || ce.primaries === 'srgb') return 'linear-rec709';
-  if (ce.primaries === 'p3') return 'linear-p3';
-  if (ce.primaries === 'bt2100') return 'linear-rec2020';
-  return 'linear-rec2020';
-}
-
-/** Map an encoded (non-linear) value to linear light per the image's transfer function. */
-function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefined {
-  const ce = h.colorEncoding;
-  // ponytail: ICC images assume sRGB transfer for integer samples, linear for float; add a CMS when needed.
-  if (ce.wantIcc) return h.bitDepth.floatSample ? undefined : sRGBToLinear;
-  switch (ce.transferFunction) {
-    case 'linear':
-      return undefined;
-    case 'srgb':
-      return sRGBToLinear;
-    case 'hlg':
-      return hlgToScene;
-    case 'pq':
-      return (v) => pqToNits(v) / h.toneMapping.intensityTarget;
-    case 'gamma': {
-      const g = 1 / ce.gamma!;
-      return (v) => (v <= 0 ? 0 : v ** g);
-    }
-    case 'bt709':
-      return (v) => (v < 0.081 ? v / 4.5 : ((v + 0.099) / 1.099) ** (1 / 0.45));
-    default:
-      throw new Error(`JXL: transfer function '${ce.transferFunction}' is not supported yet`);
-  }
-}
-
 /** Linear ↔ encoded transfer for XYB images: libjxl blends and stores references in the output encoding. */
 function xybTransfer(
   h: JxlImageHeader,
@@ -401,6 +358,8 @@ export function* decodeDisplayedFrames(
  * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
  * sRGB primaries. PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
+ * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
+ * use the historical sRGB fallback and metadata.iccColorManaged = false.
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  */
 export function readJxl(data: Uint8Array): HdrifyImage {
@@ -432,26 +391,12 @@ export function readJxl(data: Uint8Array): HdrifyImage {
 
   const n = width * height;
   const out = new Float32Array(n * 4);
-  const toLinear = first.linear ? undefined : h.xybEncoded ? xybTransfer(h)?.toLinear : transferToLinear(h);
+  const toLinear = first.linear || !h.xybEncoded ? undefined : xybTransfer(h)?.toLinear;
   for (let c = 0; c < 3; c++) {
     const p = canvas.planes[c]!;
     for (let i = 0; i < n; i++) out[i * 4 + c] = toLinear ? toLinear(p[i]!) : p[i]!;
   }
-  if (!h.xybEncoded && h.colorEncoding.transferFunction === 'hlg')
-    applyHlgOotf(
-      out,
-      h.toneMapping.intensityTarget,
-      chromaticitiesToRgbXyzMatrix(jxlChromaticities(h.colorEncoding))[1],
-    );
-  if (
-    !h.xybEncoded &&
-    !h.colorEncoding.wantIcc &&
-    (h.colorEncoding.primaries === 'custom' || h.colorEncoding.whitePoint !== 'd65')
-  )
-    applyMatrix3ToFloat32Array(
-      out,
-      buildAdaptedLinearMatrix(jxlChromaticities(h.colorEncoding), CHROMATICITIES_REC2020),
-    );
+  const linearColorSpace = h.xybEncoded ? 'linear-rec709' : convertOutputColor(h, out, false);
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha ? alpha[i]! : 1;
@@ -460,7 +405,7 @@ export function readJxl(data: Uint8Array): HdrifyImage {
     width,
     height,
     data: out,
-    linearColorSpace: h.xybEncoded ? 'linear-rec709' : linearColorSpaceOf(h),
+    linearColorSpace,
     metadata: {
       format: 'JPEG XL',
       container: isContainer,
@@ -470,10 +415,8 @@ export function readJxl(data: Uint8Array): HdrifyImage {
       colorSpace: h.colorEncoding.colorSpace,
       transferFunction: h.colorEncoding.transferFunction,
       orientation: h.orientation,
-      originalChromaticities: jxlChromaticities(h.colorEncoding),
+      ...jxlColorMetadata(h),
       intensityTarget: h.toneMapping.intensityTarget,
-      linearReferenceWhiteNits: h.toneMapping.intensityTarget,
-      ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display' }),
       extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
       ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),

@@ -345,6 +345,9 @@ importers:
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
+      hdrify-icc:
+        specifier: workspace:*
+        version: link:../icc
       jpeg-js:
         specifier: ^0.4.4
         version: 0.4.4

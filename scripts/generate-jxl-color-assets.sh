@@ -22,3 +22,13 @@ for spec in 'pq RGB_D65_202_Rel_PeQ' 'hlg RGB_D65_202_Rel_HLG' 'p3_dci RGB_DCI_D
     djxl "$OUT/$name-d$distance.jxl" "$OUT/$name-d$distance.ref.pfm" --quiet --color_space=RGB_D65_202_Rel_Lin
   done
 done
+for spec in 'display_p3 RGB_D65_DCI_Rel_SRG' 'adobe_rgb RGB_D65_Ado_Rel_Ado' 'prophoto RGB_D50_Pro_Rel_Pro' 'pq_icc RGB_D65_202_Rel_PeQ'; do
+  read -r name encoding <<< "$spec"
+  cjxl "$SRC/input.ppm" "$SRC/profile.jxl" --quiet -d 0 -x "color_space=$encoding"
+  # Explicitly retain the desired output encoding; djxl otherwise synthesizes an sRGB output profile.
+  djxl "$SRC/profile.jxl" "$SRC/profile.pfm" --quiet --color_space="$encoding" --icc_out="$OUT/$name.icc"
+  for distance in 0 1; do
+    cjxl "$SRC/input.ppm" "$OUT/$name-d$distance.jxl" --quiet -d "$distance" -x "icc_pathname=$OUT/$name.icc"
+    djxl "$OUT/$name-d$distance.jxl" "$OUT/$name-d$distance.ref.pfm" --quiet --color_space=RGB_D65_202_Rel_Lin
+  done
+done
