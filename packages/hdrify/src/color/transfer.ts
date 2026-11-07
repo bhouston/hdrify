@@ -84,3 +84,37 @@ export function nitsToPq(value: number): number {
   const p = (Math.abs(value) / 10000) ** (2610 / 16384);
   return Math.sign(value) * ((3424 / 4096 + (2413 / 128) * p) / (1 + (2392 / 128) * p)) ** (2523 / 32);
 }
+/** ARIB STD-B67 inverse OETF: HLG code values to scene light (before the RGB-dependent OOTF). */
+export function hlgToScene(value: number): number {
+  const a = Math.abs(value);
+  return Math.sign(value) * (a <= 0.5 ? (a * a) / 3 : (Math.exp((a - 0.55991073) / 0.17883277) + 0.28466892) / 12);
+}
+
+/** ARIB STD-B67 OETF, with sign-preserving extension. */
+export function sceneToHlg(value: number): number {
+  const a = Math.abs(value);
+  return Math.sign(value) * (a <= 1 / 12 ? Math.sqrt(3 * a) : 0.17883277 * Math.log(12 * a - 0.28466892) + 0.55991073);
+}
+
+/** libjxl/BT.2100 HLG scene-to-display OOTF, in-place on interleaved RGBA. Alpha is untouched. */
+export function applyHlgOotf(data: Float32Array, intensityTarget: number, luminances: readonly number[]): void {
+  if (295 <= intensityTarget && intensityTarget <= 305) return;
+  const gamma = 1.2 * 1.111 ** Math.log2(intensityTarget / 1000);
+  for (let i = 0; i < data.length; i += 4) {
+    const y = data[i]! * luminances[0]! + data[i + 1]! * luminances[1]! + data[i + 2]! * luminances[2]!;
+    const ratio = y ** (gamma - 1);
+    if (!Number.isFinite(ratio)) continue;
+    let r = data[i]! * ratio,
+      g = data[i + 1]! * ratio,
+      b = data[i + 2]! * ratio;
+    const peak = Math.max(r, g, b);
+    if (gamma < 1 && peak > 1) {
+      r /= peak;
+      g /= peak;
+      b /= peak;
+    }
+    data[i] = r;
+    data[i + 1] = g;
+    data[i + 2] = b;
+  }
+}

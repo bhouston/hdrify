@@ -1,6 +1,7 @@
-import type { LinearColorSpace } from '../color/colorSpaces.js';
+import { type LinearColorSpace, LINEAR_TO_CHROMATICITIES } from '../color/colorSpaces.js';
+import { chromaticitiesToRgbXyzMatrix } from '../color/matrixConversion.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
-import { pqToNits } from '../color/transfer.js';
+import { hlgToScene, applyHlgOotf, pqToNits } from '../color/transfer.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -210,6 +211,8 @@ function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefine
       return undefined;
     case 'srgb':
       return sRGBToLinear;
+    case 'hlg':
+      return hlgToScene;
     case 'pq':
       return (v) => pqToNits(v) / h.toneMapping.intensityTarget;
     case 'gamma': {
@@ -390,6 +393,7 @@ export function* decodeDisplayedFrames(
  * reference frames and blending (libjxl coalesced output). For animations the first displayed frame is
  * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
  * sRGB primaries. PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
+ * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  */
 export function readJxl(data: Uint8Array): HdrifyImage {
   const { codestream, isContainer } = extractCodestream(data);
@@ -425,6 +429,12 @@ export function readJxl(data: Uint8Array): HdrifyImage {
     const p = canvas.planes[c]!;
     for (let i = 0; i < n; i++) out[i * 4 + c] = toLinear ? toLinear(p[i]!) : p[i]!;
   }
+  if (!h.xybEncoded && h.colorEncoding.transferFunction === 'hlg')
+    applyHlgOotf(
+      out,
+      h.toneMapping.intensityTarget,
+      chromaticitiesToRgbXyzMatrix(LINEAR_TO_CHROMATICITIES[linearColorSpaceOf(h)])[1],
+    );
   const alphaIdx = h.extraChannels.findIndex((ec) => ec.type === 'alpha');
   const alpha = alphaIdx < 0 ? undefined : canvas.planes[3 + alphaIdx];
   for (let i = 0; i < n; i++) out[i * 4 + 3] = alpha ? alpha[i]! : 1;
@@ -445,6 +455,7 @@ export function readJxl(data: Uint8Array): HdrifyImage {
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
       linearReferenceWhiteNits: h.toneMapping.intensityTarget,
+      ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display' }),
       extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
       ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),
