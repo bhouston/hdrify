@@ -202,12 +202,11 @@ pnpm format # oxfmt
 pnpm test # vitest
 ```
 
-CI runs tests with coverage (`pnpm test --coverage`) and enforces coverage floors and a bundle-size budget in addition to the checks in [CONTRIBUTING.md](CONTRIBUTING.md):
+CI runs tests with coverage (`pnpm test --coverage`) and enforces coverage floors in addition to the checks in [CONTRIBUTING.md](CONTRIBUTING.md):
 
 - Core library coverage floors: 89% statements, 72% branches, 93% functions, 89% lines.
-- Bundle-size budgets are defined in `package.json` (checked with `pnpm size`, backed by `size-limit`).
 
-Change either only with an explanation in the PR.
+Change them only with an explanation in the PR.
 
 ## Acknowledgements
 

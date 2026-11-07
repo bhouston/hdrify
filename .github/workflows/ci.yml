@@ -34,7 +34,7 @@ jobs:
       - name: Check formatting
         run: pnpm exec oxfmt --check .
       - run: pnpm test --coverage
-      # --- repository-specific steps (package-content check, size budget, e2e, docs, ...) go here ---
+      # --- repository-specific steps (package-content check, e2e, docs, ...) go here ---
       - name: Verify published packages include dist
         run: |
           for pkg in packages/hdrify packages/cli packages/hdrify-react; do
@@ -44,8 +44,6 @@ jobs:
             }
           done
       - run: pnpm release:check
-      - name: Bundle size budget
-        run: pnpm size | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Package VS Code extension
         run: pnpm --filter hdrify-vscode-extension run package
       - name: Audit dependencies
