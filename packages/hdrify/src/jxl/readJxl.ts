@@ -547,7 +547,8 @@ export function readJxlFrames(
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
  * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
- * use the historical sRGB fallback and metadata.iccColorManaged = false.
+ * use the historical sRGB fallback and metadata.iccColorManaged = false. originalChromaticities is
+ * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.
  * XYB frames used for composition or references are converted to the original primaries/transfer
  * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.

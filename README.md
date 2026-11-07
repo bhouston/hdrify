@@ -133,6 +133,8 @@ fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
 
 JPEG XL extra channels are available in `metadata.extraChannels` as `{ name, type, width, height, data: Float32Array }`, in the returned image orientation. Spot colours retain their RGB/solidity in each plane’s `spotColor` field; set `{ renderSpotColors: true }` on either reader to composite them like djxl. CMYK ICC conversion is unsupported. `readJxlFrames` retains all decoded frames in memory.
 
+`metadata.originalChromaticities` describes enum/custom colour declarations. For embedded ICC sources, the reader retains `metadata.iccProfile` and reports colour-transform support in `metadata.iccColorManaged`; it omits `originalChromaticities`.
+
 ### Converting between formats
 
 ```ts
