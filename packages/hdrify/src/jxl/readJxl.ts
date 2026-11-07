@@ -1,5 +1,6 @@
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 import { linearTosRGB, sRGBToLinear } from '../color/srgb.js';
+import { pqToNits } from '../color/transfer.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -209,6 +210,8 @@ function transferToLinear(h: JxlImageHeader): ((v: number) => number) | undefine
       return undefined;
     case 'srgb':
       return sRGBToLinear;
+    case 'pq':
+      return (v) => pqToNits(v) / h.toneMapping.intensityTarget;
     case 'gamma': {
       const g = 1 / ce.gamma!;
       return (v) => (v <= 0 ? 0 : v ** g);
@@ -386,7 +389,7 @@ export function* decodeDisplayedFrames(
  * Decodes Modular (lossless and lossy XYB) and VarDCT frames with LF frames, patches, splines, noise,
  * reference frames and blending (libjxl coalesced output). For animations the first displayed frame is
  * returned; frame count and durations (seconds) are in metadata.animation. XYB images decode to linear
- * sRGB primaries.
+ * sRGB primaries. PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  */
 export function readJxl(data: Uint8Array): HdrifyImage {
   const { codestream, isContainer } = extractCodestream(data);
@@ -441,6 +444,7 @@ export function readJxl(data: Uint8Array): HdrifyImage {
       transferFunction: h.colorEncoding.transferFunction,
       orientation: h.orientation,
       intensityTarget: h.toneMapping.intensityTarget,
+      linearReferenceWhiteNits: h.toneMapping.intensityTarget,
       extraChannels: h.extraChannels.map((ec) => ec.name || ec.type),
       ...(animation && { animation }),
       ...(h.icc && { iccProfile: h.icc }),

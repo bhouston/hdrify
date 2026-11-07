@@ -123,3 +123,6 @@ djxl "$FEAT/layered.jxl" "$FEAT/layered.ref.pam" --quiet
 cjxl "$SRC/layered.gif" "$FEAT/layered_lossy.jxl" --quiet -d 1
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pam" --quiet
 djxl "$FEAT/layered_lossy.jxl" "$FEAT/layered_lossy.ref.pfm" --quiet
+
+# HDR transfer-function and colour-management corpus.
+bash "$ROOT/scripts/generate-jxl-color-assets.sh"
