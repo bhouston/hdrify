@@ -39,7 +39,23 @@ const configurations = [
 ];
 function captureGpu() {
   window.gpuFrames = [];
+  window.textureUploads = [];
   if (!window.GPUCanvasContext || !window.GPUQueue) return;
+  // Readback is test instrumentation; production canvases need only RENDER_ATTACHMENT.
+  // oxlint-disable-next-line typescript/unbound-method -- the original receiver is restored with .call
+  const configure = GPUCanvasContext.prototype.configure;
+  GPUCanvasContext.prototype.configure = function (options) {
+    configure.call(this, {
+      ...options,
+      usage: (options.usage ?? GPUTextureUsage.RENDER_ATTACHMENT) | GPUTextureUsage.COPY_SRC,
+    });
+  };
+  // oxlint-disable-next-line typescript/unbound-method -- the original receiver is restored with .call
+  const writeTexture = GPUQueue.prototype.writeTexture;
+  GPUQueue.prototype.writeTexture = function (destination, data, layout, size) {
+    window.textureUploads.push(Array.from(new Uint16Array(data.buffer, data.byteOffset, data.byteLength / 2)));
+    writeTexture.call(this, destination, data, layout, size);
+  };
   // oxlint-disable-next-line typescript/unbound-method -- the original receiver is restored with .call
   const get = GPUCanvasContext.prototype.getCurrentTexture;
   // oxlint-disable-next-line typescript/unbound-method -- the original receiver is restored with .call
@@ -187,7 +203,13 @@ try {
           assert.ok(Math.abs(decode(frame.patches[i][0]) - [0.18, 1, 2, 4][i]) < 0.035, JSON.stringify(frame));
         assert.ok(frame.top[0] > 0.9 && frame.top[2] < 0.01, 'top must be red');
         assert.ok(frame.bottom[2] > 0.9 && frame.bottom[0] < 0.01, 'bottom must be blue');
+        const uploads = await page.evaluate(() => window.textureUploads.length);
         await change(page, { exposure: 1 });
+        assert.equal(
+          await page.evaluate(() => window.textureUploads.length),
+          uploads,
+          'Exposure-only changes must reuse the texture',
+        );
         const bright = await page.evaluate(() => window.gpuFrames.at(-1));
         assert.ok(Math.abs(decode(bright.patches[3][0]) - 8) < 0.08);
       }
@@ -288,6 +310,36 @@ try {
         const dimmer = await page.evaluate(() => window.gpuFrames.at(-1).patches[3][0]);
         assert.ok(Math.abs(((dimmer + 0.055) / 1.055) ** 2.4 - 2) < 0.1);
         result.wideFloatSource = 'passed';
+        const precision = await page.evaluate(async () => {
+          const viewer = document.querySelector('image-viewer');
+          const values = [
+            -65504,
+            -2,
+            -0.25,
+            -0,
+            0,
+            2 ** -25,
+            2 ** -24,
+            2 ** -14,
+            1 + 2 ** -11,
+            1 + 3 * 2 ** -11,
+            0.18,
+            65504,
+          ];
+          const data = new Float32Array(values.length * 4);
+          values.forEach((value, i) => data.set([value, value, value, 1], i * 4));
+          viewer.settings = { exposure: 0, toneMapping: 'none' };
+          viewer.image = { width: values.length, height: 1, data, linearColorSpace: 'linear-rec709' };
+          await viewer.whenReady();
+          const expected = Array.from(new Uint16Array(new Float16Array(data).buffer));
+          return { expected, uploaded: window.textureUploads.at(-1) };
+        });
+        assert.deepEqual(
+          precision.uploaded,
+          precision.expected,
+          'Uploads must retain signed values and correctly round FP16 boundaries',
+        );
+        result.fp16Precision = 'passed';
         await page.evaluate(() => document.querySelector('image-viewer').removeAttribute('tone-mapping'));
         await page.evaluate(() => window.lastGpuDevice.destroy());
         await page.waitForFunction(

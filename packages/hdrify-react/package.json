@@ -59,13 +59,11 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "hdrify": "workspace:*",
-    "three": "0.187.0"
+    "hdrify": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@types/three": "0.187.0",
     "@webgpu/types": "^0.1.74",
     "esbuild": "^0.27.3",
     "react": "^19.3.1",

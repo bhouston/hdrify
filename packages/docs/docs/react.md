@@ -98,4 +98,4 @@ For a portable SDR preview, use `ImageViewer.toBlob()` or `captureImage()` rathe
 
 See the generated [React API reference](/docs/api/react) for the current prop definitions, and the [live demo](pathname:///hdrify/demo/) for an interactive viewer and converter.
 
-The canvas automatically selects Three.js WebGPU only on an HDR-capable display with acknowledged extended FP16 presentation; otherwise it uses the existing 2D SDR canvas. It redraws when the viewport, source dimensions, or device pixel ratio changes and disposes GPU resources on unmount. `onDraw(image, mode)` reports a completed draw (`hdr` or `sdr`); `forwardedRef` follows the active canvas, including replacement during fallback.
+The canvas automatically selects native WebGPU only on an HDR-capable display with acknowledged extended FP16 presentation; otherwise it uses the existing 2D SDR canvas. It redraws when the viewport, source dimensions, or device pixel ratio changes and disposes GPU resources on unmount. `onDraw(image, mode)` reports a completed draw (`hdr` or `sdr`); `forwardedRef` follows the active canvas, including replacement during fallback.
