@@ -1,4 +1,5 @@
-import type { HdrifyImage, ToneMappingType } from 'hdrify';
+import type { HdrifyImage } from 'hdrify';
+import type { DisplayMode, ViewerToneMapping } from './display.js';
 import { type CSSProperties, type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import { captureImage, type ImageViewerCaptureOptions } from './capture.js';
 import { decodeHdrifyImage } from './decode.js';
@@ -14,19 +15,20 @@ export type ImageFit = 'contain' | 'actual';
 
 /** User-adjustable display settings. */
 export interface ImageViewerSettings {
-  toneMapping: ToneMappingType;
+  toneMapping?: ViewerToneMapping;
   /** Exposure in stops (EV): `0` is unchanged, `+1` doubles the brightness. */
   exposure: number;
   fit: ImageFit;
 }
 
 export const DEFAULT_IMAGE_VIEWER_SETTINGS: Readonly<ImageViewerSettings> = {
-  toneMapping: 'neutral',
+  toneMapping: undefined,
   exposure: 0,
   fit: 'contain',
 };
 
-export const TONE_MAPPING_OPTIONS: readonly { value: ToneMappingType; label: string }[] = [
+export const TONE_MAPPING_OPTIONS: readonly { value: ViewerToneMapping; label: string }[] = [
+  { value: 'none', label: 'None' },
   { value: 'neutral', label: 'Neutral' },
   { value: 'agx', label: 'AgX' },
   { value: 'aces', label: 'ACES' },
@@ -145,7 +147,11 @@ export function ImageViewer({
     provided.settingsPanel !== settingsPanel
   ) {
     setProvided({ toneMapping, exposure, fit, settingsPanel });
-    setSettings((current) => ({ ...current, ...definedSettings({ toneMapping, exposure, fit }) }));
+    setSettings((current) => ({
+      ...current,
+      ...definedSettings({ exposure, fit }),
+      ...(provided.toneMapping !== toneMapping ? { toneMapping } : {}),
+    }));
     if (provided.settingsPanel !== settingsPanel) setPanelMode(settingsPanel);
   }
 
@@ -160,6 +166,14 @@ export function ImageViewer({
   };
 
   const [readiness] = useState(() => new ViewerReadiness());
+  const [rendered, setRendered] = useState<{
+    image: HdrifyImage;
+    mode: DisplayMode;
+    exposure: number;
+    toneMapping?: ViewerToneMapping;
+  }>();
+  const [renderError, setRenderError] = useState<string>();
+  const announced = useRef<HdrifyImage | undefined>(undefined);
   useEffect(() => () => readiness.disconnect(), [readiness]);
 
   // The latest fetch/decode result, tagged with the source it came from; the rest is derived during render.
@@ -170,6 +184,7 @@ export function ImageViewer({
   const download = useRef(NO_DOWNLOAD);
   useEffect(() => {
     readiness.pending();
+    announced.current = undefined;
     download.current = NO_DOWNLOAD;
     if (image) return; // Drawn below.
     if (!source) {
@@ -217,20 +232,41 @@ export function ImageViewer({
   // While a new source loads, keep showing the previous image.
   const shownImage = image ?? (source === undefined ? undefined : loaded.image);
   const error = !loading && source !== undefined ? loaded.error : undefined;
-  const barValue = bar && !loading ? 1 : bar?.value;
 
-  // HdrifyCanvas (a child) draws in its effect, which runs before this one: the new image is on screen here.
+  // Readiness follows the asynchronous renderer, including its first completed GPU draw.
   const drawn = loading ? undefined : shownImage;
+  const displayMode = rendered?.mode ?? 'sdr';
+  const renderReady =
+    !!drawn &&
+    rendered?.image === drawn &&
+    rendered.exposure === settings.exposure &&
+    rendered.toneMapping === settings.toneMapping;
+  const barValue = bar && !loading && renderReady ? 1 : bar?.value;
+  if (!shownImage && rendered) setRendered(undefined);
   const latest = useRef({ image: drawn, settings });
   useEffect(() => {
     latest.current = { image: drawn, settings };
   });
+  const handleDraw = (current: HdrifyImage, mode: DisplayMode) => {
+    setRenderError(undefined);
+    if (current === drawn)
+      setBar((currentBar) => (currentBar && currentBar.value < 1 ? { ...currentBar, value: 1 } : currentBar));
+    setRendered((previous) =>
+      previous?.image === current &&
+      previous.mode === mode &&
+      previous.exposure === settings.exposure &&
+      previous.toneMapping === settings.toneMapping
+        ? previous
+        : { image: current, mode, exposure: settings.exposure, toneMapping: settings.toneMapping },
+    );
+  };
   useEffect(() => {
-    if (!drawn) return;
+    if (!drawn || !renderReady || announced.current === drawn) return;
+    announced.current = drawn;
     readiness.finish();
     callbacks.current.onProgress?.({ ...download.current, totalProgress: 1, stage: 'render' });
     callbacks.current.onLoad?.(drawn);
-  }, [drawn, readiness]);
+  }, [drawn, renderReady, readiness]);
 
   useImperativeHandle(
     ref,
@@ -240,7 +276,7 @@ export function ImageViewer({
         await readiness.whenReady();
         const { image: current, settings: currentSettings } = latest.current;
         if (!current) throw new Error('No image is loaded.');
-        return captureImage(current, currentSettings.toneMapping, 2 ** currentSettings.exposure, options);
+        return captureImage(current, currentSettings.toneMapping ?? 'neutral', 2 ** currentSettings.exposure, options);
       },
     }),
     [readiness],
@@ -251,7 +287,8 @@ export function ImageViewer({
       className={className ? `hdrify-viewer ${className}` : 'hdrify-viewer'}
       style={{ height: 480, ...style }}
       data-fit={settings.fit}
-      aria-busy={loading}
+      data-display-mode={displayMode}
+      aria-busy={loading || (!!drawn && !renderReady)}
     >
       <style>{IMAGE_VIEWER_CSS}</style>
       <div className="hdrify-viewer-viewport">
@@ -261,6 +298,12 @@ export function ImageViewer({
             toneMapping={settings.toneMapping}
             exposure={2 ** settings.exposure}
             className="hdrify-viewer-canvas"
+            onDraw={handleDraw}
+            onError={(failure) => {
+              readiness.finish(failure);
+              setRenderError(failure.message);
+              callbacks.current.onError?.(failure);
+            }}
           />
         )}
       </div>
@@ -284,9 +327,9 @@ export function ImageViewer({
           )}
         </slot>
       </div>
-      {error && (
+      {(error || renderError) && (
         <p role="alert" className="hdrify-viewer-error">
-          {error}
+          {error || renderError}
         </p>
       )}
       {exposureControl && (
@@ -308,6 +351,7 @@ export function ImageViewer({
         <OptionsPanel
           settings={settings}
           image={shownImage}
+          displayMode={displayMode}
           open={panelMode === 'open'}
           onChange={change}
           onOpenChange={(open) => changePanel(open ? 'open' : 'closed')}
@@ -318,6 +362,7 @@ export function ImageViewer({
 }
 
 interface OptionsPanelProps {
+  displayMode: DisplayMode;
   settings: ImageViewerSettings;
   image?: HdrifyImage;
   open: boolean;
@@ -325,7 +370,7 @@ interface OptionsPanelProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function OptionsPanel({ settings, image, open, onChange, onOpenChange }: OptionsPanelProps) {
+function OptionsPanel({ settings, image, displayMode, open, onChange, onOpenChange }: OptionsPanelProps) {
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
@@ -397,9 +442,14 @@ function OptionsPanel({ settings, image, open, onChange, onOpenChange }: Options
         <label>
           Tone mapping
           <select
-            value={settings.toneMapping}
-            onChange={(event) => onChange({ toneMapping: event.currentTarget.value as ToneMappingType })}
+            value={settings.toneMapping ?? ''}
+            onChange={(event) =>
+              onChange({
+                toneMapping: event.currentTarget.value ? (event.currentTarget.value as ViewerToneMapping) : undefined,
+              })
+            }
           >
+            <option value="">Automatic ({displayMode === 'hdr' ? 'None' : 'Neutral'})</option>
             {TONE_MAPPING_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}

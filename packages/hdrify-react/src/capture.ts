@@ -1,4 +1,5 @@
-import { applyToneMapping, type HdrifyImage, type ToneMappingType } from 'hdrify';
+import { applyToneMapping, linearTosRGB, type HdrifyImage } from 'hdrify';
+import { displayPixels, type ViewerToneMapping } from './display.js';
 
 /** Options for `toBlob()` on `<image-viewer>` and the {@link ImageViewer} handle. */
 export interface ImageViewerCaptureOptions {
@@ -15,7 +16,7 @@ export interface ImageViewerCaptureOptions {
 export function drawToneMapped(
   canvas: HTMLCanvasElement,
   image: HdrifyImage,
-  toneMapping: ToneMappingType,
+  toneMapping: ViewerToneMapping,
   exposure: number,
 ): void {
   const { width, height } = image;
@@ -24,7 +25,18 @@ export function drawToneMapped(
   // LDR from applyToneMapping is sRGB; use an srgb canvas so it displays correctly.
   const ctx = canvas.getContext('2d', { colorSpace: 'srgb' }) ?? canvas.getContext('2d');
   if (!ctx) return;
-  const ldrRgb = applyToneMapping(image.data, width, height, {
+  if (toneMapping === 'none') {
+    const linear = displayPixels(image, 'none', exposure);
+    const imageData = ctx.createImageData(width, height);
+    for (let i = 0; i < linear.length; i += 4) {
+      for (let c = 0; c < 3; c++)
+        imageData.data[i + c] = Math.round(Math.max(0, Math.min(1, linearTosRGB(linear[i + c]!))) * 255);
+      imageData.data[i + 3] = 255;
+    }
+    ctx.putImageData(imageData, 0, 0);
+    return;
+  }
+  const ldrRgb = applyToneMapping(image.data.slice(), width, height, {
     toneMapping,
     exposure,
     sourceColorSpace: image.linearColorSpace,
@@ -52,7 +64,7 @@ export function captureSize(options: ImageViewerCaptureOptions, imageWidth: numb
 /** Encode `image` tone mapped with the given settings, independently of what is on screen. */
 export async function captureImage(
   image: HdrifyImage,
-  toneMapping: ToneMappingType,
+  toneMapping: ViewerToneMapping,
   exposure: number,
   options: ImageViewerCaptureOptions = {},
 ): Promise<Blob> {

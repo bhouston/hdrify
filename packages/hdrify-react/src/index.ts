@@ -15,3 +15,5 @@ export {
 } from './ImageViewer.js';
 export type { DownloadProgress, ImageViewerProgress } from './progress.js';
 export { IMAGE_VIEWER_CSS } from './styles.js';
+
+export type { DisplayMode, ViewerToneMapping } from './display.js';

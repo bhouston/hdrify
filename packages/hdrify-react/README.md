@@ -46,8 +46,12 @@ import { readExr } from 'hdrify';
 
 const hdrifyImage: HdrifyImage = readExr(buffer);
 
-<HdrifyCanvas hdrifyImage={hdrifyImage} toneMapping="neutral" exposure={1.0} className="max-w-full" />;
+<HdrifyCanvas hdrifyImage={hdrifyImage} exposure={1.0} className="max-w-full" />;
 ```
+
+`HdrifyCanvas`, `ImageViewer`, and `<image-viewer>` automatically use native WebGPU on an HDR-capable display when the browser acknowledges an `rgba16float` canvas with extended presentation. The default tone mapper is **None** on HDR and **Neutral** on the SDR fallback. Set `toneMapping` / `tone-mapping` to choose a mapper explicitly, including `none`. Omitting it (or removing the attribute) restores automatic selection.
+
+Display sizing follows the viewport and device pixel ratio; `fit="actual"` retains one source pixel per CSS pixel. GPU resources are disposed on unmount, and device loss falls back to SDR. `whenReady()` includes the first completed render. `toBlob()` produces an SDR PNG/JPEG/WebP independently of the display; automatic capture uses Neutral, while explicit `none` clips above-white values to the export range.
 
 ### Image viewer
 
@@ -72,13 +76,13 @@ With a bundler, `import 'hdrify-react/element'` instead. See the [`<image-viewer
 
 ### HdrifyCanvas props
 
-| Prop           | Type                                         | Description                                           |
-| -------------- | -------------------------------------------- | ----------------------------------------------------- |
-| `hdrifyImage`  | `HdrifyImage`                                | Image from `readHdr`, `readExr`, or `readJpegGainMap` |
-| `toneMapping`  | `'aces' \| 'reinhard' \| 'neutral' \| 'agx'` | Tone mapper to use                                    |
-| `exposure`     | `number`                                     | Exposure value (1.0 = nominal)                        |
-| `className`    | `string`                                     | Optional CSS class for the canvas                     |
-| `forwardedRef` | `RefObject<HTMLCanvasElement \| null>`       | Optional ref for canvas access (e.g. `toBlob`)        |
+| Prop           | Type                                                   | Description                                                 |
+| -------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
+| `hdrifyImage`  | `HdrifyImage`                                          | Image from `readHdr`, `readExr`, or `readJpegGainMap`       |
+| `toneMapping`  | `'none' \| 'aces' \| 'reinhard' \| 'neutral' \| 'agx'` | Optional override; None for HDR, Neutral for SDR by default |
+| `exposure`     | `number`                                               | Exposure value (1.0 = nominal)                              |
+| `className`    | `string`                                               | Optional CSS class for the canvas wrapper                   |
+| `forwardedRef` | `RefObject<HTMLCanvasElement \| null>`                 | Optional ref for canvas access (e.g. `toBlob`)              |
 
 ## Contribution
 
@@ -91,3 +95,5 @@ MIT
 ## Author
 
 [Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
+
+Compare browser behavior at [hdr-capabilities.ben3d.ca](https://hdr-capabilities.ben3d.ca), maintained in the separate [hdr-capabilities repository](https://github.com/bhouston/hdr-capabilities).

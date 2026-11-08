@@ -120,7 +120,7 @@ export class ImageViewerElement extends ElementBase {
   async toBlob(options?: ImageViewerCaptureOptions): Promise<Blob> {
     await this.whenReady();
     if (!this.#shown) throw new Error('No image is loaded.');
-    return captureImage(this.#shown, this.#settings.toneMapping, 2 ** this.#settings.exposure, options);
+    return captureImage(this.#shown, this.#settings.toneMapping ?? 'neutral', 2 ** this.#settings.exposure, options);
   }
 
   disconnectedCallback(): void {
@@ -145,7 +145,7 @@ export class ImageViewerElement extends ElementBase {
       TONE_MAPPING_OPTIONS.map((option) => option.value),
     );
     const fit = oneOf<ImageFit>(this.getAttribute('fit'), ['contain', 'actual']);
-    if (toneMapping) this.#settings.toneMapping = toneMapping;
+    if (name === 'tone-mapping') this.#settings.toneMapping = toneMapping;
     if (fit) this.#settings.fit = fit;
     if (exposure !== null && Number.isFinite(Number(exposure))) this.#settings.exposure = Number(exposure);
     this.#render();
@@ -165,10 +165,13 @@ export class ImageViewerElement extends ElementBase {
   }
 
   // Write attributes without re-entering attributeChangedCallback.
-  #reflect(entries: [string, string][]): void {
+  #reflect(entries: [string, string | undefined][]): void {
     this.#reflecting = true;
     try {
-      for (const [name, value] of entries) if (this.getAttribute(name) !== value) this.setAttribute(name, value);
+      for (const [name, value] of entries) {
+        if (value === undefined) this.removeAttribute(name);
+        else if (this.getAttribute(name) !== value) this.setAttribute(name, value);
+      }
     } finally {
       this.#reflecting = false;
     }
