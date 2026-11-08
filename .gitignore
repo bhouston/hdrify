@@ -10,3 +10,7 @@ packages/hdrify-vscode-extension/media
 publish
 release-artifacts
 packages/cli/opencli.json
+
+# Agent tooling
+.claude/
+.codex/
