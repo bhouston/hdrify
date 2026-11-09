@@ -36,6 +36,19 @@ function isJpegGainMapExtension(ext: string): ext is '.jpg' | '.jpeg' {
   return ext === '.jpg' || ext === '.jpeg';
 }
 
+/**
+ * True when the decoded source carries float32 (or 32-bit integer) samples: an EXR FLOAT/UINT
+ * channel, or a JPEG XL float stream wider than 16 bits. Other sources fit float16.
+ */
+function hasFloat32Source(inputExt: string, image: HdrifyImage): boolean {
+  const meta = image.metadata ?? {};
+  if (inputExt === '.exr') {
+    const channels: unknown = meta.channels;
+    return Array.isArray(channels) && channels.some((ch: { pixelType?: number }) => ch.pixelType !== 1); // 1 = EXR HALF
+  }
+  return inputExt === '.jxl' && meta.floatSample === true && Number(meta.bitsPerSample) > 16;
+}
+
 /** Parse "1024,512" (WxH) or "1024" (square) into { width, height }. */
 function parseSize(size: string): { width: number; height: number } {
   const parts = size.split(',').map((p) => Number(p.trim()));
@@ -107,6 +120,16 @@ export const command = defineCommand({
         describe: 'JPEG XL quantization distance, > 0 and <= 25; enables lossy output (default: 1)',
         type: 'number',
       })
+      .option('jxl-bit-depth', {
+        describe: 'JPEG XL sample format (JXL output only; default: float32 for float32 sources, else float16)',
+        type: 'string',
+        choices: ['float16', 'float32', 'uint16', 'uint8'] as const,
+      })
+      .option('jxl-container', {
+        describe: 'Wrap the JPEG XL codestream in the ISOBMFF container (JXL output only)',
+        type: 'boolean',
+        default: false,
+      })
       .option('compression', {
         describe: 'EXR compression method (EXR output only, default: zip)',
         type: 'string',
@@ -150,6 +173,8 @@ export const command = defineCommand({
       'jxl-effort': jxlEffort,
       'jxl-lossy': jxlLossy,
       'jxl-distance': jxlDistance,
+      'jxl-bit-depth': jxlBitDepth,
+      'jxl-container': jxlContainer,
     } = argv;
 
     if (!fs.existsSync(input)) {
@@ -185,6 +210,13 @@ export const command = defineCommand({
       process.exit(1);
     }
 
+    if ((jxlBitDepth !== undefined || jxlContainer) && outputExt !== '.jxl') {
+      console.error(
+        `Error: --jxl-bit-depth and --jxl-container are only valid for JXL output. Output format is ${outputExt}.`,
+      );
+      process.exit(1);
+    }
+
     if (compression !== undefined && outputExt !== '.exr') {
       console.error(`Error: --compression is only valid for EXR output. Output format is ${outputExt}.`);
       process.exit(1);
@@ -212,6 +244,7 @@ export const command = defineCommand({
       }
 
       console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
+      const float32Source = hasFloat32Source(inputExt, imageData);
 
       if (size !== undefined) {
         const { width, height } = parseSize(size);
@@ -236,7 +269,13 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
+          const bitDepth = jxlBitDepth ?? (float32Source ? 'float32' : 'float16');
+          if (float32Source && bitDepth !== 'float32') {
+            console.log(`Note: reducing float32 source samples to ${bitDepth}.`);
+          }
           outputBuffer = writeJxl(dataToWrite, {
+            bitDepth,
+            container: jxlContainer,
             effort: jxlEffort,
             lossy: jxlLossy || jxlDistance !== undefined,
             distance: jxlDistance,
