@@ -2,7 +2,7 @@
  * CPU decode: apply gain map to SDR to produce HDR Float32 RGBA.
  * Matches UltraHDR/gainmap-js formula: logRecovery, logBoost, weightFactor, offsets.
  *
- * Adobe/Ultra HDR spec: SDR base image is sRGB (display-ready for standard viewers).
+ * This pixel decoder assumes an sRGB SDR base. ICC metadata is handled separately.
  * We linearize before applying gain; the gain formula uses linear light.
  */
 
@@ -51,7 +51,7 @@ export function decodeGainMapCpu(
 
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
-    // Spec: SDR base is sRGB. Linearize to get SDR_linear for the gain formula.
+    // This decoder assumes an sRGB base. Linearize before applying gain.
     const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4]!) : sRGBToLinear(sdr[i4]! / 255);
     const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1]!) : sRGBToLinear(sdr[i4 + 1]! / 255);
     const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2]!) : sRGBToLinear(sdr[i4 + 2]! / 255);
@@ -114,7 +114,7 @@ export function decodeGainMapFromFloat(
 
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
-    // Spec: SDR base is sRGB. sdrFloat mirrors the stored format; linearize for gain formula.
+    // The encoder reference path uses an sRGB base; linearize before applying gain.
     const sdrR = sRGBToLinear(sdrFloat[i4]!);
     const sdrG = sRGBToLinear(sdrFloat[i4 + 1]!);
     const sdrB = sRGBToLinear(sdrFloat[i4 + 2]!);

@@ -165,3 +165,27 @@ MIT
 ## Author
 
 [Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
+
+## ICC metadata in JPEG gain maps
+
+`readJpegGainMap` validates embedded ICC data with `hdrify-icc` and retains the
+complete raw profile in `metadata.iccProfile`, including unknown tags and
+multipart JPEG profiles. It does **not** apply the profile to pixels:
+`metadata.iccColorManaged` is `false` when a profile is present. Pixel decoding
+keeps the existing sRGB-base assumption and linear Rec.709 output. Applications
+that need color management must apply it externally. Profiles using LUTs, CMYK,
+or gray color spaces are retained as metadata without interpreting them.
+
+`writeJpegGainMap` (both `ultrahdr` and `adobe-gainmap`) and
+`writeGainMapAsSeparateFiles` accept `iccProfile: Uint8Array` containing raw ICC
+bytes, splitting large profiles across JPEG APP2 segments. The legacy `icc`
+option accepts a complete single APP2 payload with the `ICC_PROFILE` header and
+chunk 1/1. Specify only one of these options; set either to `null` to omit ICC.
+All three writer paths default to the existing sRGB profile. Separate-file
+output embeds ICC in the SDR JPEG, not the gain-map JPEG.
+
+Writers validate ICC structure but do not transform pixels or decide whether a
+profile matches them. `encodeGainMap` produces an sRGB base; callers supplying
+a different profile are responsible for matching that profile to the encoded
+base samples. Raw profiles are embedded byte-for-byte without rewriting opaque
+profile data or profile IDs.
