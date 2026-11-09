@@ -20,7 +20,7 @@
     "hdrify": "node ./packages/cli/dist/index.js",
     "release": "semantic-release",
     "release:check": "node --test scripts/release.test.mjs",
-    "docs:build": "pnpm --filter hdrify --filter hdrify-cli --filter hdrify-react --filter website --filter hdrify-docs build",
+    "docs:build": "pnpm --filter website... --filter hdrify-docs... build",
     "docs:dev": "pnpm --filter hdrify-cli... --filter hdrify-react... build && pnpm --filter hdrify-docs dev",
     "test:viewer": "node packages/hdrify-react/scripts/test-viewer.mjs"
   },
