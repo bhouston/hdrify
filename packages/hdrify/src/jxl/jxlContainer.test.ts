@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { extractCodestream, isJxl } from './jxlContainer.js';
+import { extractCodestream, isJxl, readJxlBoxMetadata } from './jxlContainer.js';
+import { readJxl, readJxlFrames } from './readJxl.js';
 
 const ASSETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../../assets/jxl');
 const load = (name: string) => new Uint8Array(fs.readFileSync(path.join(ASSETS, name)));
@@ -12,6 +14,10 @@ const ascii = (s: string) => Array.from(s, (c) => c.charCodeAt(0));
 const be32 = (v: number) => [v >>> 24, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff];
 const box = (type: string, body: number[]) => [...be32(body.length + 8), ...ascii(type), ...body];
 const ftyp = box('ftyp', [...ascii('jxl '), 0, 0, 0, 0, ...ascii('jxl ')]);
+const exifBox = (offset: number) => ({ type: 'Exif', data: new Uint8Array([...be32(offset), 9, 9, 0x4d, 0x4d]) });
+const reject = () => {
+  throw new RangeError('Cannot create a Buffer larger than maxOutputLength');
+};
 const file = (...parts: number[][]) => new Uint8Array([...SIG, ...ftyp, ...parts.flat()]);
 
 describe('extractCodestream', () => {
@@ -71,5 +77,49 @@ describe('isJxl', () => {
     expect(isJxl(load('lossless_float16.jxl'))).toBe(true);
     expect(isJxl(new Uint8Array([0xff, 0xd8]))).toBe(false);
     expect(isJxl(new Uint8Array([]))).toBe(false);
+  });
+});
+
+describe('EXIF/XMP container boxes', () => {
+  const exif = load('features/metadata_boxes.exif'); // exiftool -b -EXIF
+  const xmp = new TextDecoder().decode(load('features/metadata_boxes.xmp')); // exiftool -b -XMP
+
+  it('returns the same EXIF/XMP bytes as exiftool for plain and brob boxes', () => {
+    for (const name of ['features/metadata_boxes.jxl', 'features/metadata_brob.jxl']) {
+      const { metadata } = readJxl(load(name));
+      expect(metadata!.exif).toEqual(exif);
+      expect(metadata!.xmp).toBe(xmp);
+      const [frame] = readJxlFrames(load(name)).frames;
+      expect(frame.image.metadata!.exif).toEqual(exif);
+      expect(frame.image.metadata!.xmp).toBe(xmp);
+    }
+    expect(extractCodestream(load('features/metadata_brob.jxl')).boxes.map((b) => b.type)).toEqual(['brob', 'brob']);
+  });
+
+  it('skips brob boxes without a Brotli decoder (browsers)', () => {
+    const { boxes } = extractCodestream(load('features/metadata_brob.jxl'));
+    expect(readJxlBoxMetadata(boxes, null)).toEqual({});
+  });
+
+  it('skips brob boxes the Brotli decoder rejects (corrupt or oversize)', () => {
+    const { boxes } = extractCodestream(load('features/metadata_brob.jxl'));
+    expect(readJxlBoxMetadata(boxes, reject)).toEqual({});
+  });
+
+  it('caps Node Brotli output at 64 MiB', () => {
+    const bomb = zlib.brotliCompressSync(new Uint8Array((1 << 26) + 1));
+    const brob = new Uint8Array([...ascii('Exif'), ...bomb]);
+    expect(readJxlBoxMetadata([{ type: 'brob', data: brob }])).toEqual({});
+  });
+
+  it('honours the Exif TIFF header offset and ignores out-of-range offsets', () => {
+    expect(readJxlBoxMetadata([exifBox(2)]).exif).toEqual(new Uint8Array([0x4d, 0x4d]));
+    expect(readJxlBoxMetadata([exifBox(5)])).toEqual({});
+  });
+
+  it('reports no EXIF/XMP for bare codestreams', () => {
+    const { metadata } = readJxl(load('lossless_rgb8.jxl'));
+    expect(metadata).not.toHaveProperty('exif');
+    expect(metadata).not.toHaveProperty('xmp');
   });
 });
