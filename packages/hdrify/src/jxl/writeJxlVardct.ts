@@ -94,22 +94,26 @@ export function writeVardctJxl(
   const bw = Math.ceil(width / 8),
     bh = Math.ceil(height / 8);
   const intensityTarget = jxlIntensityTarget(image);
+  const max = 2 ** bitDepth.bitsPerSample - 1;
+  const quantize =
+    !bitDepth.float || bitDepth.bitsPerSample === 16
+      ? (value: number): number =>
+          bitDepth.float
+            ? decodeFloat16(encodeFloat16(value))
+            : Math.fround(Math.round(Math.max(0, Math.min(1, value)) * max) / max)
+      : undefined;
+  // Simulate the source samples: integers sit on the grid of the declared transfer function, as in lossless output.
+  const encoded = !bitDepth.float && transfer !== 'linear';
+  // Linear Rec. 709 input is read in place and quantized per sample instead of copied.
+  const inPlace = !encoded && image.linearColorSpace === 'linear-rec709';
   let source = image;
-  if (!bitDepth.float || bitDepth.bitsPerSample === 16) {
-    // Simulate the source samples: integers sit on the grid of the declared transfer function, as in lossless output.
-    const encoded = !bitDepth.float && transfer !== 'linear';
+  if (quantize && !inPlace) {
     const data = encoded ? encodeTransfer(image, transfer, intensityTarget, layout.grey) : image.data.slice();
-    const max = 2 ** bitDepth.bitsPerSample - 1;
-    for (let i = 0; i < data.length; i++) {
-      if ((i & 3) === 3) continue;
-      const value = data[i]!;
-      data[i] = bitDepth.float
-        ? decodeFloat16(encodeFloat16(value))
-        : Math.round(Math.max(0, Math.min(1, value)) * max) / max;
-    }
+    for (let i = 0; i < data.length; i++) if ((i & 3) !== 3) data[i] = quantize(data[i]!);
     source = { ...image, data };
     if (encoded) decodeTransfer(source, transfer, intensityTarget);
   }
+  const q = inPlace ? quantize : undefined;
   const rgb = convertLinearColorSpace(source, 'linear-rec709').data;
   // XYB is absolute: libjxl scales linear input by intensity_target / 255 before the opsin matrix.
   const m = JXL_OPSIN_ABSORBANCE_MATRIX.map((v) => (v * intensityTarget) / 255);
@@ -118,46 +122,46 @@ export function writeVardctJxl(
     hfMul = 64;
   const matrices = computeDefaultDequantMatrices();
   const lf = [0, 1, 2].map(() => new Int32Array(bw * bh));
-  const ac = [0, 1, 2].map(() => new Int32Array(bw * bh * 64));
+  // AC coefficients for one 32x32-block group, transformed just before it is tokenized.
+  const ac = [0, 1, 2].map(() => new Int32Array(32 * 32 * 64));
   const block = [0, 1, 2].map(() => new Float32Array(64));
   const bias = 0.0037930732552754493;
   const biasRoot = Math.cbrt(bias);
-  for (let by = 0; by < bh; by++) {
-    for (let bx = 0; bx < bw; bx++) {
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          const p = (Math.min(height - 1, by * 8 + y) * width + Math.min(width - 1, bx * 8 + x)) * 4;
-          const r = rgb[p]!,
-            g = layout.grey ? r : rgb[p + 1]!,
-            b = layout.grey ? r : rgb[p + 2]!;
-          const l = Math.cbrt(m[0]! * r + m[1]! * g + m[2]! * b + bias) - biasRoot;
-          const mm = Math.cbrt(m[3]! * r + m[4]! * g + m[5]! * b + bias) - biasRoot;
-          const s = Math.cbrt(m[6]! * r + m[7]! * g + m[8]! * b + bias) - biasRoot;
-          block[0]![y * 8 + x] = (l - mm) / 2;
-          block[1]![y * 8 + x] = (l + mm) / 2;
-          block[2]![y * 8 + x] = s;
-        }
-      }
-      for (const b of block) forwardDct2d(b, 8, 8);
-      // Default chroma-from-luma predicts B from Y, both in LF and HF.
-      for (let k = 0; k < 64; k++) block[2]![k] = block[2]![k]! - block[1]![k]!;
-      const o = by * bw + bx;
-      for (let c = 0; c < 3; c++) {
-        const matrix = dequantMatrixFor(matrices, 0, c);
-        const scale = hfDequantMultiplier(globalScale, hfMul, c, c === 0 ? 3 : 2);
-        const dc = Math.round(block[c]![0]! / lfDequantScale(JXL_DEFAULT_M_LF[c]!, globalScale, quantLf));
-        if (!Number.isFinite(dc) || Math.abs(dc) > 0x7fffffff)
-          throw new Error('writeJxl: lossy sample exceeds coefficient range');
-        lf[c]![o] = dc;
-        for (let k = 1; k < 64; k++) {
-          const v = Math.round(block[c]![k]! / (matrix[k]! * scale));
-          if (!Number.isFinite(v) || Math.abs(v) > 0x7fffffff)
-            throw new Error('writeJxl: lossy sample exceeds coefficient range');
-          ac[c]![o * 64 + k] = v;
-        }
+  /** Transform block (bx, by) into lf and the group's ac at block index `local`. */
+  const transformBlock = (bx: number, by: number, local: number): void => {
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const p = (Math.min(height - 1, by * 8 + y) * width + Math.min(width - 1, bx * 8 + x)) * 4;
+        const r = q ? q(rgb[p]!) : rgb[p]!,
+          g = layout.grey ? r : q ? q(rgb[p + 1]!) : rgb[p + 1]!,
+          b = layout.grey ? r : q ? q(rgb[p + 2]!) : rgb[p + 2]!;
+        const l = Math.cbrt(m[0]! * r + m[1]! * g + m[2]! * b + bias) - biasRoot;
+        const mm = Math.cbrt(m[3]! * r + m[4]! * g + m[5]! * b + bias) - biasRoot;
+        const s = Math.cbrt(m[6]! * r + m[7]! * g + m[8]! * b + bias) - biasRoot;
+        block[0]![y * 8 + x] = (l - mm) / 2;
+        block[1]![y * 8 + x] = (l + mm) / 2;
+        block[2]![y * 8 + x] = s;
       }
     }
-  }
+    for (const b of block) forwardDct2d(b, 8, 8);
+    // Default chroma-from-luma predicts B from Y, both in LF and HF.
+    for (let k = 0; k < 64; k++) block[2]![k] = block[2]![k]! - block[1]![k]!;
+    const o = by * bw + bx;
+    for (let c = 0; c < 3; c++) {
+      const matrix = dequantMatrixFor(matrices, 0, c);
+      const scale = hfDequantMultiplier(globalScale, hfMul, c, c === 0 ? 3 : 2);
+      const dc = Math.round(block[c]![0]! / lfDequantScale(JXL_DEFAULT_M_LF[c]!, globalScale, quantLf));
+      if (!Number.isFinite(dc) || Math.abs(dc) > 0x7fffffff)
+        throw new Error('writeJxl: lossy sample exceeds coefficient range');
+      lf[c]![o] = dc;
+      for (let k = 1; k < 64; k++) {
+        const v = Math.round(block[c]![k]! / (matrix[k]! * scale));
+        if (!Number.isFinite(v) || Math.abs(v) > 0x7fffffff)
+          throw new Error('writeJxl: lossy sample exceeds coefficient range');
+        ac[c]![local * 64 + k] = v;
+      }
+    }
+  };
   const groupsX = Math.ceil(width / 256),
     groupsY = Math.ceil(height / 256);
   const numGroups = groupsX * groupsY;
@@ -166,20 +170,24 @@ export function writeVardctJxl(
   const single = numGroups === 1;
   const streams: TokenStream[] = [];
   const order = naturalCoeffOrder(0);
+  // Shared scratch for one group (at most 64 tokens per block and channel), copied out at its exact size.
+  const scratchContexts = new Uint16Array(32 * 32 * 3 * 64);
+  const scratchValues = new Uint32Array(scratchContexts.length);
   for (let gy = 0; gy < groupsY; gy++) {
     for (let gx = 0; gx < groupsX; gx++) {
       const gw = Math.min(32, bw - gx * 32),
         gh = Math.min(32, bh - gy * 32);
       const nzGrid = [0, 1, 2].map(() => new Uint8Array(gw * gh));
-      const contexts: number[] = [],
-        values: number[] = [];
+      let count = 0;
       const push = (ctx: number, v: number): void => {
-        contexts.push(ctx);
-        values.push(v);
+        scratchContexts[count] = ctx;
+        scratchValues[count++] = v;
       };
+      for (let by = 0; by < gh; by++)
+        for (let bx = 0; bx < gw; bx++) transformBlock(gx * 32 + bx, gy * 32 + by, by * gw + bx);
       for (let by = 0; by < gh; by++) {
         for (let bx = 0; bx < gw; bx++) {
-          const o = (gy * 32 + by) * bw + gx * 32 + bx;
+          const o = by * gw + bx;
           for (const c of [1, 0, 2]) {
             const coeffs = ac[c]!;
             let nz = 0;
@@ -207,7 +215,7 @@ export function writeVardctJxl(
           }
         }
       }
-      streams.push({ contexts, values });
+      streams.push({ contexts: scratchContexts.slice(0, count), values: scratchValues.slice(0, count) });
     }
   }
   // Three HF histograms: nonzero counts, then coefficients conditioned on the previous nonzero.
