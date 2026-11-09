@@ -1,6 +1,7 @@
+import { encodeFloat16 } from '../exr/halfFloat.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
 import { writeJxlIcc } from './jxlEncIcc.js';
 import type { LinearColorSpace } from '../color/colorSpaces.js';
-import { encodeFloat16 } from '../exr/halfFloat.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
 import type { JxlExtraChannelType } from './jxlImageHeader.js';
 
@@ -107,8 +108,21 @@ function writeExtraChannelInfo(w: JxlBitWriter, ec: JxlEncExtraChannel, bitDepth
 }
 
 /**
+ * ToneMapping.intensity_target for an image: `metadata.linearReferenceWhiteNits` (as reported by readJxl),
+ * else the JPEG XL default of 255 nits. Throws unless it is a positive finite F16 value.
+ */
+export function jxlIntensityTarget(image: HdrifyImage): number {
+  const nits = image.metadata?.linearReferenceWhiteNits;
+  if (nits === undefined) return 255;
+  if (typeof nits !== 'number' || !(nits > 0 && nits <= 65504))
+    throw new Error(`writeJxl: metadata.linearReferenceWhiteNits must be in (0, 65504], got ${JSON.stringify(nits)}`);
+  return nits;
+}
+
+/**
  * ImageMetadata + default CustomTransformData, optional ICC, then byte alignment (no preview).
  * Colour encoding: RGB or grey, D65, `colorSpace` primaries, linear transfer, relative intent.
+ * A non-default `intensityTarget` (nits) is written in the ToneMapping bundle via extra_fields.
  */
 export function writeImageMetadata(
   w: JxlBitWriter,
@@ -117,8 +131,9 @@ export function writeImageMetadata(
   colorSpace: LinearColorSpace,
   xybEncoded = false,
   iccProfile?: Uint8Array,
+  intensityTarget = 255,
 ): void {
-  const extraFields = layout.orientation !== 1;
+  const extraFields = layout.orientation !== 1 || intensityTarget !== 255;
   w.writeBool(false); // all_default
   w.writeBool(extraFields);
   if (extraFields) {
@@ -144,7 +159,13 @@ export function writeImageMetadata(
     w.writeEnum(8); // transfer_function = kLinear
     w.writeEnum(1); // rendering_intent = kRelative
   }
-  if (extraFields) w.writeBool(true); // ToneMapping.all_default
+  if (extraFields) {
+    w.writeBool(false); // ToneMapping.all_default
+    w.writeBits(16, encodeFloat16(intensityTarget)); // intensity_target
+    w.writeBits(16, 0); // min_nits
+    w.writeBool(false); // relative_to_max_display
+    w.writeBits(16, 0); // linear_below
+  }
   w.writeU64(0); // extensions
   w.writeBool(true); // CustomTransformData.all_default
   if (iccProfile) writeJxlIcc(w, iccProfile);

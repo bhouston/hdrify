@@ -11,6 +11,8 @@ import { type JxlExtraChannel, readJxl } from './readJxl.js';
 import { type WriteJxlOptions, writeJxl } from './writeJxl.js';
 
 const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
+const COLOR_ASSETS = new URL('../../../../assets/jxl/color/', import.meta.url);
+const readColorAsset = (name: string): HdrifyImage => readJxl(fs.readFileSync(new URL(name, COLOR_ASSETS)));
 
 function makeImage(
   width: number,
@@ -139,6 +141,23 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
   it('many small groups and two LF groups (groupSizeShift 0)', () => {
     expectRgb(pattern(1030, 3), { bitDepth: 'float32', groupSizeShift: 0 });
     expectRgb(pattern(130, 260), { groupSizeShift: 0 });
+  });
+
+  it('writes the intensity target that libjxl reports and decodes with', () => {
+    const image = readColorAsset('pq-d0.jxl');
+    const file = encode(image, { bitDepth: 'float32' });
+    expect(jxlinfo(file)).toMatch(/Intensity target: 10000\.0+ nits/);
+    const { rgb } = readPfm(djxl(file, 'pfm'));
+    expect(rgb).toEqual(
+      Float32Array.from({ length: rgb.length }, (_, i) => image.data[Math.floor(i / 3) * 4 + (i % 3)]),
+    );
+    // Lossy XYB is absolute: djxl must decode the same linear values as readJxl.
+    const lossy = encode({ ...pattern(32, 32), metadata: { linearReferenceWhiteNits: 10000 } }, { lossy: true });
+    expect(jxlinfo(lossy)).toMatch(/Intensity target: 10000\.0+ nits/);
+    const djxlLossy = readPfm(djxl(lossy, 'pfm')).rgb;
+    const ours = readJxl(fs.readFileSync(lossy)).data;
+    for (let i = 0; i < djxlLossy.length; i++)
+      expect(djxlLossy[i]).toBeCloseTo(ours[Math.floor(i / 3) * 4 + (i % 3)], 3);
   });
 
   it('large groups (groupSizeShift 3)', () => expectRgb(pattern(300, 40), { groupSizeShift: 3 }));
@@ -467,6 +486,36 @@ describe('writeJxl', () => {
       writeJxl(image, { bitDepth: 'float32', effort: 'high', sanitize: false, groupSizeShift: 0 }),
     );
     expect(new Uint32Array(decoded.data.buffer)).toEqual(new Uint32Array(image.data.buffer));
+  });
+
+  for (const name of ['pq-d0.jxl', 'pq-d1.jxl', 'hlg-d0.jxl']) {
+    it(`${name}: lossless round trip keeps the intensity target and samples`, () => {
+      const image = readColorAsset(name);
+      const nits = image.metadata?.linearReferenceWhiteNits;
+      expect(nits).not.toBe(255);
+      const decoded = readJxl(writeJxl(image, { bitDepth: 'float32' }));
+      expect(decoded.metadata?.linearReferenceWhiteNits).toBe(nits);
+      expect(new Uint32Array(decoded.data.buffer)).toEqual(new Uint32Array(image.data.buffer));
+    });
+  }
+
+  it('lossy output keeps the intensity target and absolute brightness', () => {
+    const image = { ...pattern(32, 32), metadata: { linearReferenceWhiteNits: 4000 } };
+    const decoded = readJxl(writeJxl(image, { lossy: true, distance: 0.1 }));
+    expect(decoded.metadata?.linearReferenceWhiteNits).toBe(4000);
+    let sum = 0;
+    let want = 0;
+    for (let i = 0; i < image.data.length; i += 4) {
+      sum += decoded.data[i + 1];
+      want += image.data[i + 1];
+    }
+    expect(sum / want).toBeCloseTo(1, 2);
+  });
+
+  it('defaults the intensity target to 255 nits and validates it', () => {
+    expect(readJxl(writeJxl(pattern(2, 2))).metadata?.linearReferenceWhiteNits).toBe(255);
+    const bad = { ...pattern(2, 2), metadata: { linearReferenceWhiteNits: 1e6 } };
+    expect(() => writeJxl(bad)).toThrow(/linearReferenceWhiteNits/);
   });
 
   it('rejects invalid input', () => {

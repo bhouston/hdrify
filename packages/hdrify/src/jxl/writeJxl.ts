@@ -14,6 +14,7 @@ import {
 } from './jxlEncEntropy.js';
 import type { JxlExtraChannel } from './readJxl.js';
 import {
+  jxlIntensityTarget,
   type JxlEncBitDepth,
   type JxlEncLayout,
   writeFrameHeader,
@@ -94,6 +95,8 @@ const PREDICTOR_GRADIENT = 5;
  * Reproduce corpus size/error measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
  *
  * Input pixels are linear light; native JPEG XL color fields describe their primaries.
+ * `metadata.linearReferenceWhiteNits` (set by {@link readJxl}) is written as the intensity target,
+ * the luminance in nits of linear 1.0, so HDR brightness survives a round trip; without it, 255 nits.
  * `metadata.iccProfile` is never attached automatically. For samples already encoded
  * in an ICC profile's space, use {@link writeJxlEncoded}.
  *
@@ -371,7 +374,7 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, layout, image.linearColorSpace, false, iccProfile);
+  writeImageMetadata(w, bitDepth, layout, image.linearColorSpace, false, iccProfile, jxlIntensityTarget(image));
   writeFrameHeader(w, layout.extraChannels.length, groupSizeShift);
   writeToc(
     w,

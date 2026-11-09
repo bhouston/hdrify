@@ -8,6 +8,7 @@ import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import { JxlEncEntropyCode, packSigned, type TokenStream } from './jxlEncEntropy.js';
 import {
+  jxlIntensityTarget,
   type JxlEncBitDepth,
   type JxlEncLayout,
   writeFrameHeader,
@@ -103,6 +104,9 @@ export function writeVardctJxl(
     source = { ...image, data };
   }
   const rgb = convertLinearColorSpace(source, 'linear-rec709').data;
+  const intensityTarget = jxlIntensityTarget(image);
+  // XYB is absolute: libjxl scales linear input by intensity_target / 255 before the opsin matrix.
+  const m = JXL_OPSIN_ABSORBANCE_MATRIX.map((v) => (v * intensityTarget) / 255);
   const globalScale = Math.max(1, Math.min(73728, Math.round(4096 / distance)));
   const quantLf = 16,
     hfMul = 64;
@@ -112,7 +116,6 @@ export function writeVardctJxl(
   const block = [0, 1, 2].map(() => new Float32Array(64));
   const bias = 0.0037930732552754493;
   const biasRoot = Math.cbrt(bias);
-  const m = JXL_OPSIN_ABSORBANCE_MATRIX;
   for (let by = 0; by < bh; by++) {
     for (let bx = 0; bx < bw; bx++) {
       for (let y = 0; y < 8; y++) {
@@ -275,7 +278,7 @@ export function writeVardctJxl(
   out.writeBits(8, 0xff);
   out.writeBits(8, 0x0a);
   writeSizeHeader(out, width, height);
-  writeImageMetadata(out, bitDepth, layout, image.linearColorSpace, true);
+  writeImageMetadata(out, bitDepth, layout, image.linearColorSpace, true, undefined, intensityTarget);
   writeFrameHeader(out, layout.extraChannels.length, 1, true);
   writeToc(
     out,
