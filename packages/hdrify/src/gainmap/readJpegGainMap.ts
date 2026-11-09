@@ -4,7 +4,8 @@
  */
 
 import './ensureBuffer.js';
-import { readIccProfile } from 'hdrify-icc';
+import { iccLinearRgb } from '../color/iccPolicy.js';
+import { applyMatrix3ToFloat32Array } from '../color/matrixConversion.js';
 import { extractIccProfileFromJpeg } from './libultrahdr/iccFromJpeg.js';
 import { decode as jpegDecode } from 'jpeg-js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
@@ -17,16 +18,18 @@ export type GainMapFormat = 'ultrahdr' | 'adobe-gainmap';
 /**
  * Read a JPEG buffer that contains embedded gain map (XMP + MPF) and return
  * decoded HDR as HdrifyImage. Supports UltraHDR/JPEG-R layout.
- * Embedded ICC profiles are validated with hdrify-icc and retained in
- * `metadata.iccProfile`, including unknown tags and multipart JPEG profiles.
- * Profiles are metadata only: LUT, CMYK, and gray profiles are not interpreted.
- * Pixel reconstruction assumes an sRGB base and returns linear Rec.709 pixels;
- * callers must apply any other color management externally.
- * `metadata.iccColorManaged` is false when a profile is present.
+ * The base image's embedded ICC profile is colour-managed with the same policy as JPEG XL: recognized
+ * cICP, matrix/TRC RGB and gray TRC profiles are evaluated, and LUT-based, CMYK, Lab and other profiles
+ * throw. The gain is applied in the base's linear primaries (hdrgm XMP metadata always uses the base colour
+ * space, as in libultrahdr), then the result is returned in the matching linear colour space (`linear-rec709`,
+ * `linear-p3` or `linear-rec2020`), or Bradford-adapted to `linear-rec2020` for other primaries.
+ * Without a profile the base is sRGB, as Ultra HDR specifies. The profile bytes are retained verbatim in
+ * `metadata.iccProfile`. An ICC profile on the gain-map image is not used.
  *
  * @param buffer - Full JPEG-R file bytes
  * @returns HdrifyImage with linear HDR RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
- * @throws If no gain map XMP is found, or if primary/gain map images cannot be extracted
+ * @throws If no gain map XMP is found, if primary/gain map images cannot be extracted, or if the base
+ * image's ICC profile is malformed or cannot be colour-managed
  */
 export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
   const metadata = extractGainMapXmp(buffer);
@@ -46,7 +49,7 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
   }
 
   const iccProfile = extractIccProfileFromJpeg(primaryImage);
-  if (iccProfile) readIccProfile(iccProfile);
+  const base = iccProfile ? iccLinearRgb(iccProfile, 'Gain map JPEG') : undefined;
 
   const sdrDecoded = jpegDecode(primaryImage, { useTArray: true, formatAsRGBA: true });
   const gainDecoded = jpegDecode(gainmapImage, { useTArray: true, formatAsRGBA: true });
@@ -62,12 +65,14 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
     );
   }
 
-  const result = decodeGainMapCpu(sdrData, gainData, width, height, metadata);
+  const result = decodeGainMapCpu(sdrData, gainData, width, height, metadata, {}, base?.decode);
+  if (base?.toOutput) applyMatrix3ToFloat32Array(result.data, base.toOutput);
+  if (base) result.linearColorSpace = base.space;
 
   result.metadata = {
     ...metadata,
     format,
-    ...(iccProfile && { iccProfile: new Uint8Array(iccProfile), iccColorManaged: false }),
+    ...(iccProfile && { iccProfile: new Uint8Array(iccProfile) }),
   };
 
   ensureNonNegativeFinite(result.data);

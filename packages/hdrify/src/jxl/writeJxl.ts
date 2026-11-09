@@ -12,10 +12,13 @@ import {
   packSigned,
   type TokenStream,
 } from './jxlEncEntropy.js';
+import { encodeTransfer } from './jxlColor.js';
 import type { JxlExtraChannel } from './readJxl.js';
 import {
+  JXL_ENC_TRANSFERS,
   jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncTransfer,
   type JxlEncLayout,
   writeFrameHeader,
   writeImageMetadata,
@@ -44,6 +47,18 @@ export interface WriteJxlOptions {
    * quantized according to distance; alpha still preserves the selected sample format.
    */
   bitDepth?: 'float16' | 'float32' | 'uint16' | 'uint8';
+  /**
+   * Transfer function the samples are stored with: 'linear', 'srgb', 'pq' (SMPTE ST 2084) or 'hlg' (BT.2100).
+   * Default: 'srgb' for 'uint8'/'uint16', 'linear' for float formats.
+   * Input stays linear light; lossless output encodes it with this curve before quantizing, so integer
+   * samples are spaced perceptually rather than in linear light. PQ maps linear 1.0 to the intensity
+   * target (`metadata.linearReferenceWhiteNits`, default 255 nits), and HLG removes the intensity-target
+   * OOTF that {@link readJxl} applies, so both round trip through readJxl.
+   * Lossy XYB output is coded from linear light; integer sources are first rounded on this curve's grid.
+   * The declared encoding is what decoders such as djxl use for their output.
+   * Ignored by {@link writeJxlEncoded}, whose samples are described by the ICC profile.
+   */
+  transferFunction?: JxlEncTransfer;
   /** Write an alpha channel. Default: only when some alpha value is not 1. */
   alpha?: boolean;
   /** Wrap the codestream in the ISOBMFF container (default false: bare codestream). */
@@ -236,8 +251,14 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
     ...extras.map((ec) => toPlane(ec.data, 1, 0, numPixels, format)),
   ];
 
-  if (options.lossy) return writeVardctJxl(image, options, bitDepth, layout, ecPlanes);
-  let planes = [...(grey ? [0] : [0, 1, 2]).map((c) => toPlane(data, 4, c, numPixels, format)), ...ecPlanes];
+  const transfer = iccProfile ? 'linear' : (options.transferFunction ?? (bitDepth.float ? 'linear' : 'srgb'));
+  if (!Object.hasOwn(JXL_ENC_TRANSFERS, transfer))
+    throw new Error(`writeJxl: unsupported transferFunction ${String(transfer)}`);
+  const intensityTarget = jxlIntensityTarget(image);
+
+  if (options.lossy) return writeVardctJxl(image, options, bitDepth, layout, ecPlanes, transfer);
+  const encoded = transfer === 'linear' ? data : encodeTransfer(image, transfer, intensityTarget, grey);
+  let planes = [...(grey ? [0] : [0, 1, 2]).map((c) => toPlane(encoded, 4, c, numPixels, format)), ...ecPlanes];
   const numChannels = planes.length;
 
   // Pick the cheaper of: channel palettes on the raw channels, or YCoCg RCT followed by
@@ -383,7 +404,7 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, layout, image.linearColorSpace, false, iccProfile, jxlIntensityTarget(image));
+  writeImageMetadata(w, bitDepth, layout, image.linearColorSpace, false, iccProfile, intensityTarget, transfer);
   writeFrameHeader(w, layout.extraChannels.length, groupSizeShift);
   writeToc(
     w,
