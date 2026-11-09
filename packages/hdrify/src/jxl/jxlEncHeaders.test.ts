@@ -3,6 +3,7 @@ import { JxlBitReader } from './jxlBitReader.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import {
   type JxlEncBitDepth,
+  type JxlEncLayout,
   writeFrameHeader,
   writeImageMetadata,
   writeSizeHeader,
@@ -15,6 +16,11 @@ import { readImageHeader } from './jxlImageHeader.js';
 const F16: JxlEncBitDepth = { float: true, bitsPerSample: 16, expBits: 5 };
 const F32: JxlEncBitDepth = { float: true, bitsPerSample: 32, expBits: 8 };
 const U8: JxlEncBitDepth = { float: false, bitsPerSample: 8, expBits: 0 };
+const layout = (alpha: boolean): JxlEncLayout => ({
+  grey: false,
+  orientation: 1,
+  extraChannels: alpha ? [{ type: 'alpha' }] : [],
+});
 
 function headers(
   width: number,
@@ -28,8 +34,8 @@ function headers(
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, alpha, space);
-  writeFrameHeader(w, alpha, groupSizeShift);
+  writeImageMetadata(w, bitDepth, layout(alpha), space);
+  writeFrameHeader(w, alpha ? 1 : 0, groupSizeShift);
   return new JxlBitReader(w.finish());
 }
 
@@ -97,8 +103,8 @@ describe('jxlEncHeaders', () => {
     w.writeBits(8, 0xff);
     w.writeBits(8, 0x0a);
     writeSizeHeader(w, 256 * 3, 256 * 2); // 6 groups: LfGlobal + 1 LfGroup + HfGlobal + 6 = 9 entries
-    writeImageMetadata(w, F16, false, 'linear-rec709');
-    writeFrameHeader(w, false, 1);
+    writeImageMetadata(w, F16, layout(false), 'linear-rec709');
+    writeFrameHeader(w, 0, 1);
     const all = [...sizes, 5, 6];
     writeToc(w, all);
     const br = new JxlBitReader(w.finish());

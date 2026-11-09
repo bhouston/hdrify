@@ -224,7 +224,7 @@ export function skipExtensions(br: JxlBitReader): void {
   br.skip(total);
 }
 
-const EC_TYPES: Record<number, JxlExtraChannelType> = {
+export const EC_TYPES: Record<number, JxlExtraChannelType> = {
   0: 'alpha',
   1: 'depth',
   2: 'spotColor',
