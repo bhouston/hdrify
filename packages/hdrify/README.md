@@ -50,7 +50,7 @@ pnpm add hdrify
 
 ## HdrifyImage
 
-All read functions return `HdrifyImage`, and all write functions accept it. This is the universal intermediate format.
+All read functions return `HdrifyImage`, and the standard write functions accept it. This is the universal intermediate format.
 
 ```ts
 interface HdrifyImage {
@@ -136,3 +136,32 @@ MIT
 ## Author
 
 [Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
+
+## ICC-encoded JPEG XL samples
+
+`writeJxl` accepts linear `HdrifyImage` pixels and uses native JPEG XL color fields.
+To store pixels that are already encoded in an ICC profile's RGB space, use the
+separate `writeJxlEncoded` API:
+
+```ts
+import { writeJxlEncoded } from 'hdrify';
+
+const bytes = writeJxlEncoded(
+  { width, height, data: encodedRgbaFloat32, iccProfile: rawIccBytes },
+  { bitDepth: 'float32', container: true },
+);
+```
+
+The caller supplies RGBA samples in the profile's encoded space. This function
+performs no color conversion or ICC curve/LUT evaluation. It validates the profile
+structure and RGB channel declaration, then retains the complete profile bytes,
+including unknown tags and RGB LUT profiles. Source `metadata.iccProfile` is never
+attached automatically by `writeJxl`.
+
+This API supports lossless Modular output. CMYK and gray sample layouts and lossy
+XYB output are unsupported and throw. The existing reader's color-management
+limitations still apply when decoding LUT profiles; storing a profile does not
+add support for interpreting it. Float32 preserves signed finite sample values;
+float16 rounds them to half precision. Integer output clamps to [0, 1]. The
+encoded-sample API defaults `sanitize` to false, so it does not mutate input pixels;
+callers may explicitly enable sanitization. Alpha follows the selected bit depth.
