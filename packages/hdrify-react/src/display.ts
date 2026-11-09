@@ -4,6 +4,12 @@ import { convertFloat32ToLinearColorSpace, getToneMapping, type HdrifyImage, typ
 export type ViewerToneMapping = ToneMappingType | 'none';
 export type DisplayMode = 'hdr' | 'sdr';
 
+/** None is valid only after the renderer enables extended FP16 HDR presentation. */
+export function resolveToneMapping(toneMapping: ViewerToneMapping | undefined, mode: DisplayMode): ViewerToneMapping {
+  if (toneMapping === undefined || toneMapping === 'none') return mode === 'hdr' ? 'none' : 'neutral';
+  return toneMapping;
+}
+
 /** Prepare display pixels without changing the decoded image. Output is linear Rec.709 RGBA. */
 export function displayPixels(image: HdrifyImage, toneMapping: ViewerToneMapping, exposure = 1): Float32Array {
   const source = image.data.slice();

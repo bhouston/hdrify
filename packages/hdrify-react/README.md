@@ -49,9 +49,9 @@ const hdrifyImage: HdrifyImage = readExr(buffer);
 <HdrifyCanvas hdrifyImage={hdrifyImage} exposure={1.0} className="max-w-full" />;
 ```
 
-`HdrifyCanvas`, `ImageViewer`, and `<image-viewer>` automatically use native WebGPU on an HDR-capable display when the browser acknowledges an `rgba16float` canvas with extended presentation. The default tone mapper is **None** on HDR and **Neutral** on the SDR fallback. Set `toneMapping` / `tone-mapping` to choose a mapper explicitly, including `none`. Omitting it (or removing the attribute) restores automatic selection.
+`HdrifyCanvas`, `ImageViewer`, and `<image-viewer>` automatically use native WebGPU on an HDR-capable display when the browser acknowledges an `rgba16float` canvas with extended presentation. The tone-mapping selector defaults to **None** only after extended FP16 HDR output succeeds. On SDR it defaults to **Neutral** and hides **None**. There is no Automatic menu item. Explicit `none` also falls back to Neutral when HDR presentation is unavailable. Omitting `toneMapping` / `tone-mapping` uses the display-dependent default; explicit supported mappers are preserved. The WebGPU/extended-FP16 capability probe runs once per page load and caches both success and failure; each viewer owns its rendering resources.
 
-Display sizing follows the viewport and device pixel ratio; `fit="actual"` retains one source pixel per CSS pixel. GPU resources are disposed on unmount, and device loss falls back to SDR. `whenReady()` includes the first completed render. `toBlob()` produces an SDR PNG/JPEG/WebP independently of the display; automatic capture uses Neutral, while explicit `none` clips above-white values to the export range.
+Display sizing follows the viewport and device pixel ratio; `fit="actual"` retains one source pixel per CSS pixel. GPU resources are disposed on unmount, and device loss falls back to SDR. `whenReady()` includes the first completed render. `toBlob()` produces an SDR PNG/JPEG/WebP independently of the display; capture with an omitted mapper uses Neutral, while explicit `none` clips above-white values to the export range.
 
 ### Image viewer
 

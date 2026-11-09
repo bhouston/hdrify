@@ -1,5 +1,5 @@
 import type { HdrifyImage } from 'hdrify';
-import type { DisplayMode, ViewerToneMapping } from './display.js';
+import { resolveToneMapping, type DisplayMode, type ViewerToneMapping } from './display.js';
 import { type CSSProperties, type Ref, useEffect, useId, useImperativeHandle, useRef, useState } from 'react';
 import { captureImage, type ImageViewerCaptureOptions } from './capture.js';
 import { decodeHdrifyImage } from './decode.js';
@@ -249,6 +249,7 @@ export function ImageViewer({
   });
   const handleDraw = (current: HdrifyImage, mode: DisplayMode) => {
     setRenderError(undefined);
+    if (mode === 'sdr' && settings.toneMapping === 'none') change({ toneMapping: 'neutral' });
     if (current === drawn)
       setBar((currentBar) => (currentBar && currentBar.value < 1 ? { ...currentBar, value: 1 } : currentBar));
     setRendered((previous) =>
@@ -442,15 +443,15 @@ function OptionsPanel({ settings, image, displayMode, open, onChange, onOpenChan
         <label>
           Tone mapping
           <select
-            value={settings.toneMapping ?? ''}
+            aria-label="Tone mapping"
+            value={resolveToneMapping(settings.toneMapping, displayMode)}
             onChange={(event) =>
               onChange({
                 toneMapping: event.currentTarget.value ? (event.currentTarget.value as ViewerToneMapping) : undefined,
               })
             }
           >
-            <option value="">Automatic ({displayMode === 'hdr' ? 'None' : 'Neutral'})</option>
-            {TONE_MAPPING_OPTIONS.map((option) => (
+            {TONE_MAPPING_OPTIONS.filter((option) => option.value !== 'none' || displayMode === 'hdr').map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayPixels } from './display.js';
+import { displayPixels, resolveToneMapping } from './display.js';
 
 describe('HDR display pixels', () => {
   it('preserves signed extended values and never changes the decoded image', () => {
@@ -25,5 +25,18 @@ describe('HDR display pixels', () => {
     expect(pixels[0]).toBeCloseTo(1.22494, 3);
     expect(pixels[1]).toBeCloseTo(-0.042057, 3);
     expect(pixels[2]).toBeCloseTo(-0.019638, 3);
+  });
+});
+
+describe('capability-dependent tone mapping', () => {
+  it('uses None only for an active HDR renderer and Neutral otherwise', () => {
+    expect(resolveToneMapping(undefined, 'hdr')).toBe('none');
+    expect(resolveToneMapping(undefined, 'sdr')).toBe('neutral');
+    expect(resolveToneMapping('none', 'hdr')).toBe('none');
+    expect(resolveToneMapping('none', 'sdr')).toBe('neutral');
+  });
+  it('keeps a supported explicit mapper when the renderer changes', () => {
+    expect(resolveToneMapping('agx', 'hdr')).toBe('agx');
+    expect(resolveToneMapping('agx', 'sdr')).toBe('agx');
   });
 });
