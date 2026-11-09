@@ -214,6 +214,9 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
+      icc:
+        specifier: 4.0.0
+        version: 4.0.0
       jsonfile:
         specifier: ^6.2.1
         version: 6.2.1
@@ -6709,6 +6712,10 @@ packages:
   hyperdyperid@1.2.0:
     resolution: {integrity: sha512-Y93lCzHYgGWdrJ66yIktxiaGULYc6oGiABxhcO5AufBeOyoIdZF7bIfLaOrbM0iGIOXQQgxxRrFEnb+Y6w1n4A==}
     engines: {node: '>=10.18'}
+
+  icc@4.0.0:
+    resolution: {integrity: sha512-gtkfKMx/NzH2xWBz2LQ9PJgEnuQZSemzb+UVug5ZeJIpXv/rYKNcqPx+wMvvNnKufG6JeFR8QId6TwneSKsuFQ==}
+    engines: {node: '>=20'}
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -17981,6 +17988,8 @@ snapshots:
   husky@9.1.7: {}
 
   hyperdyperid@1.2.0: {}
+
+  icc@4.0.0: {}
 
   iconv-lite@0.4.24:
     dependencies:

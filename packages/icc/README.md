@@ -25,6 +25,8 @@ writeFileSync('output.icc', writeIccProfile(profile));
 
 API reference: [`readIccProfile`](https://hdrify.ben3d.ca/docs/api/icc/functions/readIccProfile/) · [`readIccHeader`](https://hdrify.ben3d.ca/docs/api/icc/functions/readIccHeader/) · [`writeIccHeader`](https://hdrify.ben3d.ca/docs/api/icc/functions/writeIccHeader/) · [`writeIccProfile`](https://hdrify.ben3d.ca/docs/api/icc/functions/writeIccProfile/).
 
+Read human-readable profile metadata with [`parse`](https://hdrify.ben3d.ca/docs/api/icc/functions/parse/).
+
 See the [ICC API reference](https://hdrify.ben3d.ca/docs/api/icc/) for tag editing and HDR metadata helpers.
 
 ## Contribution

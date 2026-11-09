@@ -67,7 +67,13 @@ it('coalesces overlapping payloads and aligns unaligned caller views', () => {
   expect(encoded.length).toBeLessThan(132 + 12000 + storage.length * 4);
   const d = new DataView(encoded.buffer);
   for (let i = 0; i < 1000; i++) expect(d.getUint32(136 + i * 12) % 4).toBe(0);
-  expect(readIccProfile(encoded).tags).toEqual(profile.tags);
+  const decoded = readIccProfile(encoded).tags;
+  expect(decoded).toHaveLength(profile.tags.length);
+  for (let i = 0; i < decoded.length; i++) {
+    expect(decoded[i].signature).toBe(profile.tags[i].signature);
+    // Compare every byte natively; generic deep equality visits millions of numeric properties.
+    expect(Buffer.from(decoded[i].data).equals(profile.tags[i].data)).toBe(true);
+  }
 });
 
 it('provides independent default sRGB profiles and owned ADGC GUIDs', async () => {
