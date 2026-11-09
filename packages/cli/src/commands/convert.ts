@@ -37,16 +37,18 @@ function isJpegGainMapExtension(ext: string): ext is '.jpg' | '.jpeg' {
 }
 
 /**
- * True when the decoded source carries float32 (or 32-bit integer) samples: an EXR FLOAT/UINT
- * channel, or a JPEG XL float stream wider than 16 bits. Other sources fit float16.
+ * True when the decoded source needs more than float16 precision: an EXR FLOAT/UINT channel,
+ * a JPEG XL float stream wider than 16 bits, or a JPEG XL integer stream wider than 11 bits
+ * (float16 has an 11-bit significand). Other sources fit float16.
  */
-function hasFloat32Source(inputExt: string, image: HdrifyImage): boolean {
+function needsMoreThanFloat16(inputExt: string, image: HdrifyImage): boolean {
   const meta = image.metadata ?? {};
   if (inputExt === '.exr') {
     const channels: unknown = meta.channels;
     return Array.isArray(channels) && channels.some((ch: { pixelType?: number }) => ch.pixelType !== 1); // 1 = EXR HALF
   }
-  return inputExt === '.jxl' && meta.floatSample === true && Number(meta.bitsPerSample) > 16;
+  if (inputExt !== '.jxl') return false;
+  return Number(meta.bitsPerSample) > (meta.floatSample === true ? 16 : 11);
 }
 
 /** Parse "1024,512" (WxH) or "1024" (square) into { width, height }. */
@@ -121,7 +123,8 @@ export const command = defineCommand({
         type: 'number',
       })
       .option('jxl-bit-depth', {
-        describe: 'JPEG XL sample format (JXL output only; default: float32 for float32 sources, else float16)',
+        describe:
+          'JPEG XL sample format (JXL output only; default: float32 when the source needs more than float16 precision, else float16)',
         type: 'string',
         choices: ['float16', 'float32', 'uint16', 'uint8'] as const,
       })
@@ -244,7 +247,7 @@ export const command = defineCommand({
       }
 
       console.log(`Image dimensions: ${imageData.width}x${imageData.height}`);
-      const float32Source = hasFloat32Source(inputExt, imageData);
+      const highPrecisionSource = needsMoreThanFloat16(inputExt, imageData);
 
       if (size !== undefined) {
         const { width, height } = parseSize(size);
@@ -269,9 +272,9 @@ export const command = defineCommand({
         if (outputExt === '.exr') {
           outputBuffer = writeExr(dataToWrite, { compression });
         } else if (outputExt === '.jxl') {
-          const bitDepth = jxlBitDepth ?? (float32Source ? 'float32' : 'float16');
-          if (float32Source && bitDepth !== 'float32') {
-            console.log(`Note: reducing float32 source samples to ${bitDepth}.`);
+          const bitDepth = jxlBitDepth ?? (highPrecisionSource ? 'float32' : 'float16');
+          if (highPrecisionSource && bitDepth !== 'float32') {
+            console.log(`Note: source needs more than float16 precision; writing ${bitDepth} may lose precision.`);
           }
           outputBuffer = writeJxl(dataToWrite, {
             bitDepth,

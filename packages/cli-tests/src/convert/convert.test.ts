@@ -2,7 +2,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { readExr, readJxl, writeExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTempDir, exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
+import {
+  assetsDir,
+  createTempDir,
+  exrFilePaths,
+  hdrFilePaths,
+  jpgGainMapFilePath,
+  runCli,
+} from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
 
 describe('CLI convert command', () => {
@@ -82,7 +89,7 @@ describe('CLI convert command', () => {
         const output = path.join(tempDir, 'out.jxl');
         const result = runCli(['convert', file, output, ...flags]);
         expect(result.exitCode, result.stderr).toBe(0);
-        expect(result.stdout).not.toMatch(/Note: reducing/);
+        expect(result.stdout).not.toMatch(/Note: source needs/);
         const image = readJxl(fs.readFileSync(output));
         expect(image.metadata).toMatchObject({ floatSample: true, bitsPerSample: 32 });
         expect(new Uint32Array(image.data.buffer)).toEqual(new Uint32Array(data.buffer));
@@ -100,7 +107,7 @@ describe('CLI convert command', () => {
         const output = path.join(tempDir, `${bitDepth}.jxl`);
         const result = runCli(['convert', file, output, '--jxl-bit-depth', bitDepth]);
         expect(result.exitCode, result.stderr).toBe(0);
-        expect(result.stdout).toContain(`Note: reducing float32 source samples to ${bitDepth}`);
+        expect(result.stdout).toContain(`writing ${bitDepth} may lose precision`);
         expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject(header);
       }
     });
@@ -109,8 +116,15 @@ describe('CLI convert command', () => {
       const output = path.join(tempDir, 'half.jxl');
       const result = runCli(['convert', exrFilePaths[0], output, '--size', '33,19']);
       expect(result.exitCode, result.stderr).toBe(0);
-      expect(result.stdout).not.toMatch(/Note: reducing/);
+      expect(result.stdout).not.toMatch(/Note: source needs/);
       expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject({ floatSample: true, bitsPerSample: 16 });
+    });
+
+    it('defaults to float32 for a 16-bit integer JXL source', () => {
+      const output = path.join(tempDir, 'rgb16.jxl');
+      const result = runCli(['convert', path.join(assetsDir, 'jxl', 'lossless_rgb16.jxl'), output]);
+      expect(result.exitCode, result.stderr).toBe(0);
+      expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject({ floatSample: true, bitsPerSample: 32 });
     });
 
     it('wraps output in the container with --jxl-container', () => {
