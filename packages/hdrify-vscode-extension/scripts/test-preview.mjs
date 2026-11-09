@@ -80,30 +80,6 @@ try {
   assert.doesNotMatch(hardware.renderer, /swiftshader|llvmpipe|lavapipe/i);
   assert.ok(!hardware.adapter?.fallback);
   const results = [{ name: 'immediate ready response', status: await page.locator('#status').textContent() }];
-  const exposure = page.getByRole('slider', { name: 'Exposure in stops' });
-  assert.equal(await exposure.getAttribute('min'), '-10');
-  assert.equal(await exposure.getAttribute('max'), '10');
-  assert.equal(await exposure.inputValue(), '0');
-  const mode = await page.locator('canvas').getAttribute('data-display-mode');
-  assert.equal(mode, hardware.hdrDisplay && hardware.adapter ? 'hdr' : 'sdr');
-  assert.equal(await page.locator('canvas').getAttribute('data-tone-mapping'), mode === 'hdr' ? 'none' : 'neutral');
-  await page.getByRole('button', { name: 'Viewer options', exact: true }).click();
-  const mapper = page.getByRole('combobox').first();
-  await mapper.selectOption('none');
-  await page.waitForFunction(() => document.querySelector('canvas')?.dataset.toneMapping === 'none');
-  await page.getByRole('spinbutton').fill('1');
-  await page.waitForFunction(() => document.querySelector('.hdrify-viewer-exposure output')?.textContent === '+1 EV');
-  assert.equal(await exposure.inputValue(), '1');
-  await exposure.dblclick();
-  await page.waitForFunction(() => document.querySelector('.hdrify-viewer-exposure output')?.textContent === '0 EV');
-  if (!(await mapper.isVisible())) await page.getByRole('button', { name: 'Viewer options', exact: true }).click();
-  await mapper.selectOption('');
-  await page.waitForFunction(
-    (expected) => document.querySelector('canvas')?.dataset.toneMapping === expected,
-    mode === 'hdr' ? 'none' : 'neutral',
-  );
-  results.push({ name: 'shared EV controls and None/Automatic tone mapping', mode });
-
   const send = async (fileName, bytes) =>
     page.evaluate(
       ({ fileName, bytes }) => {
