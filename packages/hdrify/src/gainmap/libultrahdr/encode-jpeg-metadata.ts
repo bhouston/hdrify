@@ -1,17 +1,17 @@
 import { assembleJpegAdobeGainMap } from '../adobeGainMapAssembler.js';
 import type { GainMapFormat } from '../readJpegGainMap.js';
 import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
-import { DEFAULT_ICC_PROFILE } from './defaultIccProfile.js';
+import { gainMapIccPayloads, type GainMapIccOptions } from './gainMapIccMetadata.js';
+import { extractIccProfileFromJpeg } from './iccFromJpeg.js';
 import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
-export interface EncodeJPEGMetadataOptions {
+export interface EncodeJPEGMetadataOptions extends GainMapIccOptions {
   format?: GainMapFormat;
-  /** ICC profile (APP2 payload). For ultrahdr, default is sRGB matching reference memorial.jpg. Pass null to omit. */
-  icc?: Uint8Array | null;
   /** EXIF (APP1 payload). For ultrahdr, default is null (no EXIF, matches reference). Pass Uint8Array to add. */
   exif?: Uint8Array | null;
 }
 
+/** Primary JPEG must be untagged; ICC metadata is supplied through options. */
 export function encodeJPEGMetadata(
   encodingResult: GainMapMetadata & { sdr: CompressedImage; gainMap: CompressedImage },
   options: EncodeJPEGMetadataOptions = {},
@@ -22,6 +22,10 @@ export function encodeJPEGMetadata(
   }
   if (encodingResult.gainMap.mimeType !== 'image/jpeg') {
     throw new Error('This function expects a GainMap image compressed in jpeg');
+  }
+
+  if (extractIccProfileFromJpeg(encodingResult.sdr.data)) {
+    throw new Error('Primary JPEG already contains ICC data; supply an untagged JPEG and use ICC options');
   }
 
   const metadata: GainMapMetadataExtended = {
@@ -41,21 +45,22 @@ export function encodeJPEGMetadata(
       : 2 ** encodingResult.gainMapMax,
   };
 
+  const iccPayloads = gainMapIccPayloads(options);
   if (format === 'adobe-gainmap') {
     return assembleJpegAdobeGainMap({
       sdr: encodingResult.sdr,
       gainMap: encodingResult.gainMap,
       metadata,
+      iccPayloads,
     });
   }
 
-  const icc = options.icc !== undefined ? options.icc : DEFAULT_ICC_PROFILE;
   const exif = options.exif ?? null;
   return assembleJpegWithGainMap({
     sdr: encodingResult.sdr,
     gainMap: encodingResult.gainMap,
     metadata,
     ...(exif && exif.length > 0 && { exif }),
-    ...(icc && icc.length > 0 && { icc }),
+    iccPayloads,
   });
 }
