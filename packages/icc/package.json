@@ -2,7 +2,16 @@
   "name": "hdrify-icc",
   "version": "0.0.0",
   "description": "Pure TypeScript ICC profile data reader and writer",
+  "bugs": {
+    "url": "https://github.com/bhouston/hdrify/issues"
+  },
   "license": "MIT",
+  "author": "Ben Houston <neuralsoft@gmail.com> (https://ben3d.ca)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bhouston/hdrify.git",
+    "directory": "packages/icc"
+  },
   "files": [
     "dist",
     "README.md"
