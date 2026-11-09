@@ -1,7 +1,10 @@
 import type { IccProfile, IccTag } from './index.js';
 
-/** Raw ICC v2/v4 header fields. Signatures and version remain uninterpreted, so future
- * values, unregistered devices, and all color spaces can be edited without a CMS.
+/**
+ * Raw ICC v2/v4 header fields, including version, 64-bit device attributes, profile ID,
+ * and reserved bytes. Signatures are uninterpreted four-byte strings; the creation
+ * date has six unsigned 16-bit components. Unknown values and all color spaces can
+ * be edited without a color-management system.
  */
 export interface IccHeader {
   profileSize: number;

@@ -5,12 +5,15 @@ import { drawToneMapped } from './capture.js';
 import { resolveToneMapping, type DisplayMode, type ImageDisplay, type ViewerToneMapping } from './display.js';
 
 export interface HdrifyCanvasProps {
+  /** Decoded floating-point RGBA image from a hdrify reader. */
   hdrifyImage: HdrifyImage;
   /** Omit to use None on HDR displays and Neutral on SDR displays. */
   toneMapping?: ViewerToneMapping;
-  /** Linear exposure multiplier. */
+  /** Linear exposure multiplier: 1 is nominal, 2 adds one stop. */
   exposure: number;
+  /** CSS class applied to the canvas wrapper. */
   className?: string;
+  /** Ref to the active canvas, updated when HDR/SDR fallback replaces it. */
   forwardedRef?: React.RefObject<HTMLCanvasElement | null>;
   /** Called after the current image has finished rendering. */
   onDraw?: (image: HdrifyImage, mode: DisplayMode) => void;
@@ -20,6 +23,25 @@ export interface HdrifyCanvasProps {
 const CSS =
   '.hdrify-canvas{display:grid;place-items:center;width:var(--hdrify-image-width);height:auto;aspect-ratio:var(--hdrify-image-aspect);min-height:0;flex:none;margin:auto;min-width:0}.hdrify-canvas>canvas{display:block;dynamic-range-limit:no-limit}';
 
+/**
+ * Display a decoded HDR image with exposure and tone mapping.
+ * Uses native WebGPU only when an HDR-capable display and extended `rgba16float`
+ * presentation succeed. The capability probe caches success or failure per page;
+ * each mounted canvas owns its rendering resources. Otherwise a 2D SDR canvas is used.
+ * GPU resources are disposed on unmount; device loss falls back to SDR.
+ *
+ * Omitting `toneMapping` selects None for HDR and Neutral for SDR. Explicit `none`
+ * also falls back to Neutral on SDR; other explicit mappers are preserved.
+ * Display size follows the viewport and device pixel ratio. Pass a new image object
+ * after editing pixels to trigger a redraw. `onDraw` reports a completed render.
+ * Use {@link captureImage} for portable SDR export rather than serializing the GPU canvas.
+ *
+ * @param props - Image, display settings, and rendering callbacks.
+ * @example
+ * ```tsx
+ * <HdrifyCanvas hdrifyImage={image} exposure={1} toneMapping="agx" />
+ * ```
+ */
 export function HdrifyCanvas(props: HdrifyCanvasProps): React.ReactElement {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);

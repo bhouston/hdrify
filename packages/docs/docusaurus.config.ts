@@ -88,6 +88,19 @@ const config: Config = {
     [
       'docusaurus-plugin-typedoc',
       {
+        id: 'icc',
+        entryPoints: ['../icc/src/index.ts'],
+        tsconfig: '../icc/tsconfig.json',
+        out: 'docs/api/icc',
+        readme: 'none',
+        entryFileName: 'index',
+        sidebar: { autoConfiguration: false },
+        disableSources: true,
+      },
+    ],
+    [
+      'docusaurus-plugin-typedoc',
+      {
         id: 'react',
         entryPoints: ['../hdrify-react/src/index.ts'],
         tsconfig: '../hdrify-react/tsconfig.json',

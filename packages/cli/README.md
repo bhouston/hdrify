@@ -28,7 +28,7 @@ CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe
 
 **Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
 
-An **online demo** is available at **[https://hdrify.ben3d.ca](https://hdrify.ben3d.ca)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
+Try the **[online demo](https://hdrify.ben3d.ca/demo/)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
 
 [Read the Docs to Learn More](https://hdrify.ben3d.ca/).
 
@@ -40,44 +40,15 @@ pnpm add -g hdrify-cli
 
 ## Usage
 
-| Command                           | Description                                                  |
-| --------------------------------- | ------------------------------------------------------------ |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG gain map, PNG, WebP, and JPEG |
-| `hdrify info <file>`              | Display metadata (format, dimensions, compression)           |
-| `hdrify reference <output>`       | Create synthetic reference test images                       |
-
-```bash
-# Convert between formats
+```sh
 hdrify convert input.exr output.hdr
-hdrify convert input.hdr output.exr --compression piz
-hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
-hdrify convert input.exr output.jpg --format adobe-gainmap
-hdrify convert input.jpg output.exr    # Read JPEG gain map as input
-hdrify convert input.exr output.webp   # Tonemaps to SDR
-hdrify convert input.exr output.exr --size 1024,512    # Resize (lanczos by default)
-hdrify convert input.exr output.png --size 512 --filter bilinear  # Square, bilinear
-hdrify convert input.exr output.exr --flip -1,1        # Mirror horizontally
-hdrify convert input.exr output.exr --flip 1,-1        # Mirror vertically
-
-# View file metadata
+hdrify convert input.exr output.jpg  # Ultra HDR JPEG with a gain map
+hdrify convert input.exr output.webp  # Tone-mapped SDR preview
 hdrify info input.exr
-hdrify info input.hdr
-hdrify info input.jpg
-
-# Create synthetic reference images
-hdrify reference output.exr --compression zip
-hdrify reference output.hdr
-hdrify reference output.exr --type cie-wedge
-hdrify reference output.hdr --type gradient
+hdrify reference gradient.exr --type gradient
 ```
 
-## Options
-
-**convert:** `--compression` (EXR: none, rle, zip, zips, piz, pxr24, b44, b44a, dwaa, dwab), `--format` (JPEG: ultrahdr, adobe-gainmap), `--tonemapping`, `--exposure`, `--quality`, `--size` (`WIDTH,HEIGHT` or `SIZE` for a square), `--filter` (resize filter: nearest, bilinear, lanczos; default: lanczos), `--flip` (`X,Y`, each `1` or `-1`, e.g. `-1,1` to mirror horizontally)
-
-**reference:** `--type` (rainbow, cie-wedge, cie-wedge-r, cie-wedge-g, cie-wedge-b, gradient), `--compression`, `--width`, `--height`
-
-Run `hdrify --help` for full usage.
+See the [CLI guide](https://hdrify.ben3d.ca/docs/cli/) for recipes and the [command reference](https://hdrify.ben3d.ca/docs/cli/reference/) for every option. Run `hdrify convert --help` for help in your terminal.
 
 ## Contribution
 

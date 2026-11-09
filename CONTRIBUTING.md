@@ -38,6 +38,12 @@ pnpm test
 
 The Husky pre-commit hook formats and lints staged files (`oxfmt`, `oxlint --fix`) and type-checks the workspace. CI runs the same checks plus any repository-specific gates, such as coverage floors, package-content checks, and a dependency audit; see `.github/workflows/ci.yml`. Explain any intentional threshold change in the PR.
 
+## Documentation
+
+Keep READMEs focused on what a package offers, installation, a few key examples, and license/acknowledgement/author credits. Link examples to the relevant function or component pages at https://hdrify.ben3d.ca instead of listing every parameter or advanced feature.
+
+Document function behavior, options, defaults, and limitations in public JSDoc/TSDoc comments; the website generates API references from those comments. Put longer recipes and conceptual explanations in `packages/docs/docs/`. Do not edit generated API or CLI reference pages directly.
+
 ## Reference implementations
 
 Reference implementations are not vendored or included as submodules. When you need one, clone it as a sibling repository (next to this repo), for example:

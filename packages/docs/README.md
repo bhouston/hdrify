@@ -1,6 +1,6 @@
 # HDRify documentation website
 
-Docusaurus documentation and landing page for [hdrify.ben3d.ca](https://hdrify.ben3d.ca/). The website combines hand-written guides with API documentation generated from the core and React package exports and source comments. The existing viewer and converter is retained at `/demo/`.
+Docusaurus documentation and landing page for [hdrify.ben3d.ca](https://hdrify.ben3d.ca/). The website combines hand-written guides with API documentation generated from the core, ICC, and React package exports and source comments. The existing viewer and converter is retained at `/demo/`.
 
 ## Content
 
@@ -9,8 +9,9 @@ Docusaurus documentation and landing page for [hdrify.ben3d.ca](https://hdrify.b
 - `docs/examples.md`: Node.js conversions, gain maps, resampling, and browser previews
 - `docs/react.md`: a complete React viewer and component props
 - `docs/cli.md`: command line conversion, inspection, and reference images
+- `docs/vscode.md`: editor previews, conversion settings, and local extension development
 
-Generated API pages are built from `packages/hdrify/src/index.ts` and `packages/hdrify-react/src/index.ts`. Update the public exports and their TSDoc/JSDoc comments to improve the reference; edit the guide Markdown files for explanations and examples.
+Generated API pages are built from `packages/hdrify/src/index.ts`, `packages/icc/src/index.ts`, and `packages/hdrify-react/src/index.ts`. Update the public exports and their TSDoc/JSDoc comments to improve the reference; edit the guide Markdown files for explanations and examples.
 
 Run the documentation scripts from this package or use the root workspace commands. Build from the repository root so workspace dependencies and the live demo are available. The GitHub Pages deployment workflow (`pages.yml`) publishes the generated static site as a Pages artifact. It does not run on merges to `main`: the Release workflow calls it with the new release tag, and it can be dispatched manually to redeploy a release.
 

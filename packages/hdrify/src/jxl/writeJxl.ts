@@ -24,7 +24,8 @@ import {
 export interface WriteJxlOptions {
   /** Lossless compression search: 'standard' (default) uses prefix codes;
    * 'high' also tries ANS and learned MA trees, retaining the smaller complete model.
-   * High costs more encode work.
+   * High is available only for lossless output and can take several times longer.
+   * Tree training uses at most 65,536 deterministic samples, depth 6, and 255 leaf contexts.
    */
   effort?: 'standard' | 'high';
   /** Encode lossy XYB VarDCT instead of lossless Modular (default false). */
@@ -65,6 +66,18 @@ const PREDICTOR_GRADIENT = 5;
  * Lossless encoding uses Gradient/Weighted prediction, prefix/LZ77 codes and estimated-cost transforms; high effort also tries ANS.
  * Lossy encoding uses XYB, fixed DCT8 blocks and distance-controlled uniform quantization;
  * alpha remains lossless in the selected source sample format.
+ * The lossy encoder uses default JPEG XL quantization tables and has no adaptive
+ * quantization, larger transforms, or restoration filters. Distance controls
+ * quantization strength and is not calibrated to libjxl's perceptual distance.
+ * Reproduce corpus size/error measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
+ *
+ * Input pixels are linear light; native JPEG XL color fields describe their primaries.
+ * `metadata.iccProfile` is never attached automatically. For samples already encoded
+ * in an ICC profile's space, use {@link writeJxlEncoded}.
+ *
+ * @param image - Linear floating-point RGBA image.
+ * @param options - Compression, sample precision, alpha, and container options.
+ * @returns JPEG XL codestream or container bytes.
  */
 export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uint8Array {
   return writeJxlImage(image, options);
@@ -79,10 +92,30 @@ export interface JxlEncodedImage {
   iccProfile: Uint8Array;
 }
 
-/** Write ICC-encoded RGB samples losslessly. LUT profiles are retained opaquely.
- * The caller is responsible for providing samples in the profile's encoded space.
- * Gray/CMYK channel layouts and lossy XYB encoding are not supported by this API.
- * Integer bit depths clamp samples to [0,1]; float formats preserve signed sample values.
+/**
+ * Write ICC-encoded RGB samples as lossless Modular JPEG XL.
+ * The caller supplies RGBA samples in the profile's encoded space. This function
+ * performs no color conversion or ICC curve/LUT evaluation. It validates the profile
+ * structure and RGB channel declaration, then retains the complete profile bytes,
+ * including unknown tags and RGB LUT profiles.
+ *
+ * Gray/CMYK layouts and lossy XYB encoding throw. Storing a profile does not add
+ * support for interpreting it on read; see {@link readJxl} for color-management support.
+ * Float32 preserves signed finite values; float16 rounds to half precision.
+ * Integer formats clamp to [0, 1]. Alpha follows the selected sample format.
+ * `sanitize` defaults to false, leaving input pixels unchanged; explicitly enabling
+ * it replaces negative and non-finite values in place.
+ *
+ * @param image - Caller-encoded RGBA samples and a matching raw RGB ICC profile.
+ * @param options - Lossless encoding options, with sanitization disabled by default.
+ * @returns JPEG XL codestream or container bytes retaining the supplied profile.
+ * @example
+ * ```ts
+ * const bytes = writeJxlEncoded(
+ *   { width, height, data: encodedRgbaFloat32, iccProfile: rawIccBytes },
+ *   { bitDepth: 'float32', container: true },
+ * );
+ * ```
  */
 export function writeJxlEncoded(image: JxlEncodedImage, options: WriteJxlOptions = {}): Uint8Array {
   if (options.lossy) throw new Error('writeJxlEncoded: only lossless Modular output is supported');

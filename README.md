@@ -39,230 +39,38 @@ Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer
 | [hdrify-react](packages/hdrify-react)                       | [![hdrify-react version](https://img.shields.io/npm/v/hdrify-react.svg?label=%20)](https://github.com/bhouston/hdrify/releases)                                         |
 | [hdrify-vscode-extension](packages/hdrify-vscode-extension) | [![hdrify-vscode-extension version](https://img.shields.io/open-vsx/v/benhouston3d/hdrify-vscode-extension.svg?label=%20)](https://github.com/bhouston/hdrify/releases) |
 
-## Capabilities
-
-- Read and write RGB, RGBA and Luminance EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
-- Read and write HDR (Radiance RGBE) files
-- Read JPEG XL (`.jxl`) files, lossless and lossy (VarDCT and Modular, 8/16-bit integer, float16 and float32, alpha, grayscale, patches, noise, layered frames; animation frame API, orientation, associated alpha and extra channels), and write lossless Modular or lossy DCT8 JPEG XL (float16, float32, uint16, uint8)
-- Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGS (Android compatible.)
-- Tone mappers (ACES, Khronos Neutral, AgX and Reinhart)
-- Full TypeScript support
-- No DOM or Node.js dependencies (works in browser, web workers, and node.js)
-- Written in a functional style to support tree-shaking
-- Web app example of HDR, EXR and Ultra HDR conversion and viewing: https://hdrify.ben3d.ca/demo/
-- [hdrify CLI](https://www.npmjs.com/package/hdrify-cli)
-- [HDRify VS Code Extension](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) — for [VS Code](https://marketplace.visualstudio.com/items?itemName=benhouston3d.hdrify-vscode-extension) and [Cursor](https://open-vsx.org/extension/benhouston3d/hdrify-vscode-extension)
-
-## Installation
+## Get started
 
 ```sh
 pnpm add hdrify
 ```
 
-## Main Entry Points
-
-All read functions return `HdrifyImage`, and all write functions accept it (or derived types). This is the universal intermediate format used across the library.
-
-### HdrifyImage
+Convert an EXR image to Radiance HDR in Node.js:
 
 ```ts
-interface HdrifyImage {
-  width: number; // Image width in pixels
-  height: number; // Image height in pixels
-  data: Float32Array; // RGBA pixel data: [R, G, B, A, R, G, B, A, ...]
-  metadata?: Record<string, unknown>; // Format-specific header metadata (e.g. compression, exposure)
-}
+import { readFileSync, writeFileSync } from 'node:fs';
+import { readExr, writeHdr } from 'hdrify';
+
+const image = readExr(readFileSync('input.exr'));
+writeFileSync('output.hdr', writeHdr(image));
 ```
 
-## Usage
+API reference: [`readExr`](https://hdrify.ben3d.ca/docs/api/core/functions/readExr/) · [`writeHdr`](https://hdrify.ben3d.ca/docs/api/core/functions/writeHdr/) · [`HdrifyImage`](https://hdrify.ben3d.ca/docs/api/core/interfaces/HdrifyImage/).
 
-### Reading an EXR file
+Read and write OpenEXR, Radiance HDR, JPEG XL, and JPEG gain maps with one floating-point RGBA image format. Resize, flip, convert color spaces, or apply ACES, AgX, Khronos Neutral, and Reinhard tone mapping.
 
-```ts
-import { readExr } from 'hdrify';
+## Use it where you work
 
-const buffer = fs.readFileSync('image.exr');
-const imageData = readExr(new Uint8Array(buffer));
+- **Browser:** [Try the live viewer and converter](https://hdrify.ben3d.ca/demo/), or follow the [code examples](https://hdrify.ben3d.ca/docs/examples/).
+- **React:** Add a viewer with [hdrify-react](packages/hdrify-react) and [`ImageViewer`](https://hdrify.ben3d.ca/docs/api/react/functions/ImageViewer/).
+- **Terminal:** Install [hdrify-cli](packages/cli) and run `hdrify convert input.exr output.jpg`.
+- **VS Code and Cursor:** [Preview and convert HDR images in your editor](packages/hdrify-vscode-extension).
 
-console.log(`Image: ${imageData.width}x${imageData.height}`);
-// imageData.data is a Float32Array with RGBA values
-```
-
-### Reading an HDR file
-
-```ts
-import { readHdr } from 'hdrify';
-
-const buffer = fs.readFileSync('image.hdr');
-const imageData = readHdr(new Uint8Array(buffer));
-
-console.log(`Image: ${imageData.width}x${imageData.height}`);
-```
-
-### Reading a JPEG gain map file (JPEG-R / Ultra HDR)
-
-```ts
-import { readJpegGainMap } from 'hdrify';
-
-const buffer = fs.readFileSync('image.jpg');
-const imageData = readJpegGainMap(new Uint8Array(buffer));
-
-console.log(`Image: ${imageData.width}x${imageData.height}`);
-// imageData.data is linear HDR Float32Array RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
-```
-
-### Reading and writing JPEG XL
-
-```ts
-import { readJxl, readJxlFrames, writeJxl } from 'hdrify';
-
-const imageData = readJxl(new Uint8Array(fs.readFileSync('image.jxl')));
-// Return every coalesced animation frame, with seconds, optional timecodes and loop count.
-const { frames, numLoops } = readJxlFrames(new Uint8Array(fs.readFileSync('animation.jxl')));
-// Both APIs apply orientation and return straight alpha by default. To retain stored orientation and alpha association:
-const raw = readJxl(new Uint8Array(fs.readFileSync('image.jxl')), {
-  applyOrientation: false,
-  keepPremultipliedAlpha: true,
-});
-// Full-resolution extra channels (including alpha) are retained as named, typed float planes:
-const extraChannels = imageData.metadata?.extraChannels;
-
-// Lossless; bitDepth: 'float16' (default), 'float32' (bit-exact), 'uint16' or 'uint8'
-fs.writeFileSync('output.jxl', writeJxl(imageData, { bitDepth: 'float32' }));
-// Lossy XYB / DCT8 output, preserving HDR range:
-fs.writeFileSync('delivery.jxl', writeJxl(imageData, { lossy: true, distance: 1 }));
-```
-
-For additional lossless compression, use `writeJxl(imageData, { effort: 'high' })`
-or CLI `--jxl-effort high`. The default `standard` effort uses prefix codes;
-`high` also tries ANS and learned prediction trees, retaining the smaller coded
-model. Training uses at most 65,536 deterministic samples, depth at most 6,
-and at most 255 leaf contexts, with predictors, residual offsets and proven
-power-of-two multipliers. This search can take several times longer than
-standard encoding. Representative half-float sizes improve from 953,620 to
-898,343 bytes for memorial and from 52,952 to 28,161 bytes for the gradient.
-High effort is currently supported for lossless output only.
-
-Lossy encoding uses a fixed DCT8 strategy, default JPEG XL quantization tables,
-uniform quantization, and lossless alpha. `distance` must be greater than 0 and at
-most 25 (default 1); smaller values retain more detail and produce larger files.
-This initial encoder's distance controls quantization strength and is not calibrated
-to libjxl's perceptual distance. Adaptive quantization, larger transforms, and
-restoration filters are future improvements. On the committed half-float synthetic,
-gradient and memorial HDR corpus at distances 0.5–2, output is 2.7–6.3 times the
-size of `cjxl -e 3` at the same distance, with lower measured error. Synthetic
-regression tests require linear RGB RMSE below 0.06 for values up to 8 at distance
-1, and below 0.3 for values up to 100 at distance 0.5; these are corpus checks,
-not a universal perceptual guarantee. Reproduce size and linear/sRGB error
-measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
-For the CLI, use
-`hdrify convert input.exr output.jxl --jxl-lossy` or `--jxl-distance 0.5`.
-
-JPEG XL extra channels are available in `metadata.extraChannels` as `{ name, type, width, height, data: Float32Array }`, in the returned image orientation. Spot colours retain their RGB/solidity in each plane’s `spotColor` field; set `{ renderSpotColors: true }` on either reader to composite them like djxl. CMYK ICC conversion is unsupported. `readJxlFrames` retains all decoded frames in memory.
-
-`metadata.originalChromaticities` describes enum/custom colour declarations. For embedded ICC sources, the reader retains `metadata.iccProfile` and reports colour-transform support in `metadata.iccColorManaged`; it omits `originalChromaticities`.
-
-### Converting between formats
-
-```ts
-import { encodeGainMap, readExr, writeExr, readHdr, writeHdr, writeJpegGainMap } from 'hdrify';
-
-// Convert EXR to HDR
-const exrBuffer = fs.readFileSync('input.exr');
-const imageData = readExr(new Uint8Array(exrBuffer));
-fs.writeFileSync('output.hdr', writeHdr(imageData));
-
-// Convert HDR to EXR
-const hdrBuffer2 = fs.readFileSync('input.hdr');
-const imageData2 = readHdr(new Uint8Array(hdrBuffer2));
-fs.writeFileSync('output.exr', writeExr(imageData2));
-
-// Convert EXR or HDR to JPEG-R (JPEG with gain map—highly compressible HDR)
-const imageData3 = readExr(new Uint8Array(fs.readFileSync('input.exr')));
-const encoding = encodeGainMap(imageData3, { toneMapping: 'reinhard' });
-fs.writeFileSync('output.jpg', writeJpegGainMap(encoding, { quality: 90 }));
-```
-
-### Browser usage
-
-```ts
-import { readExr } from 'hdrify';
-
-const fileInput = document.querySelector('input[type="file"]');
-fileInput.addEventListener('change', async (e) => {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (!file) return;
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = new Uint8Array(arrayBuffer);
-
-  const imageData = readExr(buffer);
-  // Use imageData.data to render to canvas, etc.
-});
-```
-
-## CLI Tool
-
-The **hdrify-cli** package is a companion command-line tool for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe) files. See **[packages/cli/README.md](packages/cli/README.md)** for full CLI documentation, or install from npm:
-
-```sh
-pnpm add -g hdrify-cli
-```
-
-| Command                           | Description                                                           |
-| --------------------------------- | --------------------------------------------------------------------- |
-| `hdrify convert <input> <output>` | Convert between EXR, HDR, JPEG XL, JPEG gain map, PNG, WebP, and JPEG |
-| `hdrify info <file>`              | Display metadata (format, dimensions, compression)                    |
-| `hdrify reference <output>`       | Create synthetic reference test images                                |
-
-```bash
-hdrify convert input.exr output.hdr
-hdrify convert input.hdr output.exr
-hdrify convert input.exr output.jpg    # JPEG-R with gain map (Ultra HDR, default)
-hdrify convert input.exr output.jpg --format adobe-gainmap   # Adobe gain map format
-hdrify convert input.jpg output.exr    # Read JPEG gain map as input
-hdrify convert input.exr output.exr --size 1024,512 --filter lanczos   # Resize
-hdrify info input.exr
-hdrify info input.jpg    # JPEG gain map (Ultra HDR / Adobe)
-hdrify reference output.exr --compression zip
-hdrify convert input.exr output.exr --compression pxr24
-```
-
-## Demos
-
-See the [online demo](https://hdrify.ben3d.ca/demo/). To run the website locally (`packages/website`, drag-and-drop and exposure slider):
-
-```bash
-cd packages/website
-pnpm install
-pnpm dev
-```
-
-Open http://localhost:3000/hdrify/demo/ and drag-and-drop EXR or HDR files.
-
-## Development
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting a change.
-
-```bash
-pnpm install
-pnpm dev
-pnpm tsc
-pnpm build
-pnpm lint # oxlint
-pnpm lint:fix
-pnpm format # oxfmt
-pnpm test # vitest
-```
-
-CI runs tests with coverage (`pnpm test --coverage`) and enforces coverage floors in addition to the checks in [CONTRIBUTING.md](CONTRIBUTING.md):
-
-- Core library coverage floors: 89% statements, 72% branches, 93% functions, 89% lines.
-
-Change them only with an explanation in the PR.
+See the [getting started guide](https://hdrify.ben3d.ca/docs/), [supported formats](https://hdrify.ben3d.ca/docs/formats/), and [API reference](https://hdrify.ben3d.ca/docs/api/core/) for more.
 
 ## Acknowledgements
 
-This project would not have been possible without these two projects which were used a reference:
+This project would not have been possible without these projects, which were used as references:
 
 - [Three.js](https://github.com/mrdoob/three.js) - tone mapping, UltraHDR loader, EXR loader, example images.
 - [Gainmap.js](https://github.com/MONOGRID/gainmap-js) - Ultra HDR loading, saving, XMP metadata structure and JPEG-R assembly (reference implementation).
