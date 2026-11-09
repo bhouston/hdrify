@@ -1,5 +1,5 @@
 import { getHalfToFloatLut } from '../exr/halfFloat.js';
-import { convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
+import { assertJxlIccSupported, convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -389,6 +389,15 @@ export interface ReadJxlOptions {
   keepPremultipliedAlpha?: boolean;
   /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
   renderSpotColors?: boolean;
+  /**
+   * What to do with an embedded ICC profile that cannot be evaluated (LUT-based profiles, CMYK, Lab and
+   * other non-RGB/gray colour spaces). Matrix/TRC RGB, gray TRC and recognized cICP profiles are always
+   * colour-managed.
+   * - `'fallback'` (default): decode as sRGB primaries (linear transfer for float samples, sRGB transfer
+   *   for integer samples) and report `metadata.iccColorManaged = false`. Colours may be wrong.
+   * - `'throw'`: throw an error naming the profile class and colour space before decoding pixels.
+   */
+  unsupportedIcc?: 'fallback' | 'throw';
 }
 
 /** A full-resolution extra channel in the same orientation as the returned image. */
@@ -412,10 +421,11 @@ export interface JxlAnimationFrame {
   timecode?: number;
 }
 
-function openJxl(data: Uint8Array) {
+function openJxl(data: Uint8Array, options: ReadJxlOptions) {
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
+  if (options.unsupportedIcc === 'throw') assertJxlIccSupported(h);
   // A preview is an independent frame and must not populate references or advance noise counters.
   const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
   return { codestream, isContainer, h, start };
@@ -542,7 +552,7 @@ export function readJxlFrames(
   data: Uint8Array,
   options: ReadJxlOptions = {},
 ): { frames: JxlAnimationFrame[]; numLoops: number } {
-  const { codestream, isContainer, h, start } = openJxl(data);
+  const { codestream, isContainer, h, start } = openJxl(data, options);
   const frames: JxlAnimationFrame[] = [];
   for (const frame of decodeDisplayedFrames(codestream, h, start)) {
     frames.push({
@@ -561,15 +571,16 @@ export function readJxlFrames(
  * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
- * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
- * use the historical sRGB fallback and metadata.iccColorManaged = false. originalChromaticities is
+ * RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK
+ * profiles silently use an sRGB fallback with metadata.iccColorManaged = false, unless
+ * `unsupportedIcc: 'throw'` is passed. originalChromaticities is
  * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.
  * XYB frames used for composition or references are converted to the original primaries/transfer
  * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
-  const { codestream, isContainer, h, start } = openJxl(data);
+  const { codestream, isContainer, h, start } = openJxl(data, options);
   const first = decodeDisplayedFrames(codestream, h, start).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
   const image = displayedImage(first, h, isContainer, options);
