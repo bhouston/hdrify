@@ -8,6 +8,7 @@ import { JxlBitWriter } from './jxlBitWriter.js';
 import { writeBitDepth, writeSizeHeader } from './jxlEncHeaders.js';
 import { readImageHeader } from './jxlImageHeader.js';
 import { writeJxl } from './writeJxl.js';
+import { decodeDisplayedFrames } from './readJxl.js';
 import { extractCodestream } from './jxlContainer.js';
 
 const bytes = (name: string) => new Uint8Array(fs.readFileSync(new URL(`features/${name}.jxl`, ASSETS)));
@@ -207,5 +208,44 @@ describe('JPEG XL decoder gaps', () => {
     expect(still.numLoops).toBe(0);
     expect(still.frames).toHaveLength(1);
     expect(still.frames[0].duration).toBe(0);
+  });
+
+  describe('maxPixels', () => {
+    // A few-byte codestream that declares a 65535x65535 image and nothing else.
+    const huge = () => {
+      const w = new JxlBitWriter();
+      w.writeBits(16, 0x0aff);
+      writeSizeHeader(w, 65535, 65535);
+      w.writeBool(true); // metadata all_default
+      w.writeBool(true); // custom transform defaults
+      w.zeroPadToByte();
+      return w.finish();
+    };
+
+    it('rejects a tiny file declaring huge dimensions before allocating', () => {
+      const file = huge();
+      expect(file.length).toBeLessThan(32);
+      expect(() => readJxl(file)).toThrow('JXL: image exceeds maxPixels (65535x65535 > 268435456)');
+      expect(() => readJxlFrames(file)).toThrow('exceeds maxPixels');
+      // Infinity disables the limit: decoding proceeds and fails on the missing frame data instead.
+      expect(() => readJxl(file, { maxPixels: Infinity })).toThrow();
+      expect(() => readJxl(file, { maxPixels: Infinity })).not.toThrow('maxPixels');
+    });
+
+    it('checks the preview and each frame', () => {
+      expect(() => readJxl(previewFile(), { maxPixels: 5 })).toThrow('exceeds maxPixels (3x2 > 5)');
+      const { codestream } = extractCodestream(bytes('orientation1'));
+      const br = new JxlBitReader(codestream);
+      const h = readImageHeader(br);
+      expect(() => decodeDisplayedFrames(codestream, h, br.byteOffset, 5).next()).toThrow(
+        'exceeds maxPixels (3x2 > 5)',
+      );
+    });
+
+    it('decodes normally at the default and with Infinity', () => {
+      const file = bytes('orientation1');
+      expect(readJxl(file, { maxPixels: Infinity })).toEqual(readJxl(file));
+      expect(readJxl(file, { maxPixels: 6 }).width).toBe(3);
+    });
   });
 });
