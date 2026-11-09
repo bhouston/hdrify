@@ -12,9 +12,13 @@ import {
   packSigned,
   type TokenStream,
 } from './jxlEncEntropy.js';
+import { xybFromLinear } from './jxlColor.js';
+import { defaultColorEncoding } from './jxlImageHeader.js';
 import {
+  JXL_ENC_TRANSFERS,
   jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncTransfer,
   writeFrameHeader,
   writeImageMetadata,
   writeSizeHeader,
@@ -42,6 +46,18 @@ export interface WriteJxlOptions {
    * quantized according to distance; alpha still preserves the selected sample format.
    */
   bitDepth?: 'float16' | 'float32' | 'uint16' | 'uint8';
+  /**
+   * Transfer function the samples are stored with: 'linear', 'srgb', 'pq' (SMPTE ST 2084) or 'hlg' (BT.2100).
+   * Default: 'srgb' for 'uint8'/'uint16', 'linear' for float formats.
+   * Input stays linear light; lossless output encodes it with this curve before quantizing, so integer
+   * samples are spaced perceptually rather than in linear light. PQ maps linear 1.0 to the intensity
+   * target (`metadata.linearReferenceWhiteNits`, default 255 nits), and HLG removes the intensity-target
+   * OOTF that {@link readJxl} applies, so both round trip through readJxl.
+   * Lossy XYB output is coded from linear light either way; the transfer function only declares the
+   * original encoding, which decoders such as djxl use for their output.
+   * Ignored by {@link writeJxlEncoded}, whose samples are described by the ICC profile.
+   */
+  transferFunction?: JxlEncTransfer;
   /** Write an alpha channel. Default: only when some alpha value is not 1. */
   alpha?: boolean;
   /** Wrap the codestream in the ISOBMFF container (default false: bare codestream). */
@@ -178,9 +194,15 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
     }
   }
 
-  if (options.lossy) return writeVardctJxl(image, options, bitDepth, hasAlpha);
+  const transfer = iccProfile ? 'linear' : (options.transferFunction ?? (bitDepth.float ? 'linear' : 'srgb'));
+  if (!Object.hasOwn(JXL_ENC_TRANSFERS, transfer))
+    throw new Error(`writeJxl: unsupported transferFunction ${String(transfer)}`);
+  const intensityTarget = jxlIntensityTarget(image);
+
+  if (options.lossy) return writeVardctJxl(image, options, bitDepth, hasAlpha, transfer);
   const numChannels = hasAlpha ? 4 : 3;
-  let planes = toPlanes(data, width * height, numChannels, format);
+  const encoded = transfer === 'linear' ? data : encodeTransfer(image, transfer, intensityTarget);
+  let planes = toPlanes(encoded, width * height, numChannels, format);
 
   // Pick the cheaper of: channel palettes on the raw channels, or YCoCg RCT followed by
   // channel palettes (a cheap stand-in for libjxl's transform search).
@@ -314,7 +336,7 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, hasAlpha, image.linearColorSpace, false, iccProfile, jxlIntensityTarget(image));
+  writeImageMetadata(w, bitDepth, hasAlpha, image.linearColorSpace, false, iccProfile, intensityTarget, transfer);
   writeFrameHeader(w, hasAlpha, groupSizeShift);
   writeToc(
     w,
@@ -442,6 +464,25 @@ function applyPalette(plane: Int32Array, palette: Int32Array): void {
   const index = new Map<number, number>();
   for (let i = 0; i < palette.length; i++) index.set(palette[i]!, i);
   for (let i = 0; i < plane.length; i++) plane[i] = index.get(plane[i]!)!;
+}
+
+const COLOR_PRIMARIES = { 'linear-rec709': 'srgb', 'linear-p3': 'p3', 'linear-rec2020': 'bt2100' } as const;
+
+/** Linear RGBA → RGBA encoded with `transfer`, using the decoder's own inverse (jxlColor). Alpha is copied. */
+function encodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): Float32Array {
+  const { data } = image;
+  const n = data.length / 4;
+  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + c]!));
+  const colorEncoding = {
+    ...defaultColorEncoding(),
+    primaries: COLOR_PRIMARIES[image.linearColorSpace],
+    transferFunction: transfer,
+  };
+  const toneMapping = { intensityTarget, minNits: 0, relativeToMaxDisplay: false, linearBelow: 0 };
+  xybFromLinear({ colorEncoding, toneMapping }, planes, true);
+  const out = data.slice();
+  for (let c = 0; c < 3; c++) for (let i = 0; i < n; i++) out[i * 4 + c] = planes[c]![i]!;
+  return out;
 }
 
 /** Interleaved RGBA floats → one Int32Array plane per channel of Modular sample values. */

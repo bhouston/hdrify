@@ -38,7 +38,10 @@ interface ColorTransform {
   hlgLuminances?: number[];
   iccManaged?: boolean;
 }
-const cache = new WeakMap<JxlImageHeader, ColorTransform>();
+/** The header fields colour conversion reads; the encoder passes just these. */
+type JxlColorHeader = Pick<JxlImageHeader, 'colorEncoding' | 'toneMapping'> &
+  Partial<Pick<JxlImageHeader, 'bitDepth' | 'icc'>>;
+const cache = new WeakMap<JxlColorHeader, ColorTransform>();
 const signedPower = (v: number, power: number) => Math.sign(v) * Math.abs(v) ** power;
 
 /** Chromaticities of the original encoding, retained in metadata when converted to a supported space. */
@@ -91,7 +94,7 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
   }
 }
 
-function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
+function iccTransform(h: JxlColorHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
   if (!h.icc) return {};
   const p = readIccProfile(h.icc),
     cicp = readIccCicp(p);
@@ -107,7 +110,7 @@ function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColor
   return { rgb: readIccRgbTransform(p) };
 }
 
-function transform(h: JxlImageHeader): ColorTransform {
+function transform(h: JxlColorHeader): ColorTransform {
   const existing = cache.get(h);
   if (existing) return existing;
   let ce = h.colorEncoding,
@@ -123,7 +126,7 @@ function transform(h: JxlImageHeader): ColorTransform {
         ...ce,
         primaries: 'srgb',
         whitePoint: 'd65',
-        transferFunction: h.bitDepth.floatSample ? 'linear' : 'srgb',
+        transferFunction: h.bitDepth?.floatSample ? 'linear' : 'srgb',
       };
   }
   const ch = jxlChromaticities(ce);
@@ -177,7 +180,7 @@ function transform(h: JxlImageHeader): ColorTransform {
 }
 
 /** HLG OOTF luminance weights and gamma, or undefined when the OOTF is a no-op (loop-invariant). */
-function ootfParams(h: JxlImageHeader, t: ColorTransform, forward: boolean) {
+function ootfParams(h: JxlColorHeader, t: ColorTransform, forward: boolean) {
   if (!t.hlgLuminances) return undefined;
   const intensity = h.toneMapping.intensityTarget;
   if (295 <= intensity && intensity <= 305) return undefined;
@@ -188,8 +191,11 @@ function ootfParams(h: JxlImageHeader, t: ColorTransform, forward: boolean) {
   return { w0: w[0]!, w1: w[1]!, w2: w[2]!, exponent: gamma - 1, normalize: forward && gamma < 1 };
 }
 
-/** Convert linear-sRGB XYB output into the image's encoded space before blending/referencing. */
-export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
+/**
+ * Convert linear-sRGB XYB output into the image's encoded space before blending/referencing.
+ * With `native`, planes are already linear in the encoding's own primaries (the encoder's input).
+ */
+export function xybFromLinear(h: JxlColorHeader, planes: Float32Array[], native = false): void {
   const t = transform(h),
     n = planes[0]!.length;
   const p0 = planes[0]!,
@@ -198,7 +204,7 @@ export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
   const e0 = t.encode[0]!,
     e1 = t.encode[1]!,
     e2 = t.encode[2]!;
-  const m = t.fromSrgb,
+  const m = native ? identity : t.fromSrgb,
     id = m === identity;
   const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
   const o = ootfParams(h, t, false);

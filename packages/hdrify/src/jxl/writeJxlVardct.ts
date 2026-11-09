@@ -10,6 +10,7 @@ import { JxlEncEntropyCode, packSigned, type TokenStream } from './jxlEncEntropy
 import {
   jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncTransfer,
   writeFrameHeader,
   writeImageMetadata,
   writeSizeHeader,
@@ -81,6 +82,7 @@ export function writeVardctJxl(
   options: WriteJxlOptions,
   bitDepth: JxlEncBitDepth,
   hasAlpha: boolean,
+  transfer: JxlEncTransfer,
 ): Uint8Array {
   const distance = options.distance ?? 1;
   if (!Number.isFinite(distance) || distance <= 0 || distance > 25)
@@ -89,6 +91,8 @@ export function writeVardctJxl(
   const bw = Math.ceil(width / 8),
     bh = Math.ceil(height / 8);
   let source = image;
+  // ponytail: integer source simulation quantizes in linear light even when `transfer` is not linear;
+  // quantize in the declared encoding if lossy integer banding matters.
   if (!bitDepth.float || bitDepth.bitsPerSample === 16) {
     const data = image.data.slice();
     const max = 2 ** bitDepth.bitsPerSample - 1;
@@ -281,7 +285,7 @@ export function writeVardctJxl(
   out.writeBits(8, 0xff);
   out.writeBits(8, 0x0a);
   writeSizeHeader(out, width, height);
-  writeImageMetadata(out, bitDepth, hasAlpha, image.linearColorSpace, true, undefined, intensityTarget);
+  writeImageMetadata(out, bitDepth, hasAlpha, image.linearColorSpace, true, undefined, intensityTarget, transfer);
   writeFrameHeader(out, hasAlpha, 1, true);
   writeToc(
     out,

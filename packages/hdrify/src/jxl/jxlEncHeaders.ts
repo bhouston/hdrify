@@ -57,6 +57,10 @@ const PRIMARIES: Record<LinearColorSpace, number> = {
   'linear-rec2020': 9,
 };
 
+/** Transfer functions the encoder can write, with their ColourEncoding enum values. */
+export const JXL_ENC_TRANSFERS = { linear: 8, srgb: 13, pq: 16, hlg: 18 } as const;
+export type JxlEncTransfer = keyof typeof JXL_ENC_TRANSFERS;
+
 /**
  * ToneMapping.intensity_target for an image: `metadata.linearReferenceWhiteNits` (as reported by readJxl),
  * else the JPEG XL default of 255 nits. Throws unless it is a positive finite F16 value.
@@ -71,7 +75,7 @@ export function jxlIntensityTarget(image: HdrifyImage): number {
 
 /**
  * ImageMetadata + default CustomTransformData, optional ICC, then byte alignment (no preview).
- * Colour encoding: RGB, D65, `colorSpace` primaries, linear transfer, relative intent.
+ * Colour encoding: RGB, D65, `colorSpace` primaries, `transfer` (default linear), relative intent.
  * A non-default `intensityTarget` (nits) is written in the ToneMapping bundle via extra_fields.
  */
 export function writeImageMetadata(
@@ -82,6 +86,7 @@ export function writeImageMetadata(
   xybEncoded = false,
   iccProfile?: Uint8Array,
   intensityTarget = 255,
+  transfer: JxlEncTransfer = 'linear',
 ): void {
   const extraFields = intensityTarget !== 255;
   w.writeBool(false); // all_default
@@ -112,7 +117,7 @@ export function writeImageMetadata(
     w.writeEnum(1); // white_point = kD65
     w.writeEnum(PRIMARIES[colorSpace]);
     w.writeBool(false); // have_gamma
-    w.writeEnum(8); // transfer_function = kLinear
+    w.writeEnum(JXL_ENC_TRANSFERS[transfer]); // transfer_function
     w.writeEnum(1); // rendering_intent = kRelative
   }
   if (extraFields) {
