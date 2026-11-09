@@ -36,10 +36,42 @@ function toHalfFloat(value: number): number {
   return sign | (exponent < -14 ? rounded : ((exponent + 14) << 10) + rounded);
 }
 
+// One capability probe shared by every viewer in this page. Cache failure too.
+let hdrCapability: Promise<boolean> | undefined;
+
+async function probeHdrCapability(document: Document): Promise<boolean> {
+  const adapter = await document.defaultView?.navigator.gpu?.requestAdapter();
+  if (!adapter) return false;
+  const device = await adapter.requestDevice();
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('webgpu');
+  try {
+    if (!context) return false;
+    context.configure({
+      device,
+      format: 'rgba16float',
+      colorSpace: 'srgb',
+      alphaMode: 'opaque',
+      toneMapping: { mode: 'extended' },
+    });
+    const configuration = context.getConfiguration();
+    return (
+      configuration?.format === 'rgba16float' &&
+      configuration.toneMapping?.mode === 'extended' &&
+      configuration.colorSpace === 'srgb'
+    );
+  } finally {
+    context?.unconfigure();
+    device.destroy();
+  }
+}
+
 /** A single FP16 texture drawn directly with WebGPU; unsupported presentation falls back to SDR. */
 export async function createWebGPUDisplay(canvas: HTMLCanvasElement, onFailure: () => void): Promise<ImageDisplay> {
-  const gpu = canvas.ownerDocument.defaultView?.navigator.gpu;
-  const adapter = await gpu?.requestAdapter();
+  const supported = await (hdrCapability ??= probeHdrCapability(canvas.ownerDocument).catch(() => false));
+  if (!supported) throw new Error('WebGPU extended FP16 presentation is not supported');
+  // Adapters can create only one device; each viewer acquires its own rendering resources.
+  const adapter = await canvas.ownerDocument.defaultView?.navigator.gpu?.requestAdapter();
   if (!adapter) throw new Error('WebGPU is not available');
   const device = await adapter.requestDevice({
     requiredLimits: { maxTextureDimension2D: adapter.limits.maxTextureDimension2D },
@@ -72,10 +104,6 @@ export async function createWebGPUDisplay(canvas: HTMLCanvasElement, onFailure: 
       alphaMode: 'opaque',
       toneMapping: { mode: 'extended' },
     });
-    const configuration = context.getConfiguration();
-    if (configuration?.format !== 'rgba16float' || configuration.toneMapping?.mode !== 'extended')
-      throw new Error('WebGPU extended FP16 presentation is not supported');
-    if (configuration.colorSpace !== 'srgb') throw new Error('Unexpected WebGPU canvas color space');
     const surface = context;
     const module = device.createShaderModule({ code: SHADER });
     const pipeline = await device.createRenderPipelineAsync({

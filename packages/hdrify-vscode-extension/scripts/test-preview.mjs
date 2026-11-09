@@ -42,6 +42,17 @@ try {
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
   const initial = await readFile(new URL('../../assets/jxl/vardct_float.jxl', root));
+  if (process.env.PREVIEW_SDR)
+    await page.addInitScript(() => Object.defineProperty(navigator, 'gpu', { value: undefined }));
+  await page.addInitScript(() => {
+    if (!window.GPUCanvasContext) return;
+    // oxlint-disable-next-line typescript/unbound-method -- called below with the original context
+    const configure = GPUCanvasContext.prototype.configure;
+    GPUCanvasContext.prototype.configure = function (options) {
+      window.previewDevice = options.device;
+      configure.call(this, options);
+    };
+  });
   await page.addInitScript((bytes) => {
     window.acquireVsCodeApi = () => ({
       postMessage(message) {
@@ -80,6 +91,33 @@ try {
   assert.doesNotMatch(hardware.renderer, /swiftshader|llvmpipe|lavapipe/i);
   assert.ok(!hardware.adapter?.fallback);
   const results = [{ name: 'immediate ready response', status: await page.locator('#status').textContent() }];
+  const mode = await page.locator('canvas').getAttribute('data-display-mode');
+  await page.getByRole('button', { name: 'Viewer options', exact: true }).click();
+  const mapper = page.getByLabel('Tone mapping', { exact: true });
+  assert.equal(await mapper.locator('option[value="none"]').count(), mode === 'hdr' ? 1 : 0);
+  assert.equal(await mapper.locator('option[value=""]').count(), 0);
+  assert.doesNotMatch(await mapper.textContent(), /Automatic/i);
+  assert.equal(await mapper.inputValue(), mode === 'hdr' ? 'none' : 'neutral');
+  await mapper.selectOption('agx');
+  await page.waitForFunction(() => document.querySelector('canvas')?.dataset.toneMapping === 'agx');
+  if (mode === 'hdr') {
+    await mapper.selectOption('none');
+    await page.waitForFunction(() => document.querySelector('canvas')?.dataset.toneMapping === 'none');
+    await page.evaluate(() => window.previewDevice.destroy());
+    await page.waitForFunction(
+      () =>
+        document.querySelector('canvas')?.dataset.displayMode === 'sdr' &&
+        document.querySelector('canvas')?.dataset.toneMapping === 'neutral',
+    );
+    assert.equal(await mapper.inputValue(), 'neutral');
+    assert.equal(await mapper.locator('option[value="none"]').count(), 0);
+  }
+  results.push({
+    name: 'capability-dependent tone-mapping controls',
+    mode,
+    deviceLoss: mode === 'hdr' ? 'None removed; Neutral selected' : 'SDR only',
+  });
+
   const send = async (fileName, bytes) =>
     page.evaluate(
       ({ fileName, bytes }) => {

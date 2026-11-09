@@ -47,7 +47,7 @@ Replace the timestamp suffix for each build. If VS Code requests an extension re
 
 ## HDR Image Preview
 
-- **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
+- **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an EV exposure slider and the same tone-mapping selector as `<image-viewer>`. **None** appears and is the default only when extended FP16 WebGPU HDR output succeeds. Otherwise **None** is hidden and **Neutral** is the default. There is no Automatic option. AgX, ACES and Reinhard remain available in both modes.
 - **JPEG**: For UltraHDR Jpeg files, right-click and choose **Open with HDR Image Preview**. Standard JPEGs open with the built-in viewer by default; use "Reopen Editor With → HDR Image Preview" to try opening as HDR (will show an error if not a gain-map JPEG).
 
 ![HDR Image Preview](https://raw.githubusercontent.com/bhouston/hdrify/main/packages/hdrify-vscode-extension/images/image-preview.webp)

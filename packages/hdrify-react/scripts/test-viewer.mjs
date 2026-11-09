@@ -138,7 +138,7 @@ async function change(page, patch) {
     await page.waitForFunction(
       (mapper) =>
         document.querySelector('image-viewer').shadowRoot.querySelector('canvas')?.dataset.toneMapping === mapper,
-      patch.toneMapping ?? 'neutral',
+      patch.toneMapping === 'none' ? 'neutral' : (patch.toneMapping ?? 'neutral'),
     );
 }
 try {
@@ -229,8 +229,16 @@ try {
       await change(page, { toneMapping: 'reinhard', exposure: 0 });
       assert.equal(await page.locator(canvasSelector).getAttribute('data-tone-mapping'), 'reinhard');
       await change(page, { toneMapping: 'none' });
-      assert.equal(await page.locator(canvasSelector).getAttribute('data-tone-mapping'), 'none');
-      await page.locator('image-viewer select').first().selectOption('');
+      assert.equal(
+        await page.locator(canvasSelector).getAttribute('data-tone-mapping'),
+        expectHdr ? 'none' : 'neutral',
+      );
+      const options = page.locator('image-viewer select').first();
+      assert.equal(await options.locator('option[value="none"]').count(), expectHdr ? 1 : 0);
+      assert.equal(await options.locator('option[value=""]').count(), 0);
+      assert.doesNotMatch(await options.textContent(), /Automatic/i);
+      assert.equal(await options.inputValue(), expectHdr ? 'none' : 'neutral');
+      await options.selectOption(expectHdr ? 'none' : 'neutral');
       await page.waitForFunction(
         (mapper) =>
           document.querySelector('image-viewer').shadowRoot.querySelector('canvas').dataset.toneMapping === mapper,
@@ -353,13 +361,15 @@ try {
           'Uploads must retain signed values and correctly round FP16 boundaries',
         );
         result.fp16Precision = 'passed';
-        await page.evaluate(() => document.querySelector('image-viewer').removeAttribute('tone-mapping'));
+        // Leave None explicitly selected when HDR fails: the control and renderer must both switch.
         await page.evaluate(() => window.lastGpuDevice.destroy());
         await page.waitForFunction(
           () => document.querySelector('image-viewer').shadowRoot.querySelector('canvas').dataset.displayMode === 'sdr',
         );
         assert.equal(await page.locator(canvasSelector).getAttribute('data-tone-mapping'), 'neutral');
-        result.deviceLoss = 'fell back to SDR';
+        assert.equal(await page.locator('image-viewer select').first().inputValue(), 'neutral');
+        assert.equal(await page.locator('image-viewer select option[value="none"]').count(), 0);
+        result.deviceLoss = 'fell back to Neutral and removed None';
       }
       await page.evaluate(() => {
         document.querySelector('image-viewer').image = window.testImage;

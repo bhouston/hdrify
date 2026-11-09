@@ -2,7 +2,7 @@ import type { HdrifyImage } from 'hdrify';
 import type * as React from 'react';
 import { useEffect, useRef } from 'react';
 import { drawToneMapped } from './capture.js';
-import type { DisplayMode, ImageDisplay, ViewerToneMapping } from './display.js';
+import { resolveToneMapping, type DisplayMode, type ImageDisplay, type ViewerToneMapping } from './display.js';
 
 export interface HdrifyCanvasProps {
   hdrifyImage: HdrifyImage;
@@ -64,7 +64,7 @@ export function HdrifyCanvas(props: HdrifyCanvasProps): React.ReactElement {
       if (disposed || !active) return;
       const display = active;
       const { hdrifyImage: image, toneMapping, exposure, onDraw, onError } = latest.current;
-      const mapper = toneMapping ?? (display.mode === 'hdr' ? 'none' : 'neutral');
+      const mapper = resolveToneMapping(toneMapping, display.mode);
       const revision = ++drawRevision;
       try {
         const scale = Math.min(
