@@ -293,7 +293,7 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
   // Switch each context to weighted prediction when its residuals are cheaper, in place.
   // Contexts are tried one at a time, so only that context's weighted candidate is held.
   const gradientCosts = estimateContextBits(streams, tree.numLeaves);
-  const predictors = new Array<number>(tree.numLeaves).fill(PREDICTOR_GRADIENT);
+  const predictors = Array.from({ length: tree.numLeaves }, () => PREDICTOR_GRADIENT);
   const rects = Array.from(
     { length: tree.numLeaves },
     () => [] as { channel: ChannelRect; j: number; offset: number }[],
