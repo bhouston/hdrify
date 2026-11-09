@@ -3,7 +3,6 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { convertLinearColorSpace } from '../color/convert.js';
 import { writeExr } from '../exr/writeExr.js';
 import { encodeFloat16, decodeFloat16 } from '../exr/halfFloat.js';
 import { readExr } from '../exr/readExr.js';
@@ -128,10 +127,9 @@ describe('lossy DCT8 JPEG XL', () => {
   for (const linearColorSpace of ['linear-p3', 'linear-rec2020'] as const) {
     it(`${linearColorSpace}: transforms wide gamut input to standard XYB`, () => {
       const image = { ...pattern(19, 7), linearColorSpace };
-      const expected = convertLinearColorSpace(image, 'linear-rec709');
       const got = readJxl(writeJxl(image, { lossy: true, distance: 0.25 }));
-      expect(got.linearColorSpace).toBe('linear-rec709');
-      expect(error(expected.data, got.data).rmse).toBeLessThan(0.02);
+      expect(got.linearColorSpace).toBe(linearColorSpace);
+      expect(error(image.data, got.data).rmse).toBeLessThan(0.02);
     });
   }
 

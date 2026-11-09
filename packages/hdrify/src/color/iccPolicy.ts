@@ -70,6 +70,18 @@ const bt709ToLinear = (x: number) =>
   Math.sign(x) * (Math.abs(x) < 0.081 ? Math.abs(x) / 4.5 : ((Math.abs(x) + 0.099) / 1.099) ** (1 / 0.45));
 
 /**
+ * The linear colour space whose RGB → XYZ matrix is within 0.001 (libultrahdr's gamut tolerance) of
+ * `toD65`, a matrix/TRC profile's D65-adapted RGB → XYZ matrix; undefined for other primaries.
+ */
+export function matchLinearColorSpace(toD65: Mat3): LinearColorSpace | undefined {
+  return LINEAR_COLOR_SPACES.find((s) =>
+    chromaticitiesToRgbXyzMatrix(LINEAR_TO_CHROMATICITIES[s]).every((row, i) =>
+      row.every((v, j) => Math.abs(v - toD65[i]![j]!) <= 0.001),
+    ),
+  );
+}
+
+/**
  * Linearization for SDR-referred RGB samples described by an ICC profile, following {@link interpretIccProfile}.
  * Matrix/TRC primaries within 0.001 of Rec.709, Display P3 or Rec.2020 (libultrahdr's gamut tolerance) map to
  * that space; other primaries are Bradford-adapted to linear Rec.2020. PQ/HLG cICP profiles throw because
@@ -85,11 +97,7 @@ export function iccLinearRgb(icc: Uint8Array, format: string): IccLinearRgb {
   }
   const toD65 = multiply3(bradfordAdaptation(D50, D65), rgb.matrix);
   const decode = rgb.curves.map((c) => c.evaluate) as IccLinearRgb['decode'];
-  const space = LINEAR_COLOR_SPACES.find((s) =>
-    chromaticitiesToRgbXyzMatrix(LINEAR_TO_CHROMATICITIES[s]).every((row, i) =>
-      row.every((v, j) => Math.abs(v - toD65[i]![j]!) <= 0.001),
-    ),
-  );
+  const space = matchLinearColorSpace(toD65);
   if (space) return { space, decode };
   return {
     space: 'linear-rec2020',
