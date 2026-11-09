@@ -91,11 +91,31 @@ export function readIccCurve(bytes: Uint8Array): IccCurve | undefined {
   );
 }
 
-/** RGB display matrix/TRC profile to D50 XYZ PCS. LUT/CMYK/gray profiles deliberately return undefined. */
+/**
+ * RGB matrix/TRC or gray TRC display profile to D50 XYZ PCS. A gray kTRC profile becomes a neutral RGB
+ * transform (the same curve per channel, R = G = B mapped to Y times the D50 PCS white).
+ * LUT-based and other colour spaces (CMYK, Lab, ...) deliberately return undefined.
+ */
 export function readIccRgbTransform(profile: IccProfile): IccRgbTransform | undefined {
-  if (signature(profile.header, 16) !== 'RGB ' || signature(profile.header, 20) !== 'XYZ ') return undefined;
+  const space = signature(profile.header, 16);
+  if ((space !== 'RGB ' && space !== 'GRAY') || signature(profile.header, 20) !== 'XYZ ') return undefined;
   if (profile.tags.some((t) => /^(A2B|B2A|D2B|B2D)/.test(t.signature))) return undefined;
   const tag = (s: string) => profile.tags.find((t) => t.signature === s)?.data;
+  if (space === 'GRAY') {
+    const b = tag('kTRC'),
+      k = b && readIccCurve(b);
+    if (!k) return undefined;
+    // Neutral = D50 white from xy (0.34567, 0.3585), the white Bradford-adapted to D65 downstream; the
+    // rounded ICC header illuminant (Z 0.8249) would tint gray by ~3e-4.
+    return {
+      matrix: [
+        [0.34567 / 0.3585, 0, 0],
+        [0, 1, 0],
+        [0, 0, (1 - 0.34567 - 0.3585) / 0.3585],
+      ],
+      curves: [k, k, k],
+    };
+  }
   const xyz = ['rXYZ', 'gXYZ', 'bXYZ'].map((s) => {
     const b = tag(s);
     if (!b || b.length < 20 || signature(b, 0) !== 'XYZ ') return undefined;

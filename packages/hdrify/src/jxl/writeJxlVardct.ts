@@ -8,7 +8,9 @@ import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
 import { JxlEncEntropyCode, packSigned, type TokenStream } from './jxlEncEntropy.js';
 import {
+  jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncLayout,
   writeFrameHeader,
   writeImageMetadata,
   writeSizeHeader,
@@ -79,7 +81,8 @@ export function writeVardctJxl(
   image: HdrifyImage,
   options: WriteJxlOptions,
   bitDepth: JxlEncBitDepth,
-  hasAlpha: boolean,
+  layout: JxlEncLayout,
+  ecPlanes: Int32Array[],
 ): Uint8Array {
   const distance = options.distance ?? 1;
   if (!Number.isFinite(distance) || distance <= 0 || distance > 25)
@@ -105,6 +108,9 @@ export function writeVardctJxl(
   }
   const q = inPlace ? quantize : undefined;
   const rgb = convertLinearColorSpace(source, 'linear-rec709').data;
+  const intensityTarget = jxlIntensityTarget(image);
+  // XYB is absolute: libjxl scales linear input by intensity_target / 255 before the opsin matrix.
+  const m = JXL_OPSIN_ABSORBANCE_MATRIX.map((v) => (v * intensityTarget) / 255);
   const globalScale = Math.max(1, Math.min(73728, Math.round(4096 / distance)));
   const quantLf = 16,
     hfMul = 64;
@@ -115,15 +121,14 @@ export function writeVardctJxl(
   const block = [0, 1, 2].map(() => new Float32Array(64));
   const bias = 0.0037930732552754493;
   const biasRoot = Math.cbrt(bias);
-  const m = JXL_OPSIN_ABSORBANCE_MATRIX;
   /** Transform block (bx, by) into lf and the group's ac at block index `local`. */
   const transformBlock = (bx: number, by: number, local: number): void => {
     for (let y = 0; y < 8; y++) {
       for (let x = 0; x < 8; x++) {
         const p = (Math.min(height - 1, by * 8 + y) * width + Math.min(width - 1, bx * 8 + x)) * 4;
         const r = q ? q(rgb[p]!) : rgb[p]!,
-          g = q ? q(rgb[p + 1]!) : rgb[p + 1]!,
-          b = q ? q(rgb[p + 2]!) : rgb[p + 2]!;
+          g = layout.grey ? r : q ? q(rgb[p + 1]!) : rgb[p + 1]!,
+          b = layout.grey ? r : q ? q(rgb[p + 2]!) : rgb[p + 2]!;
         const l = Math.cbrt(m[0]! * r + m[1]! * g + m[2]! * b + bias) - biasRoot;
         const mm = Math.cbrt(m[3]! * r + m[4]! * g + m[5]! * b + bias) - biasRoot;
         const s = Math.cbrt(m[6]! * r + m[7]! * g + m[8]! * b + bias) - biasRoot;
@@ -151,18 +156,6 @@ export function writeVardctJxl(
       }
     }
   };
-  const alpha = hasAlpha ? new Int32Array(width * height) : undefined;
-  if (alpha) {
-    const bits = new Int32Array(image.data.buffer, image.data.byteOffset, image.data.length);
-    for (let i = 0; i < alpha.length; i++) {
-      const value = image.data[i * 4 + 3]!;
-      alpha[i] = bitDepth.float
-        ? bitDepth.bitsPerSample === 32
-          ? bits[i * 4 + 3]!
-          : encodeFloat16(value)
-        : Math.round(Math.max(0, Math.min(1, value)) * (2 ** bitDepth.bitsPerSample - 1));
-    }
-  }
   const groupsX = Math.ceil(width / 256),
     groupsY = Math.ceil(height / 256);
   const numGroups = groupsX * groupsY;
@@ -239,7 +232,11 @@ export function writeVardctJxl(
   global.writeBits(2, 0); // 39-entry constant block context map
   global.writeBool(true); // default CfL
   global.writeBool(false); // no global Modular tree
-  writeModular(global, alpha ? [rect(alpha, width, 0, 0, width, height)] : [], !single);
+  writeModular(
+    global,
+    ecPlanes.map((data) => ({ data, width, height })),
+    !single,
+  );
   for (let ly = 0; ly < lfGroupsY; ly++) {
     for (let lx = 0; lx < lfGroupsX; lx++) {
       const w = single ? global : new JxlBitWriter();
@@ -275,10 +272,13 @@ export function writeVardctJxl(
     const w = single ? global : new JxlBitWriter();
     if (!single) sections.push(w);
     hfCode.writeStream(w, streams[g]!);
-    if (alpha && !single) {
+    if (ecPlanes.length && !single) {
       const x = (g % groupsX) * 256,
         y = Math.floor(g / groupsX) * 256;
-      writeModular(w, [rect(alpha, width, x, y, Math.min(256, width - x), Math.min(256, height - y))]);
+      writeModular(
+        w,
+        ecPlanes.map((p) => rect(p, width, x, y, Math.min(256, width - x), Math.min(256, height - y))),
+      );
     }
   }
   const payloads = sections.map((s) => s.finish());
@@ -286,8 +286,8 @@ export function writeVardctJxl(
   out.writeBits(8, 0xff);
   out.writeBits(8, 0x0a);
   writeSizeHeader(out, width, height);
-  writeImageMetadata(out, bitDepth, hasAlpha, image.linearColorSpace, true);
-  writeFrameHeader(out, hasAlpha, 1, true);
+  writeImageMetadata(out, bitDepth, layout, image.linearColorSpace, true, undefined, intensityTarget);
+  writeFrameHeader(out, layout.extraChannels.length, 1, true);
   writeToc(
     out,
     payloads.map((p) => p.length),

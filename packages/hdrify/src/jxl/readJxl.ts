@@ -1,5 +1,5 @@
 import { getHalfToFloatLut } from '../exr/halfFloat.js';
-import { convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
+import { assertJxlIccSupported, convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
 import { extractCodestream } from './jxlContainer.js';
@@ -85,6 +85,7 @@ export function decodeFrame(
   frameStart: number,
   h: JxlImageHeader,
   lfFrames: readonly (JxlLfFrame | undefined)[] = [],
+  maxPixels = DEFAULT_MAX_PIXELS,
 ): JxlDecodedFrame {
   const fbr = new JxlBitReader(codestream, frameStart);
   const fh = readFrameHeader(fbr, h);
@@ -93,6 +94,7 @@ export function decodeFrame(
   const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
   if (frameEnd > codestream.length) throw new Error('JXL: truncated frame sections');
   const dims = frameDimensions(fh);
+  checkPixels(dims.upsampledWidth, dims.upsampledHeight, maxPixels);
   const vardct = fh.encoding === 'vardct';
 
   const section = (i: number) => new JxlBitReader(codestream, base + toc.offsets[i]!, toc.sizes[i]);
@@ -336,13 +338,14 @@ export function* decodeDisplayedFrames(
   codestream: Uint8Array,
   h: JxlImageHeader,
   start: number,
+  maxPixels = DEFAULT_MAX_PIXELS,
 ): Generator<JxlDisplayedFrame, void> {
   const lfFrames: JxlLfFrame[] = [];
   const references: (JxlReferenceFrame | undefined)[] = [];
   const frameIdx = { visible: 0, nonvisible: 0 };
   let pos = start;
   for (;;) {
-    const fr = decodeFrame(codestream, pos, h, lfFrames);
+    const fr = decodeFrame(codestream, pos, h, lfFrames, maxPixels);
     pos = fr.frameEnd;
     const { fh } = fr;
     advanceFrameIndices(frameIdx, fh);
@@ -389,6 +392,18 @@ export interface ReadJxlOptions {
   keepPremultipliedAlpha?: boolean;
   /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
   renderSpotColors?: boolean;
+  /**
+   * Largest width x height accepted for the image, preview and each frame (including LF and
+   * reference frames), checked before any pixel buffer is allocated. Larger codestreams throw
+   * `JXL: image exceeds maxPixels`. Default 2^28 (16384 x 16384); `Infinity` disables the limit.
+   */
+  maxPixels?: number;
+}
+
+const DEFAULT_MAX_PIXELS = 2 ** 28;
+
+function checkPixels(width: number, height: number, maxPixels: number): void {
+  if (width * height > maxPixels) throw new Error(`JXL: image exceeds maxPixels (${width}x${height} > ${maxPixels})`);
 }
 
 /** A full-resolution extra channel in the same orientation as the returned image. */
@@ -412,10 +427,14 @@ export interface JxlAnimationFrame {
   timecode?: number;
 }
 
-function openJxl(data: Uint8Array) {
+function openJxl(data: Uint8Array, options: ReadJxlOptions) {
+  const maxPixels = options.maxPixels ?? DEFAULT_MAX_PIXELS;
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
+  checkPixels(h.width, h.height, maxPixels);
+  if (h.preview) checkPixels(h.preview.width, h.preview.height, maxPixels);
+  assertJxlIccSupported(h);
   // A preview is an independent frame and must not populate references or advance noise counters.
   const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
   return { codestream, isContainer, h, start };
@@ -537,14 +556,15 @@ function displayedImage(
 /**
  * Decode every coalesced displayed frame into linear-light RGBA, with duration in seconds.
  * Each frame owns its pixel/extra-channel buffers. This eager API retains the complete animation.
+ * Embedded ICC profiles that cannot be colour-managed throw, as in readJxl.
  */
 export function readJxlFrames(
   data: Uint8Array,
   options: ReadJxlOptions = {},
 ): { frames: JxlAnimationFrame[]; numLoops: number } {
-  const { codestream, isContainer, h, start } = openJxl(data);
+  const { codestream, isContainer, h, start } = openJxl(data, options);
   const frames: JxlAnimationFrame[] = [];
-  for (const frame of decodeDisplayedFrames(codestream, h, start)) {
+  for (const frame of decodeDisplayedFrames(codestream, h, start, options.maxPixels)) {
     frames.push({
       image: displayedImage(frame, h, isContainer, options),
       duration: h.animation ? (frame.fh.duration * h.animation.tpsDenominator) / h.animation.tpsNumerator : 0,
@@ -561,16 +581,17 @@ export function readJxlFrames(
  * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
- * RGB matrix/TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK profiles
- * use the historical sRGB fallback and metadata.iccColorManaged = false. originalChromaticities is
+ * Embedded RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are colour-managed; any other
+ * profile (LUT-based RGB or gray, CMYK, Lab, ...) throws an error naming its class, colour space and
+ * PCS before pixels are decoded. originalChromaticities is
  * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.
  * XYB frames used for composition or references are converted to the original primaries/transfer
  * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
-  const { codestream, isContainer, h, start } = openJxl(data);
-  const first = decodeDisplayedFrames(codestream, h, start).next().value;
+  const { codestream, isContainer, h, start } = openJxl(data, options);
+  const first = decodeDisplayedFrames(codestream, h, start, options.maxPixels).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
   const image = displayedImage(first, h, isContainer, options);
   if (h.animation) {

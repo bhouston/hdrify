@@ -12,8 +12,11 @@ import {
   packSigned,
   type TokenStream,
 } from './jxlEncEntropy.js';
+import type { JxlExtraChannel } from './readJxl.js';
 import {
+  jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncLayout,
   writeFrameHeader,
   writeImageMetadata,
   writeSizeHeader,
@@ -50,6 +53,26 @@ export interface WriteJxlOptions {
   /** Lossless Modular group size: 128 << groupSizeShift pixels (0..3, default 1 → 256).
    * Lossy VarDCT supports only the default 256-pixel groups. */
   groupSizeShift?: number;
+  /**
+   * Extra channels written after alpha as lossless channels in the selected sample format,
+   * in both lossless and lossy output. Each must be full resolution (`width` x `height`,
+   * in stored orientation) and `spotColor` channels need a `spotColor`. Entries of type
+   * 'alpha' are skipped (alpha comes from `image.data`). Default: `image.metadata.extraChannels`
+   * (as returned by {@link readJxl}), skipping entries whose size no longer matches the image.
+   */
+  extraChannels?: readonly JxlExtraChannel[];
+  /** Mark alpha as associated: `image.data` colour is already premultiplied, as read with
+   * `keepPremultipliedAlpha`. Ignored without alpha. Default: `image.metadata.alphaPremultiplied`. */
+  alphaPremultiplied?: boolean;
+  /**
+   * Write a grey image (colour_space kGrey, one colour channel) from the R samples; G and B are ignored.
+   * 'auto' (default) does this only when every pixel has R == G == B. Ignored by {@link writeJxlEncoded}.
+   */
+  grayscale?: boolean | 'auto';
+  /** EXIF orientation 1..8 to store; pixels are written as given, in stored orientation, as read with
+   * `applyOrientation: false`. Default 1: `metadata.orientation` is not reused because {@link readJxl}
+   * applies it to the pixels by default. */
+  orientation?: number;
 }
 
 const BIT_DEPTHS: Record<NonNullable<WriteJxlOptions['bitDepth']>, JxlEncBitDepth> = {
@@ -72,6 +95,8 @@ const PREDICTOR_GRADIENT = 5;
  * Reproduce corpus size/error measurements with `node scripts/benchmark-jxl-lossy.mjs` after building.
  *
  * Input pixels are linear light; native JPEG XL color fields describe their primaries.
+ * `metadata.linearReferenceWhiteNits` (set by {@link readJxl}) is written as the intensity target,
+ * the luminance in nits of linear 1.0, so HDR brightness survives a round trip; without it, 255 nits.
  * `metadata.iccProfile` is never attached automatically. For samples already encoded
  * in an ICC profile's space, use {@link writeJxlEncoded}.
  *
@@ -175,13 +200,49 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
     }
   }
 
-  if (options.lossy) return writeVardctJxl(image, options, bitDepth, hasAlpha);
-  const numChannels = hasAlpha ? 4 : 3;
-  let planes = toPlanes(data, width * height, numChannels, format);
+  const orientation = options.orientation ?? 1;
+  if (!Number.isInteger(orientation) || orientation < 1 || orientation > 8)
+    throw new Error(`writeJxl: orientation must be 1..8, got ${orientation}`);
+  const metadata = image.metadata as { extraChannels?: JxlExtraChannel[]; alphaPremultiplied?: boolean } | undefined;
+  const extras = (
+    options.extraChannels ??
+    metadata?.extraChannels?.filter((ec) => ec.width === width && ec.height === height) ??
+    []
+  ).filter((ec) => ec.type !== 'alpha');
+  for (const ec of extras) {
+    if (ec.width !== width || ec.height !== height || ec.data.length !== width * height)
+      throw new Error(`writeJxl: extra channel ${ec.name} must be ${width}x${height}`);
+    if (ec.type === 'spotColor' && ec.spotColor?.length !== 4)
+      throw new Error(`writeJxl: spot colour channel ${ec.name} needs spotColor`);
+  }
+  const grayscale = options.grayscale ?? 'auto';
+  let grey = !iccProfile && !!grayscale;
+  if (grey && grayscale === 'auto') {
+    for (let i = 0; i < data.length && grey; i += 4) grey = data[i] === data[i + 1] && data[i] === data[i + 2];
+  }
+  const layout: JxlEncLayout = {
+    grey,
+    orientation,
+    extraChannels: [
+      ...(hasAlpha
+        ? [{ type: 'alpha' as const, alphaAssociated: !!(options.alphaPremultiplied ?? metadata?.alphaPremultiplied) }]
+        : []),
+      ...extras,
+    ],
+  };
+  const numPixels = width * height;
+  const ecPlanes = [
+    ...(hasAlpha ? [toPlane(data, 4, 3, numPixels, format)] : []),
+    ...extras.map((ec) => toPlane(ec.data, 1, 0, numPixels, format)),
+  ];
+
+  if (options.lossy) return writeVardctJxl(image, options, bitDepth, layout, ecPlanes);
+  let planes = [...(grey ? [0] : [0, 1, 2]).map((c) => toPlane(data, 4, c, numPixels, format)), ...ecPlanes];
+  const numChannels = planes.length;
 
   // Pick the cheaper of: channel palettes on the raw channels, or YCoCg RCT followed by
   // channel palettes (a cheap stand-in for libjxl's transform search).
-  const plan = [false, true]
+  const plan = (grey ? [false] : [false, true])
     .map((rct) => transformPlan(planes, width, height, rct))
     .reduce((best, next) => (next.estimatedBits < best.estimatedBits ? next : best));
   const { transforms, metaChannels } = plan;
@@ -322,8 +383,8 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, hasAlpha, image.linearColorSpace, false, iccProfile);
-  writeFrameHeader(w, hasAlpha, groupSizeShift);
+  writeImageMetadata(w, bitDepth, layout, image.linearColorSpace, false, iccProfile, jxlIntensityTarget(image));
+  writeFrameHeader(w, layout.extraChannels.length, groupSizeShift);
   writeToc(
     w,
     sections.map((s) => s.length),
@@ -450,33 +511,28 @@ function applyPalette(plane: Int32Array, palette: Int32Array): void {
   for (let i = 0; i < plane.length; i++) plane[i] = index.get(plane[i]!)!;
 }
 
-/** Interleaved RGBA floats → one Int32Array plane per channel of Modular sample values. */
-function toPlanes(
+/** Channel `offset` of interleaved floats with `stride` samples per pixel → Modular sample values. */
+export function toPlane(
   data: Float32Array,
+  stride: number,
+  offset: number,
   numPixels: number,
-  numChannels: number,
   format: NonNullable<WriteJxlOptions['bitDepth']>,
-): Int32Array[] {
-  const planes = Array.from({ length: numChannels }, () => new Int32Array(numPixels));
+): Int32Array {
+  const p = new Int32Array(numPixels);
   if (format === 'float32') {
     // libjxl float_to_int: 32-bit float samples are the raw IEEE bit patterns.
     const bits = new Int32Array(data.buffer, data.byteOffset, data.length);
-    for (let c = 0; c < numChannels; c++) {
-      const p = planes[c]!;
-      for (let i = 0; i < numPixels; i++) p[i] = bits[i * 4 + c]!;
-    }
-    return planes;
+    for (let i = 0; i < numPixels; i++) p[i] = bits[i * stride + offset]!;
+    return p;
   }
   const max = format === 'uint16' ? 65535 : 255;
-  for (let c = 0; c < numChannels; c++) {
-    const p = planes[c]!;
-    for (let i = 0; i < numPixels; i++) {
-      const v = data[i * 4 + c]!;
-      // Half samples are the binary16 bit pattern (sign in bit 15), as libjxl float_to_int.
-      p[i] = format === 'float16' ? encodeFloat16(v) : v > 0 ? (v < 1 ? Math.round(v * max) : max) : 0;
-    }
+  for (let i = 0; i < numPixels; i++) {
+    const v = data[i * stride + offset]!;
+    // Half samples are the binary16 bit pattern (sign in bit 15), as libjxl float_to_int.
+    p[i] = format === 'float16' ? encodeFloat16(v) : v > 0 ? (v < 1 ? Math.round(v * max) : max) : 0;
   }
-  return planes;
+  return p;
 }
 
 /**

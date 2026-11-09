@@ -36,7 +36,6 @@ interface ColorTransform {
   decode: ((v: number) => number)[];
   encode: ((v: number) => number)[];
   hlgLuminances?: number[];
-  iccManaged?: boolean;
 }
 const cache = new WeakMap<JxlImageHeader, ColorTransform>();
 const signedPower = (v: number, power: number) => Math.sign(v) * Math.abs(v) ** power;
@@ -91,8 +90,9 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
   }
 }
 
+/** Matrix/TRC (RGB or gray) or recognized cICP interpretation of the embedded profile; throws otherwise. */
 function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
-  if (!h.icc) return {};
+  if (!h.icc) throw new Error('JXL: colour encoding requires an ICC profile but none was read');
   const p = readIccProfile(h.icc),
     cicp = readIccCicp(p);
   if (cicp && cicp.matrix === 0 && cicp.fullRange) {
@@ -104,27 +104,26 @@ function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColor
     if (primaries && transferFunction)
       return { ce: { ...h.colorEncoding, wantIcc: false, primaries, whitePoint: 'd65', transferFunction } };
   }
-  return { rgb: readIccRgbTransform(p) };
+  const rgb = readIccRgbTransform(p);
+  if (rgb) return { rgb };
+  const sig = (o: number) => String.fromCharCode(...p.header.subarray(o, o + 4)).trim();
+  const lut = p.tags.some((t) => /^(A2B|B2A|D2B|B2D)/.test(t.signature));
+  throw new Error(
+    `JXL: embedded ICC profile cannot be colour-managed ('${sig(12)}' class, '${sig(16)}' colour space, ` +
+      `'${sig(20)}' PCS${lut ? ', LUT-based' : ''}); only matrix/TRC RGB, gray TRC and recognized cICP profiles ` +
+      'are supported',
+  );
 }
 
 function transform(h: JxlImageHeader): ColorTransform {
   const existing = cache.get(h);
   if (existing) return existing;
   let ce = h.colorEncoding,
-    rgb: IccRgbTransform | undefined,
-    iccManaged: boolean | undefined;
+    rgb: IccRgbTransform | undefined;
   if (ce.wantIcc) {
     const icc = iccTransform(h);
     rgb = icc.rgb;
     ce = icc.ce ?? ce;
-    iccManaged = !!(icc.rgb || icc.ce);
-    if (!iccManaged)
-      ce = {
-        ...ce,
-        primaries: 'srgb',
-        whitePoint: 'd65',
-        transferFunction: h.bitDepth.floatSample ? 'linear' : 'srgb',
-      };
   }
   const ch = jxlChromaticities(ce);
   let toSrgb: Mat3,
@@ -169,7 +168,6 @@ function transform(h: JxlImageHeader): ColorTransform {
     fromSrgb: invert3(toSrgb),
     decode,
     encode,
-    iccManaged,
     ...(ce.transferFunction === 'hlg' && { hlgLuminances: chromaticitiesToRgbXyzMatrix(ch)[1] }),
   };
   cache.set(h, result);
@@ -280,11 +278,15 @@ export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear:
   return t.space;
 }
 
+/** Throw early (before pixel decoding) when an embedded ICC profile cannot be colour-managed. */
+export function assertJxlIccSupported(h: JxlImageHeader): void {
+  if (h.colorEncoding.wantIcc) transform(h);
+}
+
 export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
   return {
     ...(!h.colorEncoding.wantIcc && { originalChromaticities: jxlChromaticities(h.colorEncoding) }),
     linearReferenceWhiteNits: h.toneMapping.intensityTarget,
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
-    ...(h.colorEncoding.wantIcc && { iccColorManaged: transform(h).iccManaged }),
   };
 }
