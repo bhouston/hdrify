@@ -1,8 +1,15 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { readExr, readJxl } from 'hdrify';
+import { readExr, readJxl, writeExr } from 'hdrify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createTempDir, exrFilePaths, hdrFilePaths, jpgGainMapFilePath, runCli } from '../test-utils/cliTestEnv.js';
+import {
+  assetsDir,
+  createTempDir,
+  exrFilePaths,
+  hdrFilePaths,
+  jpgGainMapFilePath,
+  runCli,
+} from '../test-utils/cliTestEnv.js';
 import { validateExrOutput, validateHdrOutput, validateWithSharp } from '../test-utils/validateOutput.js';
 
 describe('CLI convert command', () => {
@@ -59,6 +66,90 @@ describe('CLI convert command', () => {
     ]);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).toMatch(/only supported for lossless/);
+  });
+
+  describe('JXL bit depth and container', () => {
+    // Uncompressed EXR keeps FLOAT channels; values chosen so float16 cannot represent them.
+    function writeFloat32Exr(): { file: string; data: Float32Array } {
+      const width = 7;
+      const height = 5;
+      const data = new Float32Array(width * height * 4);
+      for (let i = 0; i < data.length; i++) data[i] = i % 4 === 3 ? 1 : 0.1234567 + i * 1.000123;
+      const file = path.join(tempDir, 'float32.exr');
+      fs.writeFileSync(
+        file,
+        writeExr({ width, height, data, linearColorSpace: 'linear-rec709' }, { compression: 'none' }),
+      );
+      return { file, data: readExr(fs.readFileSync(file)).data };
+    }
+
+    it('round-trips a float32 EXR bit-exactly with --jxl-bit-depth float32 and by default', () => {
+      const { file, data } = writeFloat32Exr();
+      for (const flags of [['--jxl-bit-depth', 'float32'], []]) {
+        const output = path.join(tempDir, 'out.jxl');
+        const result = runCli(['convert', file, output, ...flags]);
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(result.stdout).not.toMatch(/Note: source needs/);
+        const image = readJxl(fs.readFileSync(output));
+        expect(image.metadata).toMatchObject({ floatSample: true, bitsPerSample: 32 });
+        expect(new Uint32Array(image.data.buffer)).toEqual(new Uint32Array(data.buffer));
+      }
+    });
+
+    it('writes each --jxl-bit-depth and notes precision reduction of float32 sources', () => {
+      const { file } = writeFloat32Exr();
+      const expected = {
+        float16: { floatSample: true, bitsPerSample: 16 },
+        uint16: { floatSample: false, bitsPerSample: 16 },
+        uint8: { floatSample: false, bitsPerSample: 8 },
+      };
+      for (const [bitDepth, header] of Object.entries(expected)) {
+        const output = path.join(tempDir, `${bitDepth}.jxl`);
+        const result = runCli(['convert', file, output, '--jxl-bit-depth', bitDepth]);
+        expect(result.exitCode, result.stderr).toBe(0);
+        expect(result.stdout).toContain(`writing ${bitDepth} may lose precision`);
+        expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject(header);
+      }
+    });
+
+    it('keeps float16 by default for half-float EXR sources', () => {
+      const output = path.join(tempDir, 'half.jxl');
+      const result = runCli(['convert', exrFilePaths[0], output, '--size', '33,19']);
+      expect(result.exitCode, result.stderr).toBe(0);
+      expect(result.stdout).not.toMatch(/Note: source needs/);
+      expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject({ floatSample: true, bitsPerSample: 16 });
+    });
+
+    it('defaults to float32 for a 16-bit integer JXL source', () => {
+      const output = path.join(tempDir, 'rgb16.jxl');
+      const result = runCli(['convert', path.join(assetsDir, 'jxl', 'lossless_rgb16.jxl'), output]);
+      expect(result.exitCode, result.stderr).toBe(0);
+      expect(readJxl(fs.readFileSync(output)).metadata).toMatchObject({ floatSample: true, bitsPerSample: 32 });
+    });
+
+    it('wraps output in the container with --jxl-container', () => {
+      const output = path.join(tempDir, 'container.jxl');
+      const result = runCli(['convert', exrFilePaths[0], output, '--size', '33,19', '--jxl-container']);
+      expect(result.exitCode, result.stderr).toBe(0);
+      expect(readJxl(fs.readFileSync(output)).metadata?.container).toBe(true);
+    });
+
+    it('rejects --jxl-bit-depth and --jxl-container on other output formats', () => {
+      for (const [output, flags] of [
+        ['out.exr', ['--jxl-bit-depth', 'float32']],
+        ['out.png', ['--jxl-container']],
+      ] as const) {
+        const result = runCli(['convert', exrFilePaths[0], path.join(tempDir, output), ...flags]);
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr).toMatch(/--jxl-bit-depth and --jxl-container are only valid for JXL/);
+      }
+    });
+
+    it('rejects an unknown --jxl-bit-depth', () => {
+      const result = runCli(['convert', exrFilePaths[0], path.join(tempDir, 'out.jxl'), '--jxl-bit-depth', 'int8']);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toMatch(/Invalid values/);
+    });
   });
 
   describe('EXR/HDR conversions', () => {
