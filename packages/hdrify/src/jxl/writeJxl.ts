@@ -12,8 +12,7 @@ import {
   packSigned,
   type TokenStream,
 } from './jxlEncEntropy.js';
-import { xybFromLinear } from './jxlColor.js';
-import { defaultColorEncoding } from './jxlImageHeader.js';
+import { encodeTransfer } from './jxlColor.js';
 import {
   JXL_ENC_TRANSFERS,
   jxlIntensityTarget,
@@ -464,25 +463,6 @@ function applyPalette(plane: Int32Array, palette: Int32Array): void {
   const index = new Map<number, number>();
   for (let i = 0; i < palette.length; i++) index.set(palette[i]!, i);
   for (let i = 0; i < plane.length; i++) plane[i] = index.get(plane[i]!)!;
-}
-
-const COLOR_PRIMARIES = { 'linear-rec709': 'srgb', 'linear-p3': 'p3', 'linear-rec2020': 'bt2100' } as const;
-
-/** Linear RGBA → RGBA encoded with `transfer`, using the decoder's own inverse (jxlColor). Alpha is copied. */
-function encodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): Float32Array {
-  const { data } = image;
-  const n = data.length / 4;
-  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + c]!));
-  const colorEncoding = {
-    ...defaultColorEncoding(),
-    primaries: COLOR_PRIMARIES[image.linearColorSpace],
-    transferFunction: transfer,
-  };
-  const toneMapping = { intensityTarget, minNits: 0, relativeToMaxDisplay: false, linearBelow: 0 };
-  xybFromLinear({ colorEncoding, toneMapping }, planes, true);
-  const out = data.slice();
-  for (let c = 0; c < 3; c++) for (let i = 0; i < n; i++) out[i * 4 + c] = planes[c]![i]!;
-  return out;
 }
 
 /** Interleaved RGBA floats → one Int32Array plane per channel of Modular sample values. */

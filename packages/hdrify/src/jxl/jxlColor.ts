@@ -19,7 +19,9 @@ import {
 } from '../color/matrixConversion.js';
 import { linearToSrgb as linearTosRGB, srgbToLinear as sRGBToLinear } from './jxlXyb.js';
 import { hlgToScene, nitsToPq, pqToNits, sceneToHlg } from '../color/transfer.js';
-import type { JxlColorEncoding, JxlImageHeader } from './jxlImageHeader.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
+import type { JxlEncTransfer } from './jxlEncHeaders.js';
+import { defaultColorEncoding, type JxlColorEncoding, type JxlImageHeader } from './jxlImageHeader.js';
 
 const D50 = [0.34567, 0.3585];
 const D65 = [0.3127, 0.329];
@@ -243,7 +245,7 @@ export function xybFromLinear(h: JxlColorHeader, planes: Float32Array[], native 
 }
 
 /** Final RGBA conversion. XYB frames kept linear are linear sRGB; encoded canvases retain original primaries. */
-export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear: boolean): LinearColorSpace {
+export function convertOutputColor(h: JxlColorHeader, out: Float32Array, linear: boolean): LinearColorSpace {
   if (linear) return 'linear-rec709';
   const t = transform(h);
   const d0 = t.decode[0]!,
@@ -293,4 +295,34 @@ export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
     ...(h.colorEncoding.wantIcc && { iccColorManaged: transform(h).iccManaged }),
   };
+}
+
+const COLOR_PRIMARIES = { 'linear-rec709': 'srgb', 'linear-p3': 'p3', 'linear-rec2020': 'bt2100' } as const;
+
+/** The colour header the encoder writes for an image: its native primaries, `transfer`, `intensityTarget`. */
+function encoderHeader(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): JxlColorHeader {
+  return {
+    colorEncoding: {
+      ...defaultColorEncoding(),
+      primaries: COLOR_PRIMARIES[image.linearColorSpace],
+      transferFunction: transfer,
+    },
+    toneMapping: { intensityTarget, minNits: 0, relativeToMaxDisplay: false, linearBelow: 0 },
+  };
+}
+
+/** Encoder: linear RGBA → a copy encoded with `transfer` (the decoder's own inverse). Alpha is copied. */
+export function encodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): Float32Array {
+  const { data } = image;
+  const n = data.length / 4;
+  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + c]!));
+  xybFromLinear(encoderHeader(image, transfer, intensityTarget), planes, true);
+  const out = data.slice();
+  for (let c = 0; c < 3; c++) for (let i = 0; i < n; i++) out[i * 4 + c] = planes[c]![i]!;
+  return out;
+}
+
+/** Encoder: inverse of {@link encodeTransfer}, in place on interleaved RGBA, back to native linear light. */
+export function decodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): void {
+  convertOutputColor(encoderHeader(image, transfer, intensityTarget), image.data, false);
 }

@@ -477,6 +477,24 @@ describe('writeJxl', () => {
     expect(readJxl(writeJxl(image)).metadata?.transferFunction).toBe('linear');
   });
 
+  it('lossy uint8 sRGB pre-quantizes on the sRGB grid, without linear shadow banding', () => {
+    const image = greyRamp(1024);
+    const shadowError = (options: WriteJxlOptions): number => {
+      const decoded = readJxl(writeJxl(image, { lossy: true, distance: 0.1, bitDepth: 'uint8', ...options })).data;
+      let max = 0;
+      for (let i = 0; i < decoded.length && image.data[i] < 0.05; i += 4)
+        max = Math.max(max, Math.abs(linearTosRGB(decoded[i]) - linearTosRGB(image.data[i])));
+      return max;
+    };
+    const srgb = shadowError({});
+    const lossless = readJxl(writeJxl(image, { bitDepth: 'uint8' })).data;
+    let losslessError = 0;
+    for (let i = 0; i < lossless.length && image.data[i] < 0.05; i += 4)
+      losslessError = Math.max(losslessError, Math.abs(linearTosRGB(lossless[i]) - linearTosRGB(image.data[i])));
+    expect(srgb).toBeLessThan(losslessError + 2 / 255); // distance 0.1 error on top of the 0.5-code grid
+    expect(shadowError({ transferFunction: 'linear' })).toBeGreaterThan(5 / 255);
+  });
+
   it('defaults the intensity target to 255 nits and validates it', () => {
     expect(readJxl(writeJxl(pattern(2, 2))).metadata?.linearReferenceWhiteNits).toBe(255);
     const bad = { ...pattern(2, 2), metadata: { linearReferenceWhiteNits: 1e6 } };
