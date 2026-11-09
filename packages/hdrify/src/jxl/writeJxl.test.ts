@@ -6,7 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeFloat16, encodeFloat16 } from '../exr/halfFloat.js';
 import { readExr } from '../exr/readExr.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
-import { readJxl } from './readJxl.js';
+import { ASSETS } from './jxlTestAssets.js';
+import { type JxlExtraChannel, readJxl } from './readJxl.js';
 import { type WriteJxlOptions, writeJxl } from './writeJxl.js';
 
 const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
@@ -43,17 +44,18 @@ function pattern(width: number, height: number, alpha: (x: number, y: number) =>
   });
 }
 
-/** Parse a PFM (bottom-to-top rows) into top-to-bottom interleaved RGB. */
+/** Parse a PFM (bottom-to-top rows; grey `Pf` is repeated into RGB) into top-to-bottom interleaved RGB. */
 function readPfm(buf: Uint8Array): { width: number; height: number; rgb: Float32Array } {
   const text = new TextDecoder('latin1').decode(buf.subarray(0, 64));
-  const m = /^PF\s+(\d+)\s+(\d+)\s+(-?[\d.]+)\s/.exec(text);
+  const m = /^P([Ff])\s+(\d+)\s+(\d+)\s+(-?[\d.]+)\s/.exec(text);
   if (!m) throw new Error('bad PFM');
-  const [width, height, scale] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const [nc, width, height, scale] = [m[1] === 'F' ? 3 : 1, Number(m[2]), Number(m[3]), Number(m[4])];
   const dv = new DataView(buf.buffer, buf.byteOffset + m[0].length);
   const rgb = new Float32Array(width * height * 3);
   for (let y = 0; y < height; y++) {
     for (let i = 0; i < width * 3; i++) {
-      rgb[(height - 1 - y) * width * 3 + i] = dv.getFloat32((y * width * 3 + i) * 4, scale < 0);
+      const src = nc === 3 ? i : Math.floor(i / 3);
+      rgb[(height - 1 - y) * width * 3 + i] = dv.getFloat32((y * width * nc + src) * 4, scale < 0);
     }
   }
   return { width, height, rgb };
@@ -214,8 +216,9 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
       if ((x * 7 + y) % 13 === 0) return extremes[(x + y + c) % extremes.length];
       return (x + y) / 8; // grey: RCT is chosen
     });
+    expectRgb(image, { bitDepth: 'float32', sanitize: false, grayscale: false });
+    expectRgb(image, { bitDepth: 'float16', sanitize: false, grayscale: false });
     expectRgb(image, { bitDepth: 'float32', sanitize: false });
-    expectRgb(image, { bitDepth: 'float16', sanitize: false });
   });
 
   it('channel palettes: few distinct values spread over a wide range, multi-group, with alpha', () => {
@@ -300,6 +303,110 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
     expect(Array.from(bytes.subarray(40, 42))).toEqual([0xff, 0x0a]);
     expect(jxlinfo(encode(image, { container: true }))).toMatch(/container/i);
     expectRgb(image, { container: true });
+  });
+});
+
+const fixture = (name: string): Uint8Array => fs.readFileSync(new URL(`features/${name}.jxl`, ASSETS));
+function expectSame(a: HdrifyImage, b: HdrifyImage): void {
+  expect([a.width, a.height]).toEqual([b.width, b.height]);
+  expect(firstMismatch(a.data, b.data, 0)).toBe('none');
+  const ecs = (img: HdrifyImage) =>
+    (img.metadata?.extraChannels as JxlExtraChannel[] | undefined)?.map((ec) => ({
+      ...ec,
+      data: Array.from(ec.data),
+    }));
+  expect(ecs(a)).toEqual(ecs(b));
+}
+
+describe.skipIf(!hasDjxl)('writeJxl channels and orientation match libjxl djxl', () => {
+  let dir: string;
+  beforeAll(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hdrify-jxl-ch-'));
+  });
+  afterAll(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  /** djxl PFM output, plus one PFM per extra channel, as raw bytes. */
+  function djxlFiles(bytes: Uint8Array, name: string): Buffer[] {
+    const file = path.join(dir, `${name}.jxl`);
+    fs.writeFileSync(file, bytes);
+    const r = spawnSync('djxl', [file, `${file}.pfm`, '--output_extra_channels'], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`djxl failed: ${r.stderr}`);
+    const outputs = fs.readdirSync(dir).filter((f) => f.startsWith(`${name}.jxl`) && f.endsWith('.pfm'));
+    return outputs.toSorted().map((f) => fs.readFileSync(path.join(dir, f)));
+  }
+  for (let orientation = 1; orientation <= 8; orientation++) {
+    it(`orientation ${orientation} round-trips through readJxl and djxl`, () => {
+      const source = fixture(`orientation${orientation}`);
+      const stored = readJxl(source, { applyOrientation: false });
+      const bytes = writeJxl(stored, { orientation, bitDepth: 'float32' });
+      expectSame(readJxl(bytes), readJxl(source));
+      expect(readJxl(bytes).metadata?.orientation).toBe(orientation);
+      expect(djxlFiles(bytes, `o${orientation}`)).toEqual(djxlFiles(source, `o${orientation}-ref`));
+    });
+  }
+
+  for (const lossy of [false, true]) {
+    for (const name of ['extra_channels', 'spot_color']) {
+      it(`${name} extra channels round-trip (${lossy ? 'lossy' : 'lossless'})`, () => {
+        const source = fixture(name);
+        const image = readJxl(source);
+        const extraChannels = image.metadata?.extraChannels as JxlExtraChannel[];
+        const bytes = writeJxl(image, { bitDepth: 'float32', extraChannels, lossy });
+        // metadata.extraChannels is the default.
+        expect(Buffer.from(writeJxl(image, { bitDepth: 'float32', lossy }))).toEqual(Buffer.from(bytes));
+        const decoded = readJxl(bytes);
+        const ecs = decoded.metadata?.extraChannels as JxlExtraChannel[];
+        const info = (ec: JxlExtraChannel) => [ec.name, ec.type, ec.spotColor];
+        expect(ecs.map(info)).toEqual(extraChannels.map(info));
+        for (let i = 0; i < ecs.length; i++) expect(firstMismatch(ecs[i].data, extraChannels[i].data, 0)).toBe('none');
+        const [, ...decodedEcs] = djxlFiles(bytes, `${name}-${lossy}`);
+        const [, ...referenceEcs] = djxlFiles(source, `${name}-${lossy}-ref`);
+        expect(decodedEcs).toEqual(referenceEcs);
+        if (!lossy) {
+          expectSame(decoded, image);
+          expect(djxlFiles(bytes, `${name}-again`)).toEqual(djxlFiles(source, `${name}-again-ref`));
+        }
+      });
+    }
+  }
+
+  it('alphaPremultiplied writes associated alpha', () => {
+    const source = fixture('associated_alpha');
+    const premultiplied = readJxl(source, { keepPremultipliedAlpha: true });
+    const bytes = writeJxl(premultiplied, { bitDepth: 'float32' }); // metadata.alphaPremultiplied
+    expect(Buffer.from(writeJxl(premultiplied, { bitDepth: 'float32', alphaPremultiplied: true }))).toEqual(
+      Buffer.from(bytes),
+    );
+    expectSame(readJxl(bytes), readJxl(source));
+    expectSame(readJxl(bytes, { keepPremultipliedAlpha: true }), premultiplied);
+    expect(readJxl(bytes, { keepPremultipliedAlpha: true }).metadata?.alphaPremultiplied).toBe(true);
+    expect(djxlFiles(bytes, 'assoc')).toEqual(djxlFiles(source, 'assoc-ref'));
+  });
+
+  it('grayscale writes one colour channel, smaller than RGB', () => {
+    const grey = pattern(300, 260, (x, y) => ((x + y) % 5) / 4);
+    for (let i = 0; i < grey.data.length; i += 4) grey.data[i + 1] = grey.data[i + 2] = grey.data[i]!;
+    const rgb = writeJxl(grey, { grayscale: false });
+    const auto = writeJxl(grey, { grayscale: 'auto' });
+    expect(auto.length).toBeLessThan(rgb.length);
+    expect(readJxl(auto).metadata?.colorSpace).toBe('gray');
+    expectSame(readJxl(auto), readJxl(rgb));
+    expect(Buffer.from(writeJxl(grey, { grayscale: true }))).toEqual(Buffer.from(auto));
+    expect(readJxl(writeJxl(pattern(5, 5), { grayscale: 'auto' })).metadata?.colorSpace).toBe('rgb');
+    const file = path.join(dir, 'grey.jxl');
+    fs.writeFileSync(file, auto);
+    expect(spawnSync('jxlinfo', [file], { encoding: 'utf8' }).stdout).toMatch(/Grayscale/);
+    const [greyPfm] = djxlFiles(auto, 'grey');
+    const [rgbPfm] = djxlFiles(rgb, 'grey-rgb');
+    expect(greyPfm!.subarray(0, 2).toString()).toBe('Pf');
+    expect(firstMismatch(readPfm(greyPfm).rgb, readPfm(rgbPfm).rgb, 0)).toBe('none');
+    const lossy = writeJxl(grey, { grayscale: true, lossy: true, bitDepth: 'float32' });
+    const lossyRgb = writeJxl(grey, { lossy: true, bitDepth: 'float32', grayscale: false });
+    expect(readJxl(lossy).metadata?.colorSpace).toBe('gray');
+    expect(firstMismatch(readJxl(lossy).data, readJxl(lossyRgb).data, 1e-6)).toBe('none');
+    const [lossyPfm] = djxlFiles(lossy, 'grey-lossy');
+    expect(firstMismatch(readPfm(lossyPfm).rgb, readPfm(djxlFiles(lossyRgb, 'rgb-lossy')[0]).rgb, 1e-3)).toBe('none');
   });
 });
 

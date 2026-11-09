@@ -38,7 +38,12 @@ function modularYCbCr(modes: number[]): Uint8Array {
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, { float: false, bitsPerSample: 8, expBits: 0 }, false, 'linear-rec709');
+  writeImageMetadata(
+    w,
+    { float: false, bitsPerSample: 8, expBits: 0 },
+    { grey: false, orientation: 1, extraChannels: [] },
+    'linear-rec709',
+  );
   w.writeBool(false); // frame defaults
   w.writeBits(2, 0); // regular
   w.writeBits(1, 1); // Modular
