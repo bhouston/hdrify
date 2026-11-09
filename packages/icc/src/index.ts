@@ -1,3 +1,15 @@
+export { parse, readIccHeader, readIccMetadata } from './metadata.js';
+export type { IccMetadata, IccMetadataValue, IccVersion, IccIntent } from './metadata.js';
+export {
+  readIccTagValue,
+  readIccLocalizedText,
+  writeIccText,
+  writeIccDescription,
+  writeIccLocalizedText,
+  writeIccXyz,
+} from './tags.js';
+export type { IccTagValue, IccLocalizedText } from './tags.js';
+
 /** ICC v2/v4 binary profile I/O. Unknown tags are retained verbatim. No platform CMS or WASM needed. */
 export interface IccTag {
   signature: string;
