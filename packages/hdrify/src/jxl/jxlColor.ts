@@ -1,6 +1,6 @@
 /** JPEG XL encoded colour ↔ linear-light conversion, shared by composition and public output. */
-import { readIccCicp, readIccProfile } from 'hdrify-icc';
-import { readIccRgbTransform, type IccRgbTransform } from '../color/iccTransform.js';
+import type { IccRgbTransform } from '../color/iccTransform.js';
+import { interpretIccProfile } from '../color/iccPolicy.js';
 import {
   CHROMATICITIES_P3,
   CHROMATICITIES_REC2020,
@@ -95,29 +95,11 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
   }
 }
 
-/** Matrix/TRC (RGB or gray) or recognized cICP interpretation of the embedded profile; throws otherwise. */
+/** Shared ICC policy ({@link interpretIccProfile}): matrix/TRC (RGB or gray) or recognized cICP; throws otherwise. */
 function iccTransform(h: JxlColorHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
   if (!h.icc) throw new Error('JXL: colour encoding requires an ICC profile but none was read');
-  const p = readIccProfile(h.icc),
-    cicp = readIccCicp(p);
-  if (cicp && cicp.matrix === 0 && cicp.fullRange) {
-    const primaries =
-      cicp.primaries === 1 ? 'srgb' : cicp.primaries === 9 ? 'bt2100' : cicp.primaries === 12 ? 'p3' : undefined;
-    const transferFunction = ({ 1: 'bt709', 8: 'linear', 13: 'srgb', 16: 'pq', 18: 'hlg' } as const)[
-      cicp.transfer as 1
-    ];
-    if (primaries && transferFunction)
-      return { ce: { ...h.colorEncoding, wantIcc: false, primaries, whitePoint: 'd65', transferFunction } };
-  }
-  const rgb = readIccRgbTransform(p);
-  if (rgb) return { rgb };
-  const sig = (o: number) => String.fromCharCode(...p.header.subarray(o, o + 4)).trim();
-  const lut = p.tags.some((t) => /^(A2B|B2A|D2B|B2D)/.test(t.signature));
-  throw new Error(
-    `JXL: embedded ICC profile cannot be colour-managed ('${sig(12)}' class, '${sig(16)}' colour space, ` +
-      `'${sig(20)}' PCS${lut ? ', LUT-based' : ''}); only matrix/TRC RGB, gray TRC and recognized cICP profiles ` +
-      'are supported',
-  );
+  const { cicp, rgb } = interpretIccProfile(h.icc, 'JXL');
+  return cicp ? { ce: { ...h.colorEncoding, wantIcc: false, ...cicp, whitePoint: 'd65' } } : { rgb };
 }
 
 function transform(h: JxlColorHeader): ColorTransform {

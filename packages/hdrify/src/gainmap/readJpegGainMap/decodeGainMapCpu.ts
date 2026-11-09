@@ -2,8 +2,8 @@
  * CPU decode: apply gain map to SDR to produce HDR Float32 RGBA.
  * Matches UltraHDR/gainmap-js formula: logRecovery, logBoost, weightFactor, offsets.
  *
- * This pixel decoder assumes an sRGB SDR base. ICC metadata is handled separately.
- * We linearize before applying gain; the gain formula uses linear light.
+ * The base is linearized (sRGB by default) and the gain is applied in the base's own primaries, as
+ * libultrahdr does for XMP (hdrgm) metadata; any gamut conversion happens afterwards.
  */
 
 import { sRGBToLinear } from '../../color/srgb.js';
@@ -21,9 +21,15 @@ function isFloat32Array(a: Uint8Array | Uint8ClampedArray | Float32Array): a is 
   return a instanceof Float32Array;
 }
 
+/** Per-channel base decoding: encoded [0, 1] → linear light. */
+export type BaseDecode = readonly [(v: number) => number, (v: number) => number, (v: number) => number];
+const SRGB_DECODE: BaseDecode = [sRGBToLinear, sRGBToLinear, sRGBToLinear];
+
 /**
  * Decode SDR + gain map pixels with metadata into linear HDR HdrifyImage.
  * SDR and gainMap can be 0-255 RGBA (Uint8) or 0-1 float (Float32Array). Mixed modes supported.
+ * The result is in the base's linear primaries, labelled `linear-rec709` (correct for the default sRGB decode);
+ * callers passing another `decode` relabel or convert it.
  */
 export function decodeGainMapCpu(
   sdr: Uint8ClampedArray | Uint8Array | Float32Array,
@@ -32,6 +38,7 @@ export function decodeGainMapCpu(
   height: number,
   metadata: GainMapMetadata,
   options: DecodeGainMapOptions = {},
+  decode: BaseDecode = SRGB_DECODE,
 ): HdrifyImage {
   const { gamma, offsetSdr, offsetHdr, gainMapMin, gainMapMax, hdrCapacityMin, hdrCapacityMax } = metadata;
 
@@ -44,6 +51,8 @@ export function decodeGainMapCpu(
   const useGammaOne = gamma[0] === 1 && gamma[1] === 1 && gamma[2] === 1;
 
   const sdrIsFloat = isFloat32Array(sdr);
+  const [d0, d1, d2] = decode;
+  const [l0, l1, l2] = decode.map((d) => Float64Array.from({ length: 256 }, (_, i) => d(i / 255)));
   const gainMapIsFloat = isFloat32Array(gainMap);
 
   const pixelCount = width * height;
@@ -51,10 +60,10 @@ export function decodeGainMapCpu(
 
   for (let i = 0; i < pixelCount; i++) {
     const i4 = i * 4;
-    // This decoder assumes an sRGB base. Linearize before applying gain.
-    const sdrR = sdrIsFloat ? sRGBToLinear(sdr[i4]!) : sRGBToLinear(sdr[i4]! / 255);
-    const sdrG = sdrIsFloat ? sRGBToLinear(sdr[i4 + 1]!) : sRGBToLinear(sdr[i4 + 1]! / 255);
-    const sdrB = sdrIsFloat ? sRGBToLinear(sdr[i4 + 2]!) : sRGBToLinear(sdr[i4 + 2]! / 255);
+    // Linearize the base before applying gain.
+    const sdrR = sdrIsFloat ? d0(sdr[i4]!) : l0![sdr[i4]!]!;
+    const sdrG = sdrIsFloat ? d1(sdr[i4 + 1]!) : l1![sdr[i4 + 1]!]!;
+    const sdrB = sdrIsFloat ? d2(sdr[i4 + 2]!) : l2![sdr[i4 + 2]!]!;
 
     const gainR = gainMapIsFloat ? gainMap[i4]! : gainMap[i4]! / 255;
     const gainG = gainMapIsFloat ? gainMap[i4 + 1]! : gainMap[i4 + 1]! / 255;
