@@ -585,7 +585,8 @@ export function readJxlFrames(
  * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
- * Embedded RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are colour-managed; any other
+ * Embedded RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are colour-managed (matrix/TRC
+ * primaries within 0.001 of Rec.709, Display P3 or Rec.2020 keep that space, like readJpegGainMap); any other
  * profile (LUT-based RGB or gray, CMYK, Lab, ...) throws an error naming its class, colour space and
  * PCS before pixels are decoded. originalChromaticities is
  * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.

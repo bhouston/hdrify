@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { applyMatrix3ToFloat32Array, getLinearToLinearMatrix } from '../color/matrixConversion.js';
 import { ASSETS, readPfm } from './jxlTestAssets.js';
 import { readJxl } from './readJxl.js';
+import { readJpegGainMap } from '../gainmap/readJpegGainMap.js';
 describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () => {
   for (const name of ['display_p3', 'adobe_rgb', 'prophoto', 'pq_icc', 'gray_icc'])
     for (const d of [0, 1]) {
@@ -10,6 +11,8 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
         const path = `color/${name}-d${d}`;
         const img = readJxl(fs.readFileSync(new URL(`${path}.jxl`, ASSETS)));
         const ref = readPfm(`${path}.ref.pfm`);
+        // Matrix/TRC primaries matching a native space keep it; XYB (d1) frames stay linear sRGB.
+        expect(img.linearColorSpace).toBe(d ? 'linear-rec709' : name === 'display_p3' ? 'linear-p3' : 'linear-rec2020');
         const m = getLinearToLinearMatrix(img.linearColorSpace, 'linear-rec2020');
         if (m) applyMatrix3ToFloat32Array(img.data, m);
         let err = 0;
@@ -22,6 +25,13 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
         expect(img.metadata?.linearReferenceWhiteNits).toBe(img.metadata?.intensityTarget);
       });
     }
+});
+
+it('labels a Display P3 ICC profile linear-p3, as gain-map JPEGs do', () => {
+  const asset = (name: string) => fs.readFileSync(new URL(`../../../../assets/${name}`, import.meta.url));
+  const jxl = readJxl(fs.readFileSync(new URL('color/display_p3-d0.jxl', ASSETS)));
+  expect(jxl.linearColorSpace).toBe('linear-p3');
+  expect(readJpegGainMap(new Uint8Array(asset('gainmap/p3.jpg'))).linearColorSpace).toBe(jxl.linearColorSpace);
 });
 
 it('rejects singular embedded ICC matrices instead of returning nonfinite colour pixels', async () => {

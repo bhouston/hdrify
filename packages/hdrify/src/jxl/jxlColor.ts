@@ -1,6 +1,6 @@
 /** JPEG XL encoded colour ↔ linear-light conversion, shared by composition and public output. */
 import type { IccRgbTransform } from '../color/iccTransform.js';
-import { interpretIccProfile } from '../color/iccPolicy.js';
+import { interpretIccProfile, matchLinearColorSpace } from '../color/iccPolicy.js';
 import {
   CHROMATICITIES_P3,
   CHROMATICITIES_REC2020,
@@ -121,8 +121,10 @@ function transform(h: JxlColorHeader): ColorTransform {
   if (rgb) {
     const toD65 = multiply3(bradfordAdaptation(D50, D65), rgb.matrix);
     toSrgb = multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC709), toD65);
-    toOutput = multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC2020), toD65);
-    space = 'linear-rec2020';
+    // Primaries matching a native space (as for gain maps) keep it; others are adapted to Rec.2020.
+    const native = matchLinearColorSpace(toD65);
+    space = native ?? 'linear-rec2020';
+    toOutput = native ? identity : multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC2020), toD65);
     decode = rgb.curves.map((c) => c.evaluate);
     encode = rgb.curves.map((c) => c.inverse);
   } else {
