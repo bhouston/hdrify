@@ -85,6 +85,7 @@ export function decodeFrame(
   frameStart: number,
   h: JxlImageHeader,
   lfFrames: readonly (JxlLfFrame | undefined)[] = [],
+  maxPixels = DEFAULT_MAX_PIXELS,
 ): JxlDecodedFrame {
   const fbr = new JxlBitReader(codestream, frameStart);
   const fh = readFrameHeader(fbr, h);
@@ -93,6 +94,7 @@ export function decodeFrame(
   const frameEnd = base + toc.sizes.reduce((a, b) => a + b, 0);
   if (frameEnd > codestream.length) throw new Error('JXL: truncated frame sections');
   const dims = frameDimensions(fh);
+  checkPixels(dims.upsampledWidth, dims.upsampledHeight, maxPixels);
   const vardct = fh.encoding === 'vardct';
 
   const section = (i: number) => new JxlBitReader(codestream, base + toc.offsets[i]!, toc.sizes[i]);
@@ -336,13 +338,14 @@ export function* decodeDisplayedFrames(
   codestream: Uint8Array,
   h: JxlImageHeader,
   start: number,
+  maxPixels = DEFAULT_MAX_PIXELS,
 ): Generator<JxlDisplayedFrame, void> {
   const lfFrames: JxlLfFrame[] = [];
   const references: (JxlReferenceFrame | undefined)[] = [];
   const frameIdx = { visible: 0, nonvisible: 0 };
   let pos = start;
   for (;;) {
-    const fr = decodeFrame(codestream, pos, h, lfFrames);
+    const fr = decodeFrame(codestream, pos, h, lfFrames, maxPixels);
     pos = fr.frameEnd;
     const { fh } = fr;
     advanceFrameIndices(frameIdx, fh);
@@ -398,6 +401,18 @@ export interface ReadJxlOptions {
    * - `'throw'`: throw an error naming the profile class and colour space before decoding pixels.
    */
   unsupportedIcc?: 'fallback' | 'throw';
+  /**
+   * Largest width x height accepted for the image, preview and each frame (including LF and
+   * reference frames), checked before any pixel buffer is allocated. Larger codestreams throw
+   * `JXL: image exceeds maxPixels`. Default 2^28 (16384 x 16384); `Infinity` disables the limit.
+   */
+  maxPixels?: number;
+}
+
+const DEFAULT_MAX_PIXELS = 2 ** 28;
+
+function checkPixels(width: number, height: number, maxPixels: number): void {
+  if (width * height > maxPixels) throw new Error(`JXL: image exceeds maxPixels (${width}x${height} > ${maxPixels})`);
 }
 
 /** A full-resolution extra channel in the same orientation as the returned image. */
@@ -422,9 +437,12 @@ export interface JxlAnimationFrame {
 }
 
 function openJxl(data: Uint8Array, options: ReadJxlOptions) {
+  const maxPixels = options.maxPixels ?? DEFAULT_MAX_PIXELS;
   const { codestream, isContainer } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
+  checkPixels(h.width, h.height, maxPixels);
+  if (h.preview) checkPixels(h.preview.width, h.preview.height, maxPixels);
   if (options.unsupportedIcc === 'throw') assertJxlIccSupported(h);
   // A preview is an independent frame and must not populate references or advance noise counters.
   const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
@@ -554,7 +572,7 @@ export function readJxlFrames(
 ): { frames: JxlAnimationFrame[]; numLoops: number } {
   const { codestream, isContainer, h, start } = openJxl(data, options);
   const frames: JxlAnimationFrame[] = [];
-  for (const frame of decodeDisplayedFrames(codestream, h, start)) {
+  for (const frame of decodeDisplayedFrames(codestream, h, start, options.maxPixels)) {
     frames.push({
       image: displayedImage(frame, h, isContainer, options),
       duration: h.animation ? (frame.fh.duration * h.animation.tpsDenominator) / h.animation.tpsNumerator : 0,
@@ -581,7 +599,7 @@ export function readJxlFrames(
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
   const { codestream, isContainer, h, start } = openJxl(data, options);
-  const first = decodeDisplayedFrames(codestream, h, start).next().value;
+  const first = decodeDisplayedFrames(codestream, h, start, options.maxPixels).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
   const image = displayedImage(first, h, isContainer, options);
   if (h.animation) {
