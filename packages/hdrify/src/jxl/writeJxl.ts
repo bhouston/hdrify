@@ -52,8 +52,8 @@ export interface WriteJxlOptions {
    * samples are spaced perceptually rather than in linear light. PQ maps linear 1.0 to the intensity
    * target (`metadata.linearReferenceWhiteNits`, default 255 nits), and HLG removes the intensity-target
    * OOTF that {@link readJxl} applies, so both round trip through readJxl.
-   * Lossy XYB output is coded from linear light either way; the transfer function only declares the
-   * original encoding, which decoders such as djxl use for their output.
+   * Lossy XYB output is coded from linear light; integer sources are first rounded on this curve's grid.
+   * The declared encoding is what decoders such as djxl use for their output.
    * Ignored by {@link writeJxlEncoded}, whose samples are described by the ICC profile.
    */
   transferFunction?: JxlEncTransfer;
