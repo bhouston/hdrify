@@ -10,7 +10,7 @@ parametric types 0–4. Matrices map to the D50 PCS; `chad` has already been app
 including header names, description, copyright, device model description, viewing conditions
 description, and whitepoint. It accepts `Uint8Array` and Node `Buffer`, including sliced views.
 `readIccMetadata(profile)` decodes the same metadata from an already parsed or edited profile;
-`readIccHeader(header)` decodes just the header.
+`readIccHeaderMetadata(header)` decodes just the friendly header metadata.
 
 ```ts
 import { parse, readIccProfile, writeIccProfile, writeIccLocalizedText } from 'hdrify-icc';

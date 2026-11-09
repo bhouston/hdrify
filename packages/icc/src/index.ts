@@ -1,4 +1,4 @@
-export { parse, readIccHeader, readIccMetadata } from './metadata.js';
+export { parse, readIccHeaderMetadata, readIccMetadata } from './metadata.js';
 export type { IccMetadata, IccMetadataValue, IccVersion, IccIntent } from './metadata.js';
 export {
   readIccTagValue,

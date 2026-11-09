@@ -1,6 +1,6 @@
 import { parse as referenceParse } from 'icc';
 import { describe, expect, it } from 'vitest';
-import { parse, readIccHeader, readIccMetadata } from './metadata.js';
+import { parse, readIccHeaderMetadata, readIccMetadata } from './metadata.js';
 import { readIccProfile } from './index.js';
 
 /** Hand-encoded zero-tag profile, independent of hdrify's serializer. */
@@ -23,7 +23,7 @@ describe('icc 4.0.0 header compatibility', () => {
         b.writeUInt32BE(version, 8);
         b.writeUInt32BE(intent, 64);
         expect(parse(b)).toStrictEqual(referenceParse(b));
-        expect(readIccHeader(b.subarray(0, 128))).toStrictEqual(referenceParse(b));
+        expect(readIccHeaderMetadata(b.subarray(0, 128))).toStrictEqual(referenceParse(b));
       }
     }
   });
@@ -99,10 +99,10 @@ describe('icc 4.0.0 header compatibility', () => {
 
   it('validates standalone header length and signature', () => {
     const b = fixture();
-    expect(() => readIccHeader(b)).toThrow('header');
-    expect(() => readIccHeader(b.subarray(0, 127))).toThrow('header');
+    expect(() => readIccHeaderMetadata(b)).toThrow('header');
+    expect(() => readIccHeaderMetadata(b.subarray(0, 127))).toThrow('header');
     b.write('oops', 36);
-    expect(() => readIccHeader(b.subarray(0, 128))).toThrow('header');
+    expect(() => readIccHeaderMetadata(b.subarray(0, 128))).toThrow('header');
     expect(() => parse(b)).toThrow('header');
     expect(() => referenceParse(b)).toThrow();
   });

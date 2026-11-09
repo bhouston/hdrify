@@ -72,7 +72,7 @@ const tagFields = new Map<
 ] as const);
 
 /** Decode a 128-byte ICC header, including icc's friendly device/platform names. */
-export function readIccHeader(header: Uint8Array): IccMetadata {
+export function readIccHeaderMetadata(header: Uint8Array): IccMetadata {
   if (header.length !== 128 || text.decode(header.subarray(36, 40)) !== 'acsp')
     throw new Error('ICC: invalid profile header');
   const d = new DataView(header.buffer, header.byteOffset, header.byteLength);
@@ -87,7 +87,7 @@ export function readIccHeader(header: Uint8Array): IccMetadata {
 
 /** Interpret icc-compatible metadata from a parsed or edited profile, retaining first mluc locale. */
 export function readIccMetadata(profile: IccProfile): IccMetadata {
-  const metadata = readIccHeader(profile.header);
+  const metadata = readIccHeaderMetadata(profile.header);
   for (const tag of profile.tags) {
     const field = tagFields.get(tag.signature);
     if (!field) continue;
