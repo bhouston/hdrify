@@ -1,14 +1,23 @@
 # hdrify-icc
 
-Pure TypeScript ICC v2/v4 binary reader and writer, usable in browsers and Node.js.
-`readIccProfile` and `writeIccProfile` preserve unknown tag payloads when editing profiles.
-`readIccRgbTransform` interprets RGB matrix/TRC display profiles, including curve tables and
-parametric types 0–4. Matrices map to the D50 PCS; `chad` has already been applied to colorants.
-`readIccCicp` reads HDR colour identification independently of legacy LUT tags.
+Pure TypeScript ICC v2/v4 profile data reader and writer for browsers and Node.js.
+`readIccProfile` and `writeIccProfile` preserve all tag payloads, including LUTs,
+CMYK, gray, and unknown/private tags. Reading and writing a profile does not
+require support for its color transform. `readIccCicp` reads HDR identification data.
 
-This is an initial ICC implementation, not a complete colour management system. LUT transforms,
-CMYK and gray profiles are unsupported. Callers must handle an undefined transform explicitly.
-Writing rebuilds offsets/alignment and clears the old profile ID; it does not compute an MD5 ID.
+This package does not evaluate curves, transform pixels, or modify image data.
+Image consumers are responsible for interpreting profile data and applying color
+management. The existing JPEG XL color conversion remains in `hdrify`.
+
+Writing rebuilds offsets/alignment and clears the old profile ID; it does not
+compute an MD5 ID. Keep the original bytes when byte-exact profile transport is needed.
+
+## Migration
+
+The executable `readIccCurve` and `readIccRgbTransform` helpers and their
+`IccCurve`/`IccRgbTransform` types have moved into hdrify's internal color module.
+They are no longer exported by hdrify-icc. Consumers needing transforms should
+use their own color-management implementation with the parsed profile data.
 
 `createSrgbIccProfile()` returns an independent copy of the reference Google 2016 sRGB
 profile used by hdrify's Ultra HDR writer. `readIccAdgcGuid(readIccProfile(bytes))` reads

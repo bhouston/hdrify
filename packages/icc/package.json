@@ -1,7 +1,7 @@
 {
   "name": "hdrify-icc",
   "version": "0.0.0",
-  "description": "Pure TypeScript ICC profile reader, writer and matrix/TRC colour transforms",
+  "description": "Pure TypeScript ICC profile data reader and writer",
   "license": "MIT",
   "files": [
     "dist",

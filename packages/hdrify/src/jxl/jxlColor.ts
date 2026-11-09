@@ -1,5 +1,6 @@
 /** JPEG XL encoded colour ↔ linear-light conversion, shared by composition and public output. */
-import { readIccCicp, readIccProfile, readIccRgbTransform, type IccRgbTransform } from 'hdrify-icc';
+import { readIccCicp, readIccProfile } from 'hdrify-icc';
+import { readIccRgbTransform, type IccRgbTransform } from '../color/iccTransform.js';
 import {
   CHROMATICITIES_P3,
   CHROMATICITIES_REC2020,

@@ -154,6 +154,13 @@ const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
 const flipped = flipImage(image, { y: -1 }); // x/y: 1 (default, unchanged) or -1 (mirror that axis)
 ```
 
+## ICC responsibilities
+
+`hdrify-icc` reads, edits, and writes profile data, preserving opaque tag payloads
+without executing their transforms. The existing JPEG XL matrix/TRC evaluation
+helpers live in hdrify's internal color module. Applications that need broader
+color management can interpret the profile data with their own implementation.
+
 ## Contribution
 
 See [Contributing Guide](https://github.com/bhouston/hdrify/blob/main/CONTRIBUTING.md).
