@@ -1,13 +1,11 @@
 import { assembleJpegAdobeGainMap } from '../adobeGainMapAssembler.js';
 import type { GainMapFormat } from '../readJpegGainMap.js';
 import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
-import { DEFAULT_ICC_PROFILE } from './defaultIccProfile.js';
+import { gainMapIccPayloads, type GainMapIccOptions } from './gainMapIccMetadata.js';
 import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
-export interface EncodeJPEGMetadataOptions {
+export interface EncodeJPEGMetadataOptions extends GainMapIccOptions {
   format?: GainMapFormat;
-  /** ICC profile (APP2 payload). For ultrahdr, default is sRGB matching reference memorial.jpg. Pass null to omit. */
-  icc?: Uint8Array | null;
   /** EXIF (APP1 payload). For ultrahdr, default is null (no EXIF, matches reference). Pass Uint8Array to add. */
   exif?: Uint8Array | null;
 }
@@ -41,21 +39,22 @@ export function encodeJPEGMetadata(
       : 2 ** encodingResult.gainMapMax,
   };
 
+  const iccPayloads = gainMapIccPayloads(options);
   if (format === 'adobe-gainmap') {
     return assembleJpegAdobeGainMap({
       sdr: encodingResult.sdr,
       gainMap: encodingResult.gainMap,
       metadata,
+      iccPayloads,
     });
   }
 
-  const icc = options.icc !== undefined ? options.icc : DEFAULT_ICC_PROFILE;
   const exif = options.exif ?? null;
   return assembleJpegWithGainMap({
     sdr: encodingResult.sdr,
     gainMap: encodingResult.gainMap,
     metadata,
     ...(exif && exif.length > 0 && { exif }),
-    ...(icc && icc.length > 0 && { icc }),
+    iccPayloads,
   });
 }
