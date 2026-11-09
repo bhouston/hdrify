@@ -226,17 +226,21 @@ export function xybFromLinear(h: JxlColorHeader, planes: Float32Array[], native 
   }
 }
 
-/** Final RGBA conversion. XYB frames kept linear are linear sRGB; encoded canvases retain original primaries. */
+/**
+ * Final RGBA conversion into the header's output space. XYB frames kept linear are linear sRGB: they are
+ * mapped (fromSrgb, then toOutput) to the same space as an encoded canvas, so wide gamuts stay in range.
+ */
 export function convertOutputColor(h: JxlColorHeader, out: Float32Array, linear: boolean): LinearColorSpace {
-  if (linear) return 'linear-rec709';
   const t = transform(h);
-  const d0 = t.decode[0]!,
-    d1 = t.decode[1]!,
-    d2 = t.decode[2]!;
-  const m = t.toOutput,
+  const lin = (x: number) => x;
+  const d0 = linear ? lin : t.decode[0]!,
+    d1 = linear ? lin : t.decode[1]!,
+    d2 = linear ? lin : t.decode[2]!;
+  const m = !linear ? t.toOutput : t.space === 'linear-rec709' ? identity : multiply3(t.toOutput, t.fromSrgb),
     id = m === identity;
+  if (linear && id) return t.space;
   const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
-  const o = ootfParams(h, t, true);
+  const o = linear ? undefined : ootfParams(h, t, true);
   for (let i = 0; i < out.length; i += 4) {
     let r = d0(out[i]!),
       g = d1(out[i + 1]!),
