@@ -74,6 +74,8 @@ While loading, a progress bar fills across the top (`onProgress` / the `progress
 
 With a bundler, `import 'hdrify-react/element'` instead. See the [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for all attributes, events and theming.
 
+The same content-based loader is available without importing React through `import { decodeHdrifyImage } from 'hdrify-react/decode'`. This is useful for Node.js and editor conversion commands.
+
 ### HdrifyCanvas props
 
 | Prop           | Type                                                   | Description                                                      |

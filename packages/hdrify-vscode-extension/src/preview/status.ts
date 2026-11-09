@@ -15,12 +15,11 @@ export function previewStatus(fileName: string, fileSize: number, image: HdrifyI
   if (meta?.format === 'ultrahdr') details.push('Ultra HDR (JPEG-R)');
   if (meta?.format === 'adobe-gainmap') details.push('Adobe gain map');
   if (meta?.format === 'JPEG XL') {
-    details.push(
-      'JPEG XL',
-      `${JSON.stringify(meta.bitsPerSample)}-bit ${meta.floatSample ? 'float' : 'integer'}`,
-      JSON.stringify(meta.encoding),
-      image.linearColorSpace,
-    );
+    details.push('JPEG XL');
+    if (typeof meta.bitsPerSample === 'number')
+      details.push(`${meta.bitsPerSample}-bit ${meta.floatSample ? 'float' : 'integer'}`);
+    if (typeof meta.encoding === 'string') details.push(meta.encoding);
+    details.push(image.linearColorSpace);
     const animation = meta.animation;
     if (
       typeof animation === 'object' &&

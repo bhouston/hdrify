@@ -2,7 +2,7 @@
   "name": "hdrify-vscode-extension",
   "displayName": "Hdrify Image Viewer",
   "version": "1.1.3",
-  "description": "Preview EXR, HDR, JPEG XL and UltraJPG images; convert EXR, HDR and UltraJPG.",
+  "description": "Preview and convert EXR, HDR, JPEG XL and Ultra HDR images.",
   "categories": [
     "Other",
     "Visualization"
@@ -73,6 +73,10 @@
         "title": "Convert to UltraHDR Jpeg"
       },
       {
+        "command": "hdrify.convertToJxl",
+        "title": "Convert to JPEG XL"
+      },
+      {
         "command": "hdrify.openHdrPreview",
         "title": "Open with HDR Image Preview"
       }
@@ -81,7 +85,7 @@
       "explorer/context": [
         {
           "submenu": "hdrify.convertImage",
-          "when": "resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i",
+          "when": "resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i",
           "group": "7_modification"
         },
         {
@@ -93,15 +97,19 @@
       "hdrify.convertImage": [
         {
           "command": "hdrify.convertToExr",
-          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.exr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i && resourceExtname != '.exr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i)"
         },
         {
           "command": "hdrify.convertToHdr",
-          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.hdr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i && resourceExtname != '.hdr') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i)"
         },
         {
           "command": "hdrify.convertToUltraHdrJpeg",
-          "when": "(resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i && resourceExtname != '.jpg' && resourceExtname != '.jpeg') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jpg|jpeg)$/i)"
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i && resourceExtname != '.jpg' && resourceExtname != '.jpeg') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i)"
+        },
+        {
+          "command": "hdrify.convertToJxl",
+          "when": "(resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i && resourceExtname != '.jxl') || (listMultiSelection && resourceExtname =~ /\\.(exr|hdr|jxl|jpg|jpeg)$/i)"
         }
       ]
     },
@@ -176,6 +184,19 @@
             "dwab"
           ],
           "description": "Compression for EXR output when converting to EXR"
+        },
+        "hdrify.jxlBitDepth": {
+          "type": "string",
+          "default": "float16",
+          "enum": [
+            "float16",
+            "float32"
+          ],
+          "enumDescriptions": [
+            "Lossless half-float samples (like the default EXR output).",
+            "Lossless 32-bit samples, retaining the decoded source precision."
+          ],
+          "description": "Sample precision for lossless JPEG XL conversion output."
         }
       }
     }
@@ -183,6 +204,7 @@
   "activationEvents": [
     "onCommand:hdrify.convertToExr",
     "onCommand:hdrify.convertToHdr",
+    "onCommand:hdrify.convertToJxl",
     "onCommand:hdrify.convertToUltraHdrJpeg",
     "onCommand:hdrify.openHdrPreview",
     "onCustomEditor:hdrify.hdrPreview"
