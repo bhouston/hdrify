@@ -13,7 +13,7 @@ export interface AssembleJpegOptions {
   gainMap: CompressedImage;
   metadata: GainMapMetadataExtended;
   exif?: Uint8Array;
-  icc?: Uint8Array;
+  iccPayloads?: Uint8Array[];
 }
 
 const EXIF_SIGNATURE = 'Exif\0\0';
@@ -98,7 +98,7 @@ function writeMarker(buffer: Uint8Array, startPos: number, marker: number, data?
 }
 
 export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Array {
-  const { sdr, gainMap, metadata, exif: externalExif, icc } = options;
+  const { sdr, gainMap, metadata, exif: externalExif, iccPayloads = [] } = options;
 
   if (sdr.mimeType !== 'image/jpeg') {
     throw new Error('SDR image must be JPEG format');
@@ -107,6 +107,7 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
     throw new Error('Gain map image must be JPEG format');
   }
 
+  const iccSize = iccPayloads.reduce((n, p) => n + 4 + p.length, 0);
   const exifFromJpeg = extractExif(sdr.data);
 
   if (exifFromJpeg && externalExif) {
@@ -128,7 +129,7 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   const secondaryImageSize =
     2 + // SOI
     (2 + 2 + namespaceBytes.length + xmpSecondaryBytes.length) + // APP1 XMP
-    (icc ? 2 + 2 + icc.length : 0) + // Optional APP2 ICC
+    iccSize + // Optional APP2 ICC
     (gainMap.data.length - 2); // Rest of encoded gain map JPEG after SOI
 
   const xmpPrimary = generateXmpForPrimaryImage(secondaryImageSize, metadata);
@@ -144,7 +145,7 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   totalSize += 2 + 2 + xmpPrimaryData.length;
   // MPF before ICC to match reference
   totalSize += 2 + 2 + mpfLength;
-  if (icc) totalSize += 2 + 2 + icc.length;
+  totalSize += iccSize;
 
   totalSize += primaryJpegData.length - 2;
   totalSize += secondaryImageSize;
@@ -170,9 +171,7 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   const mpfDataActual = generateMpf(primaryImageSize, 0, secondaryImageSize, gainmapOffsetInMpf);
   pos = writeMarker(output, pos, MARKERS.APP2, mpfDataActual);
 
-  if (icc) {
-    pos = writeMarker(output, pos, MARKERS.APP2, icc);
-  }
+  for (const payload of iccPayloads) pos = writeMarker(output, pos, MARKERS.APP2, payload);
 
   output.set(primaryJpegData.subarray(2), pos);
   pos += primaryJpegData.length - 2;
@@ -184,9 +183,7 @@ export function assembleJpegWithGainMap(options: AssembleJpegOptions): Uint8Arra
   xmpSecondaryData.set(xmpSecondaryBytes, namespaceBytes.length);
   pos = writeMarker(output, pos, MARKERS.APP1, xmpSecondaryData);
 
-  if (icc) {
-    pos = writeMarker(output, pos, MARKERS.APP2, icc);
-  }
+  for (const payload of iccPayloads) pos = writeMarker(output, pos, MARKERS.APP2, payload);
 
   output.set(gainMap.data.subarray(2), pos);
 

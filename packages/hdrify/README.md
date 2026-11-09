@@ -50,7 +50,7 @@ pnpm add hdrify
 
 ## HdrifyImage
 
-All read functions return `HdrifyImage`, and all write functions accept it. This is the universal intermediate format.
+All read functions return `HdrifyImage`, and the standard write functions accept it. This is the universal intermediate format.
 
 ```ts
 interface HdrifyImage {
@@ -106,6 +106,35 @@ const encoding = encodeGainMap(image, { toneMapping: 'reinhard' });
 fs.writeFileSync('output.jpg', writeJpegGainMap(encoding, { quality: 90 }));
 ```
 
+### ICC-encoded JPEG XL samples
+
+`writeJxl` accepts linear `HdrifyImage` pixels and uses native JPEG XL color fields.
+To store pixels that are already encoded in an ICC profile's RGB space, use the
+separate `writeJxlEncoded` API:
+
+```ts
+import { writeJxlEncoded } from 'hdrify';
+
+const bytes = writeJxlEncoded(
+  { width, height, data: encodedRgbaFloat32, iccProfile: rawIccBytes },
+  { bitDepth: 'float32', container: true },
+);
+```
+
+The caller supplies RGBA samples in the profile's encoded space. This function
+performs no color conversion or ICC curve/LUT evaluation. It validates the profile
+structure and RGB channel declaration, then retains the complete profile bytes,
+including unknown tags and RGB LUT profiles. Source `metadata.iccProfile` is never
+attached automatically by `writeJxl`.
+
+This API supports lossless Modular output. CMYK and gray sample layouts and lossy
+XYB output are unsupported and throw. The existing reader's color-management
+limitations still apply when decoding LUT profiles; storing a profile does not
+add support for interpreting it. Float32 preserves signed finite sample values;
+float16 rounds them to half precision. Integer output clamps to [0, 1]. The
+encoded-sample API defaults `sanitize` to false, so it does not mutate input pixels;
+callers may explicitly enable sanitization. Alpha follows the selected bit depth.
+
 ### Resizing
 
 ```ts
@@ -125,6 +154,13 @@ const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
 const flipped = flipImage(image, { y: -1 }); // x/y: 1 (default, unchanged) or -1 (mirror that axis)
 ```
 
+## ICC responsibilities
+
+`hdrify-icc` reads, edits, and writes profile data, preserving opaque tag payloads
+without executing their transforms. The existing JPEG XL matrix/TRC evaluation
+helpers live in hdrify's internal color module. Applications that need broader
+color management can interpret the profile data with their own implementation.
+
 ## Contribution
 
 See [Contributing Guide](https://github.com/bhouston/hdrify/blob/main/CONTRIBUTING.md).
@@ -136,3 +172,27 @@ MIT
 ## Author
 
 [Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
+
+## ICC metadata in JPEG gain maps
+
+`readJpegGainMap` validates embedded ICC data with `hdrify-icc` and retains the
+complete raw profile in `metadata.iccProfile`, including unknown tags and
+multipart JPEG profiles. It does **not** apply the profile to pixels:
+`metadata.iccColorManaged` is `false` when a profile is present. Pixel decoding
+keeps the existing sRGB-base assumption and linear Rec.709 output. Applications
+that need color management must apply it externally. Profiles using LUTs, CMYK,
+or gray color spaces are retained as metadata without interpreting them.
+
+`writeJpegGainMap` (both `ultrahdr` and `adobe-gainmap`) and
+`writeGainMapAsSeparateFiles` accept `iccProfile: Uint8Array` containing raw ICC
+bytes, splitting large profiles across JPEG APP2 segments. The legacy `icc`
+option accepts a complete single APP2 payload with the `ICC_PROFILE` header and
+chunk 1/1. Specify only one of these options; set either to `null` to omit ICC.
+All three writer paths default to the existing sRGB profile. Separate-file
+output embeds ICC in the SDR JPEG, not the gain-map JPEG.
+
+Writers validate ICC structure but do not transform pixels or decide whether a
+profile matches them. `encodeGainMap` produces an sRGB base; callers supplying
+a different profile are responsible for matching that profile to the encoded
+base samples. Raw profiles are embedded byte-for-byte without rewriting opaque
+profile data or profile IDs.

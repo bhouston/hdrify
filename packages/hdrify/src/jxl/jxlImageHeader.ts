@@ -467,7 +467,7 @@ export function describeColorEncoding(ce: JxlColorEncoding): JxlColorDescription
 // ICC profile (ISO/IEC 18181-1 Annex B.3; libjxl icc_codec.cc / icc_codec_common.cc)
 
 /** Context for ICC byte `i` given the two previous bytes. libjxl ICCANSContext. */
-function iccContext(i: number, b1: number, b2: number): number {
+export function iccContext(i: number, b1: number, b2: number): number {
   if (i <= 128) return 0;
   const isAlpha = (b: number) => (b >= 0x61 && b <= 0x7a) || (b >= 0x41 && b <= 0x5a);
   const isNum = (b: number) => (b >= 0x30 && b <= 0x39) || b === 0x2e || b === 0x2c;

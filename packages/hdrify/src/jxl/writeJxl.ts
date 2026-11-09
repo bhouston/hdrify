@@ -1,3 +1,4 @@
+import { readIccProfile } from 'hdrify-icc';
 import { encodeFloat16 } from '../exr/halfFloat.js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { factorMaResiduals, learnMaTree, learnedLeaf, type JxlLearnedModel, type JxlMaSample } from './jxlEncMaTree.js';
@@ -66,6 +67,42 @@ const PREDICTOR_GRADIENT = 5;
  * alpha remains lossless in the selected source sample format.
  */
 export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uint8Array {
+  return writeJxlImage(image, options);
+}
+
+/** Caller-supplied ICC-encoded RGB samples, stored in RGBA order. No color conversion is performed. */
+export interface JxlEncodedImage {
+  width: number;
+  height: number;
+  data: Float32Array;
+  /** Raw complete ICC profile, including arbitrary/unknown tag payloads. Must describe RGB samples. */
+  iccProfile: Uint8Array;
+}
+
+/** Write ICC-encoded RGB samples losslessly. LUT profiles are retained opaquely.
+ * The caller is responsible for providing samples in the profile's encoded space.
+ * Gray/CMYK channel layouts and lossy XYB encoding are not supported by this API.
+ * Integer bit depths clamp samples to [0,1]; float formats preserve signed sample values.
+ */
+export function writeJxlEncoded(image: JxlEncodedImage, options: WriteJxlOptions = {}): Uint8Array {
+  if (options.lossy) throw new Error('writeJxlEncoded: only lossless Modular output is supported');
+  if (image.iccProfile.length > 1 << 26) throw new Error('writeJxlEncoded: ICC profile exceeds 64 MiB');
+  const profile = readIccProfile(image.iccProfile);
+  if (String.fromCharCode(...profile.header.subarray(16, 20)) !== 'RGB ')
+    throw new Error('writeJxlEncoded: ICC profile must describe RGB samples; gray/CMYK layouts are unsupported');
+  if (
+    new DataView(image.iccProfile.buffer, image.iccProfile.byteOffset, image.iccProfile.byteLength).getUint32(0) !==
+    image.iccProfile.length
+  )
+    throw new Error('writeJxlEncoded: ICC profile has trailing bytes');
+  return writeJxlImage(
+    { ...image, linearColorSpace: 'linear-rec709' },
+    { ...options, sanitize: options.sanitize ?? false },
+    image.iccProfile,
+  );
+}
+
+function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?: Uint8Array): Uint8Array {
   const { width, height, data } = image;
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
     throw new Error(`writeJxl: invalid dimensions ${width}x${height}`);
@@ -241,7 +278,7 @@ export function writeJxl(image: HdrifyImage, options: WriteJxlOptions = {}): Uin
   w.writeBits(8, 0xff);
   w.writeBits(8, 0x0a);
   writeSizeHeader(w, width, height);
-  writeImageMetadata(w, bitDepth, hasAlpha, image.linearColorSpace);
+  writeImageMetadata(w, bitDepth, hasAlpha, image.linearColorSpace, false, iccProfile);
   writeFrameHeader(w, hasAlpha, groupSizeShift);
   writeToc(
     w,

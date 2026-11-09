@@ -4,6 +4,7 @@
  * No MPF, no Container:Directory. Matches the second-SOI structure that readJpegGainMap expects.
  */
 
+import { insertJpegIcc } from './libultrahdr/gainMapIccMetadata.js';
 import { MARKER_PREFIX, MARKERS, XMP_NAMESPACE } from './libultrahdr/jpeg-markers.js';
 import { generateXmpForSecondaryImage } from './libultrahdr/xmp-generator.js';
 import type { CompressedImage, GainMapMetadataExtended } from './types.js';
@@ -12,6 +13,7 @@ export interface AdobeGainMapAssembleOptions {
   sdr: CompressedImage;
   gainMap: CompressedImage;
   metadata: GainMapMetadataExtended;
+  iccPayloads?: Uint8Array[];
 }
 
 function writeMarker(buffer: Uint8Array, startPos: number, marker: number, data?: Uint8Array): number {
@@ -52,13 +54,14 @@ export function assembleJpegAdobeGainMap(options: AdobeGainMapAssembleOptions): 
   xmpSecondaryData.set(namespaceBytes, 0);
   xmpSecondaryData.set(xmpSecondaryBytes, namespaceBytes.length);
 
-  const totalSize = sdr.data.length + 2 + 2 + 2 + xmpSecondaryData.length + (gainMap.data.length - 2);
+  const primary = insertJpegIcc(sdr.data, options.iccPayloads ?? []);
+  const totalSize = primary.length + 2 + 2 + 2 + xmpSecondaryData.length + (gainMap.data.length - 2);
 
   const output = new Uint8Array(totalSize);
   let pos = 0;
 
-  output.set(sdr.data, pos);
-  pos += sdr.data.length;
+  output.set(primary, pos);
+  pos += primary.length;
 
   pos = writeMarker(output, pos, MARKERS.SOI);
   pos = writeMarker(output, pos, MARKERS.APP1, xmpSecondaryData);
