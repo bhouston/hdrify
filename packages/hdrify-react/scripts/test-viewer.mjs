@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import { chromium, firefox, webkit } from 'playwright';
 
@@ -12,7 +12,20 @@ const bundle = await build({
   platform: 'browser',
   define: { 'process.env.NODE_ENV': '"development"' },
 });
+const jxlFiles = new Map(
+  await Promise.all(
+    ['lossless_rgb8.jxl', 'lossless_rgb8_container.jxl', 'vardct_float.jxl'].map(async (name) => [
+      `/fixtures/${name}`,
+      await readFile(new URL(`../../../assets/jxl/${name}`, import.meta.url)),
+    ]),
+  ),
+);
 const server = createServer((request, response) => {
+  if (jxlFiles.has(request.url)) {
+    response.setHeader('Content-Type', 'image/jxl');
+    response.end(jxlFiles.get(request.url));
+    return;
+  }
   if (request.url === '/delayed.hdr') {
     setTimeout(() => response.end(), 1000);
     return;
@@ -369,6 +382,29 @@ try {
         ]);
       });
       result.reusedImageReadiness = 'passed';
+      result.jpegXl = [];
+      for (const [path] of jxlFiles) {
+        const decoded = await page.evaluate(async (path) => {
+          const viewer = document.querySelector('image-viewer');
+          viewer.image = undefined;
+          const loaded = new Promise((resolve, reject) => {
+            viewer.addEventListener('load', (event) => resolve(event.detail.image), { once: true });
+            viewer.addEventListener('error', (event) => reject(new Error(event.detail.message)), { once: true });
+          });
+          // Exercise both encoded-byte and URL inputs through the custom element.
+          if (path.endsWith('/lossless_rgb8.jxl')) viewer.data = await (await fetch(path)).arrayBuffer();
+          else {
+            viewer.data = undefined;
+            viewer.src = path;
+          }
+          const image = await loaded;
+          await viewer.whenReady();
+          return { format: image.metadata.format, width: image.width, height: image.height };
+        }, path);
+        assert.equal(decoded.format, 'JPEG XL');
+        assert.ok(decoded.width > 0 && decoded.height > 0);
+        result.jpegXl.push({ path, ...decoded });
+      }
       await page.evaluate(() => {
         const viewer = document.querySelector('image-viewer');
         viewer.remove();

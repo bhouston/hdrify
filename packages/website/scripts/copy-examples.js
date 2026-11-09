@@ -26,4 +26,6 @@ for (const entry of entries) {
   cpSync(src, dest, { force: true });
   copied++;
 }
+cpSync(join(assetsDir, 'jxl/vardct_float.jxl'), join(destDir, 'vardct_float.jxl'), { force: true });
+copied++;
 console.log(`copy-examples: copied ${copied} example file(s) to public/examples`);
