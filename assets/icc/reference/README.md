@@ -25,3 +25,8 @@ Additional official profiles are available in the [ICC profile library](https://
 including [Probe profiles](https://registry.color.org/profile-library/probe-profile)
 and [sRGB profiles](https://registry.color.org/rgb-registry/srgbprofiles).
 Installed macOS profiles are tested from their system location when found and are not copied here.
+
+Run the differential suite with `pnpm exec vitest run packages/icc/src/compatibility.test.ts`.
+It also checks libjxl and independent v2/v4 fixtures. Installed macOS profiles are
+optional and skipped when unavailable. To compare a separate installed or downloaded
+corpus, set `ICC_COMPAT_CORPUS=/path/to/profiles` when running the suite.

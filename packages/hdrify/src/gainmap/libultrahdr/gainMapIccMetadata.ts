@@ -2,10 +2,20 @@ import { DEFAULT_ICC_PROFILE } from './defaultIccProfile.js';
 import { buildJpegIccPayloads } from './jpegIcc.js';
 
 export interface GainMapIccOptions {
-  /** Legacy single JPEG APP2 payload (ICC_PROFILE header plus chunk 1/1). Null omits ICC. */
+  /**
+   * Legacy complete JPEG APP2 payload, including the ICC_PROFILE header and chunk 1/1.
+   * Defaults to the reference sRGB profile when neither ICC option is supplied.
+   * Set to null to omit ICC. Mutually exclusive with `iccProfile`.
+   */
   icc?: Uint8Array | null;
-  /** Raw ICC profile bytes, supporting multipart JPEG embedding. Null omits ICC.
-   * Profiles are metadata only: callers are responsible for matching the encoded pixels. */
+  /**
+   * Raw complete ICC profile bytes, split across JPEG APP2 segments when needed.
+   * Structure is validated; bytes, unknown tags, and profile IDs are retained verbatim.
+   * No pixel conversion is performed. `encodeGainMap` produces an sRGB base;
+   * callers supplying a different profile must ensure it matches the base samples.
+   * Defaults to the reference sRGB profile. Set to null to omit ICC.
+   * Mutually exclusive with `icc`.
+   */
   iccProfile?: Uint8Array | null;
 }
 

@@ -28,12 +28,10 @@ Universal EXR, HDR, and gain map image library for Node.js and browsers. Read an
 
 **Related packages:** [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
 
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
-
 ## Capabilities
 
 - Read and write RGB EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
-- Read and write HDR (Radiance RGBE) files
+- Read and write HDR (Radiance RGBE) and JPEG XL files
 - Read and write both Adobe Gain Map JPEGs and Ultra HDR JPEGs (Android compatible)
 - Tone mappers (ACES, Khronos Neutral, AgX, Reinhard)
 - Resize with nearest, bilinear, or lanczos filters
@@ -48,25 +46,14 @@ Universal EXR, HDR, and gain map image library for Node.js and browsers. Read an
 pnpm add hdrify
 ```
 
-## HdrifyImage
-
-All read functions return `HdrifyImage`, and the standard write functions accept it. This is the universal intermediate format.
-
-```ts
-interface HdrifyImage {
-  width: number;
-  height: number;
-  data: Float32Array; // RGBA: [R, G, B, A, R, G, B, A, ...]
-  linearColorSpace: LinearColorSpace;
-  metadata?: Record<string, unknown>;
-}
-```
+Readers return a shared [`HdrifyImage`](https://hdrify.ben3d.ca/docs/api/core/interfaces/HdrifyImage/) with floating-point RGBA pixels, ready to transform or write in another format.
 
 ## Usage
 
 ### Reading an EXR file
 
 ```ts
+import * as fs from 'node:fs';
 import { readExr } from 'hdrify';
 
 const buffer = fs.readFileSync('image.exr');
@@ -75,18 +62,24 @@ const image = readExr(new Uint8Array(buffer));
 console.log(`Image: ${image.width}x${image.height}`);
 ```
 
+API reference: [`readExr`](https://hdrify.ben3d.ca/docs/api/core/functions/readExr/).
+
 ### Reading an HDR file
 
 ```ts
+import * as fs from 'node:fs';
 import { readHdr } from 'hdrify';
 
 const buffer = fs.readFileSync('image.hdr');
 const image = readHdr(new Uint8Array(buffer));
 ```
 
+API reference: [`readHdr`](https://hdrify.ben3d.ca/docs/api/core/functions/readHdr/).
+
 ### Reading a JPEG gain map (JPEG-R / Ultra HDR)
 
 ```ts
+import * as fs from 'node:fs';
 import { readJpegGainMap } from 'hdrify';
 
 const buffer = fs.readFileSync('image.jpg');
@@ -94,10 +87,13 @@ const image = readJpegGainMap(new Uint8Array(buffer));
 // image.data is linear HDR Float32Array RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
 ```
 
+API reference: [`readJpegGainMap`](https://hdrify.ben3d.ca/docs/api/core/functions/readJpegGainMap/).
+
 ### Converting between formats
 
 ```ts
-import { encodeGainMap, readExr, writeExr, readHdr, writeHdr, writeJpegGainMap } from 'hdrify';
+import * as fs from 'node:fs';
+import { encodeGainMap, readExr, writeHdr, writeJpegGainMap } from 'hdrify';
 
 const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
 fs.writeFileSync('output.hdr', writeHdr(image));
@@ -106,60 +102,50 @@ const encoding = encodeGainMap(image, { toneMapping: 'reinhard' });
 fs.writeFileSync('output.jpg', writeJpegGainMap(encoding, { quality: 90 }));
 ```
 
-### ICC-encoded JPEG XL samples
+API reference: [`encodeGainMap`](https://hdrify.ben3d.ca/docs/api/core/functions/encodeGainMap/) · [`writeHdr`](https://hdrify.ben3d.ca/docs/api/core/functions/writeHdr/) · [`writeJpegGainMap`](https://hdrify.ben3d.ca/docs/api/core/functions/writeJpegGainMap/).
 
-`writeJxl` accepts linear `HdrifyImage` pixels and uses native JPEG XL color fields.
-To store pixels that are already encoded in an ICC profile's RGB space, use the
-separate `writeJxlEncoded` API:
+### Reading and writing JPEG XL
 
 ```ts
-import { writeJxlEncoded } from 'hdrify';
+import * as fs from 'node:fs';
+import { readJxl, writeJxl } from 'hdrify';
 
-const bytes = writeJxlEncoded(
-  { width, height, data: encodedRgbaFloat32, iccProfile: rawIccBytes },
-  { bitDepth: 'float32', container: true },
-);
+const image = readJxl(fs.readFileSync('input.jxl'));
+fs.writeFileSync('output.jxl', writeJxl(image));
 ```
 
-The caller supplies RGBA samples in the profile's encoded space. This function
-performs no color conversion or ICC curve/LUT evaluation. It validates the profile
-structure and RGB channel declaration, then retains the complete profile bytes,
-including unknown tags and RGB LUT profiles. Source `metadata.iccProfile` is never
-attached automatically by `writeJxl`.
-
-This API supports lossless Modular output. CMYK and gray sample layouts and lossy
-XYB output are unsupported and throw. The existing reader's color-management
-limitations still apply when decoding LUT profiles; storing a profile does not
-add support for interpreting it. Float32 preserves signed finite sample values;
-float16 rounds them to half precision. Integer output clamps to [0, 1]. The
-encoded-sample API defaults `sanitize` to false, so it does not mutate input pixels;
-callers may explicitly enable sanitization. Alpha follows the selected bit depth.
+API reference: [`readJxl`](https://hdrify.ben3d.ca/docs/api/core/functions/readJxl/) · [`readJxlFrames`](https://hdrify.ben3d.ca/docs/api/core/functions/readJxlFrames/) · [`writeJxl`](https://hdrify.ben3d.ca/docs/api/core/functions/writeJxl/).
 
 ### Resizing
 
 ```ts
+import * as fs from 'node:fs';
 import { readExr, resizeImage, writeExr } from 'hdrify';
 
 const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
-const resized = resizeImage(image, { width: 1024, height: 512, filter: 'lanczos' }); // filter: 'nearest' | 'bilinear' | 'lanczos' (default)
+const resized = resizeImage(image, { width: 1024, height: 512, filter: 'lanczos' });
 fs.writeFileSync('output.exr', writeExr(resized));
 ```
+
+API reference: [`resizeImage`](https://hdrify.ben3d.ca/docs/api/core/functions/resizeImage/).
 
 ### Flipping
 
 ```ts
+import * as fs from 'node:fs';
 import { flipImage, readExr } from 'hdrify';
 
 const image = readExr(new Uint8Array(fs.readFileSync('input.exr')));
-const flipped = flipImage(image, { y: -1 }); // x/y: 1 (default, unchanged) or -1 (mirror that axis)
+const flipped = flipImage(image, { y: -1 });
 ```
 
-## ICC responsibilities
+API reference: [`flipImage`](https://hdrify.ben3d.ca/docs/api/core/functions/flipImage/).
 
-`hdrify-icc` reads, edits, and writes profile data, preserving opaque tag payloads
-without executing their transforms. The existing JPEG XL matrix/TRC evaluation
-helpers live in hdrify's internal color module. Applications that need broader
-color management can interpret the profile data with their own implementation.
+## Documentation
+
+Full documentation for the library is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/).
+
+[Code examples](https://hdrify.ben3d.ca/docs/examples/) · [Formats and color](https://hdrify.ben3d.ca/docs/formats/) · [Full API reference](https://hdrify.ben3d.ca/docs/api/core/)
 
 ## Contribution
 
@@ -172,27 +158,3 @@ MIT
 ## Author
 
 [Ben Houston](https://ben3d.ca), Sponsored by [Land of Assets](https://landofassets.com).
-
-## ICC metadata in JPEG gain maps
-
-`readJpegGainMap` validates embedded ICC data with `hdrify-icc` and retains the
-complete raw profile in `metadata.iccProfile`, including unknown tags and
-multipart JPEG profiles. It does **not** apply the profile to pixels:
-`metadata.iccColorManaged` is `false` when a profile is present. Pixel decoding
-keeps the existing sRGB-base assumption and linear Rec.709 output. Applications
-that need color management must apply it externally. Profiles using LUTs, CMYK,
-or gray color spaces are retained as metadata without interpreting them.
-
-`writeJpegGainMap` (both `ultrahdr` and `adobe-gainmap`) and
-`writeGainMapAsSeparateFiles` accept `iccProfile: Uint8Array` containing raw ICC
-bytes, splitting large profiles across JPEG APP2 segments. The legacy `icc`
-option accepts a complete single APP2 payload with the `ICC_PROFILE` header and
-chunk 1/1. Specify only one of these options; set either to `null` to omit ICC.
-All three writer paths default to the existing sRGB profile. Separate-file
-output embeds ICC in the SDR JPEG, not the gain-map JPEG.
-
-Writers validate ICC structure but do not transform pixels or decide whether a
-profile matches them. `encodeGainMap` produces an sRGB base; callers supplying
-a different profile are responsible for matching that profile to the encoded
-base samples. Raw profiles are embedded byte-for-byte without rewriting opaque
-profile data or profile IDs.

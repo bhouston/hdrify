@@ -85,7 +85,14 @@ export function readIccHeaderMetadata(header: Uint8Array): IccMetadata {
   return metadata;
 }
 
-/** Interpret icc-compatible metadata from a parsed or edited profile, retaining first mluc locale. */
+/**
+ * Interpret npm icc-compatible metadata from a parsed or edited profile.
+ * Includes header names, description, copyright, device model description,
+ * viewing conditions description, and whitepoint. Selects the first `mluc`
+ * locale; the last supported duplicate tag wins, matching icc 4.0.0.
+ * Tag values use a string-or-XYZ union because decoding follows the payload
+ * type even when it differs from the tag's usual type. Unknown types stay opaque.
+ */
 export function readIccMetadata(profile: IccProfile): IccMetadata {
   const metadata = readIccHeaderMetadata(profile.header);
   for (const tag of profile.tags) {
@@ -97,7 +104,18 @@ export function readIccMetadata(profile: IccProfile): IccMetadata {
   return metadata;
 }
 
-/** npm icc-compatible metadata parser. Accepts Buffer or Uint8Array with an exact profile length. */
+/**
+ * Parse human-readable profile metadata compatible with npm icc 4.0.0.
+ * Accepts Uint8Array and Node Buffer, including sliced views. Unlike
+ * {@link readIccProfile}, requires an exact declared profile length with no trailing bytes.
+ * Returns {@link readIccMetadata} fields without performing pixel color transforms.
+ * Unknown header versions and rendering intents return undefined.
+ * Tag-local bounds and Unicode are validated; malformed data accepted by icc
+ * may be rejected. Use the raw reader/writer to preserve uninterpreted tags.
+ *
+ * @param bytes - Complete raw ICC profile with an exact declared length.
+ * @returns Friendly header and descriptive tag metadata.
+ */
 export function parse(bytes: Uint8Array): IccMetadata {
   const profile = readIccProfile(bytes);
   if (new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(0) !== bytes.length)

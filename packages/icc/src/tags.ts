@@ -76,7 +76,10 @@ export function writeIccText(value: string): Uint8Array {
   return bytes;
 }
 
-/** Author a v2 textDescriptionType with empty Unicode and ScriptCode extensions. */
+/**
+ * Author a v2 ASCII textDescriptionType with empty Unicode and ScriptCode extensions.
+ * Use {@link writeIccLocalizedText} for Unicode text.
+ */
 export function writeIccDescription(value: string): Uint8Array {
   const encoded = ascii(value),
     count = encoded.length + 1,

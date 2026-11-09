@@ -7,3 +7,7 @@ It supports drag-and-drop and file selection, sample images, exposure/tone mappi
 From the repository root, run `pnpm install`, `pnpm --filter hdrify --filter hdrify-react build`, then `pnpm --filter website dev`. Open http://localhost:3000/hdrify/demo/. `pnpm docs:build` builds the libraries, demo, and documentation together.
 
 `BASE_URL` defaults to `/hdrify/`; set it to `/` consistently for all builds to host at a domain root. GitHub Pages serves the site and live demo from a Pages artifact; no application server is needed.
+
+## Documentation
+
+Full documentation is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/). Try the [live demo](https://hdrify.ben3d.ca/demo/) to view and convert images.

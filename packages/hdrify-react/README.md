@@ -28,9 +28,7 @@ React component for displaying HDR images from [hdrify](https://www.npmjs.com/pa
 
 **Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool)
 
-An **online demo** is available at **[https://hdrify.ben3d.ca](https://hdrify.ben3d.ca)** — HDR, EXR, and Ultra HDR viewer and converter built with this component; try it in your browser.
-
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
+Try the **[online demo](https://hdrify.ben3d.ca/demo/)** — HDR, EXR, and Ultra HDR viewer and converter built with this component; try it in your browser.
 
 ## Installation
 
@@ -49,9 +47,7 @@ const hdrifyImage: HdrifyImage = readExr(buffer);
 <HdrifyCanvas hdrifyImage={hdrifyImage} exposure={1.0} className="max-w-full" />;
 ```
 
-`HdrifyCanvas`, `ImageViewer`, and `<image-viewer>` automatically use native WebGPU on an HDR-capable display when the browser acknowledges an `rgba16float` canvas with extended presentation. The tone-mapping selector defaults to **None** only after extended FP16 HDR output succeeds. On SDR it defaults to **Neutral** and hides **None**. There is no Automatic menu item. Explicit `none` also falls back to Neutral when HDR presentation is unavailable. Omitting `toneMapping` / `tone-mapping` uses the display-dependent default; explicit supported mappers are preserved. The WebGPU/extended-FP16 capability probe runs once per page load and caches both success and failure; each viewer owns its rendering resources.
-
-Display sizing follows the viewport and device pixel ratio; `fit="actual"` retains one source pixel per CSS pixel. GPU resources are disposed on unmount, and device loss falls back to SDR. `whenReady()` includes the first completed render. `toBlob()` produces an SDR PNG/JPEG/WebP independently of the display; capture with an omitted mapper uses Neutral, while explicit `none` clips above-white values to the export range.
+See [`HdrifyCanvas`](https://hdrify.ben3d.ca/docs/api/react/functions/HdrifyCanvas/) and [`HdrifyCanvasProps`](https://hdrify.ben3d.ca/docs/api/react/interfaces/HdrifyCanvasProps/) for rendering behavior and props.
 
 ### Image viewer
 
@@ -70,21 +66,13 @@ The same viewer is available as a web component for plain HTML and other framewo
 <image-viewer src="/images/memorial.exr" exposure-control></image-viewer>
 ```
 
-While loading, a progress bar fills across the top (`onProgress` / the `progress` event report it). `whenReady()` and `toBlob()` (on the element, or on the component's `ref`) wait for the image and export the tone-mapped result.
+API reference: [`ImageViewer`](https://hdrify.ben3d.ca/docs/api/react/functions/ImageViewer/) · [`ImageViewerProps`](https://hdrify.ben3d.ca/docs/api/react/interfaces/ImageViewerProps/) · [`ImageViewerHandle`](https://hdrify.ben3d.ca/docs/api/react/interfaces/ImageViewerHandle/).
 
-With a bundler, `import 'hdrify-react/element'` instead. See the [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for all attributes, events and theming.
+With a bundler, `import 'hdrify-react/element'` to register the web component.
 
-The same content-based loader is available without importing React through `import { decodeHdrifyImage } from 'hdrify-react/decode'`. This is useful for Node.js and editor conversion commands.
+## Documentation
 
-### HdrifyCanvas props
-
-| Prop           | Type                                                   | Description                                                      |
-| -------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
-| `hdrifyImage`  | `HdrifyImage`                                          | Image from `readHdr`, `readExr`, `readJxl`, or `readJpegGainMap` |
-| `toneMapping`  | `'none' \| 'aces' \| 'reinhard' \| 'neutral' \| 'agx'` | Optional override; None for HDR, Neutral for SDR by default      |
-| `exposure`     | `number`                                               | Exposure value (1.0 = nominal)                                   |
-| `className`    | `string`                                               | Optional CSS class for the canvas wrapper                        |
-| `forwardedRef` | `RefObject<HTMLCanvasElement \| null>`                 | Optional ref for canvas access (e.g. `toBlob`)                   |
+Full documentation for the React components is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/react/). See the [React guide](https://hdrify.ben3d.ca/docs/react/) and [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for loading, capture, attributes, events, and theming.
 
 ## Contribution
 

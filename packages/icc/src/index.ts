@@ -23,7 +23,16 @@ export type IccMatrix = [[number, number, number], [number, number, number], [nu
 const signature = (b: Uint8Array, off: number) => String.fromCharCode(...b.subarray(off, off + 4));
 const view = (b: Uint8Array) => new DataView(b.buffer, b.byteOffset, b.byteLength);
 
-/** Validate bounds before interpreting the table; returned byte arrays do not alias the input. */
+/**
+ * Read ICC v2/v4 profile data, validating the header and tag bounds.
+ * Tag payloads are retained opaquely, including LUT, CMYK, gray, multichannel,
+ * and unknown/private tags. Parsing a profile does not evaluate curves or transform pixels.
+ * Returned byte arrays do not alias the input.
+ *
+ * @param bytes - Complete raw ICC profile bytes, without JPEG APP2 framing.
+ * @returns Header bytes and ordered tag payloads for inspection or editing.
+ * @throws If the header, declared size, or tag bounds are invalid.
+ */
 export function readIccProfile(bytes: Uint8Array): IccProfile {
   if (bytes.length < 132 || signature(bytes, 36) !== 'acsp') throw new Error('ICC: invalid profile header');
   const d = view(bytes),
@@ -43,7 +52,15 @@ export function readIccProfile(bytes: Uint8Array): IccProfile {
   return { header: owned.subarray(0, 128), tags };
 }
 
-/** Serialize a parsed or edited profile, preserving opaque tag payloads. Recomputes lengths and alignment. */
+/**
+ * Serialize a parsed or edited profile, preserving tag order and opaque payloads.
+ * Rebuilds offsets, lengths, and four-byte alignment. Clears the stale profile ID
+ * without computing a replacement MD5 ID. Padding, layout, and whole-file byte
+ * identity are not preserved; keep the original bytes for byte-exact transport.
+ *
+ * @param profile - Raw header and ordered tag payloads, typically from {@link readIccProfile}.
+ * @returns Complete ICC profile bytes with rebuilt layout.
+ */
 export function writeIccProfile(profile: IccProfile): Uint8Array {
   if (profile.header.length !== 128 || signature(profile.header, 36) !== 'acsp') throw new Error('ICC: invalid header');
   let size = 132 + profile.tags.length * 12;

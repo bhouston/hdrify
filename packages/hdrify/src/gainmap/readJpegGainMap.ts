@@ -17,9 +17,12 @@ export type GainMapFormat = 'ultrahdr' | 'adobe-gainmap';
 /**
  * Read a JPEG buffer that contains embedded gain map (XMP + MPF) and return
  * decoded HDR as HdrifyImage. Supports UltraHDR/JPEG-R layout.
- * Embedded ICC bytes are validated and retained, but are not applied to pixels.
- * Pixel reconstruction retains the historical sRGB-base assumption; callers must
- * handle non-sRGB base color conversion externally. metadata.iccColorManaged is false.
+ * Embedded ICC profiles are validated with hdrify-icc and retained in
+ * `metadata.iccProfile`, including unknown tags and multipart JPEG profiles.
+ * Profiles are metadata only: LUT, CMYK, and gray profiles are not interpreted.
+ * Pixel reconstruction assumes an sRGB base and returns linear Rec.709 pixels;
+ * callers must apply any other color management externally.
+ * `metadata.iccColorManaged` is false when a profile is present.
  *
  * @param buffer - Full JPEG-R file bytes
  * @returns HdrifyImage with linear HDR RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'

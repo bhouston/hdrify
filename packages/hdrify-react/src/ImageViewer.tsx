@@ -15,6 +15,7 @@ export type ImageFit = 'contain' | 'actual';
 
 /** User-adjustable display settings. */
 export interface ImageViewerSettings {
+  /** Omit for None on HDR displays and Neutral on SDR; explicit None falls back to Neutral on SDR. */
   toneMapping?: ViewerToneMapping;
   /** Exposure in stops (EV): `0` is unchanged, `+1` doubles the brightness. */
   exposure: number;
@@ -45,7 +46,11 @@ export interface ImageViewerHandle {
    * it waits for the new source instead. Rejects with the load's error, or if the component unmounts.
    */
   whenReady(): Promise<void>;
-  /** Wait for {@link whenReady}, then encode the tone-mapped image with the current settings; no viewer controls. */
+  /**
+   * Wait for {@link whenReady}, including the first completed render, then export
+   * an SDR PNG/JPEG/WebP without viewer controls. Capture is independent of display
+   * output: an omitted mapper uses Neutral; explicit `none` clips above-white values.
+   */
   toBlob(options?: ImageViewerCaptureOptions): Promise<Blob>;
 }
 
@@ -104,6 +109,11 @@ interface LoadState {
 /**
  * Loads and displays an HDR image with tone mapping, a loading bar, an optional options panel and an optional
  * exposure slider. Accepts every format hdrify reads; see {@link decodeHdrifyImage}.
+ * Uses {@link HdrifyCanvas} for HDR presentation and SDR fallback. None is offered
+ * and selected by default only after extended FP16 presentation succeeds; otherwise
+ * Neutral is the default and None is hidden. There is no Automatic menu item.
+ * `fit="actual"` shows one source pixel per CSS pixel. Loading progress is reported
+ * through `onProgress`; the imperative handle exposes readiness and SDR capture.
  *
  * @example
  * ```tsx

@@ -14,7 +14,13 @@ export interface GainMapWriterOptions extends GainMapIccOptions {
 }
 
 /**
- * Write encoding result as a single JPEG-R file (JPEG with embedded gain map).
+ * Write an {@link encodeGainMap} result as a single JPEG-R file with an embedded gain map.
+ * Both Ultra HDR and Adobe gain-map layouts support the ICC options on {@link GainMapWriterOptions}.
+ * Profiles are embedded as metadata without transforming pixels.
+ *
+ * @param encodingResult - SDR base, gain map, and reconstruction metadata.
+ * @param options - JPEG quality, layout, and optional ICC/EXIF metadata.
+ * @returns Complete JPEG-R file bytes.
  */
 export function writeJpegGainMap(encodingResult: EncodingResult, options: GainMapWriterOptions = {}): Uint8Array {
   const quality = options.quality ?? 90;
@@ -40,7 +46,13 @@ export interface SeparateFilesResult {
 }
 
 /**
- * Write encoding result as separate files: SDR JPEG, gain map JPEG, and metadata JSON.
+ * Write an {@link encodeGainMap} result as separate SDR JPEG, gain-map JPEG, and metadata.
+ * ICC options follow {@link GainMapWriterOptions}; the profile is embedded only in the SDR JPEG.
+ * Pixels are not color converted and the gain-map JPEG has no ICC profile.
+ *
+ * @param encodingResult - SDR base, gain map, and reconstruction metadata.
+ * @param options - JPEG quality and ICC metadata options.
+ * @returns Two JPEG byte arrays and a metadata object that can be serialized as JSON.
  */
 export function writeGainMapAsSeparateFiles(
   encodingResult: EncodingResult,
