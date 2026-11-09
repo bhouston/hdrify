@@ -32,7 +32,12 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
-  browser = await chromium.launch({ channel: 'chrome', headless: false, args: ['--disable-software-rasterizer'] });
+  browser = await chromium.launch({
+    channel: 'chrome',
+    headless: false,
+    ignoreDefaultArgs: ['--force-color-profile=srgb'],
+    args: ['--disable-software-rasterizer'],
+  });
   const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
@@ -60,6 +65,7 @@ try {
     const gl = document.createElement('canvas').getContext('webgl2');
     const debug = gl?.getExtension('WEBGL_debug_renderer_info');
     return {
+      hdrDisplay: matchMedia('(dynamic-range: high)').matches,
       adapter: adapter
         ? {
             vendor: adapter.info.vendor,
@@ -91,6 +97,15 @@ try {
     }, name);
     results.push({ name, status: await page.locator('#status').textContent() });
     if (name.includes('anim_gif')) assert.match(results.at(-1).status, /frames \(showing first\)/);
+  }
+
+  for (const reference of ['memorial.jxl', 'memorial_lossy.jxl', 'reference_gradient.jxl', 'reference_cie.jxl']) {
+    await send(reference, await readFile(new URL(`../../assets/${reference}`, root)));
+    await page.waitForFunction(
+      (file) => document.querySelector('#status')?.textContent.startsWith(`${file} ·`),
+      reference,
+    );
+    results.push({ name: reference, status: await page.locator('#status').textContent() });
   }
   await send('broken.jxl', [0xff, 0x0a]);
   await page.waitForSelector('#status.error');

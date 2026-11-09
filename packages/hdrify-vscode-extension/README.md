@@ -35,6 +35,16 @@ A VS Code and Cursor extension that adds HDR image conversion and preview for EX
 
 To install from a VSIX, run `pnpm run package` in `packages/hdrify-vscode-extension`, then use **Extensions: Install from VSIX...** and select the generated `.vsix` file.
 
+For repeated local development installs, give each VSIX a unique version without changing the release manifest:
+
+```sh
+pnpm build
+pnpm exec vsce package 1.1.4-dev.20261108204156 --no-update-package-json --no-dependencies
+code --install-extension hdrify-vscode-extension-1.1.4-dev.20261108204156.vsix --force
+```
+
+Replace the timestamp suffix for each build. If VS Code requests an extension restart, reload the window to activate the new host code and recreate retained preview webviews.
+
 ## HDR Image Preview
 
 - **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
