@@ -2,7 +2,7 @@ import { getHalfToFloatLut } from '../exr/halfFloat.js';
 import { assertJxlIccSupported, convertOutputColor, jxlColorMetadata, xybFromLinear } from './jxlColor.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitReader } from './jxlBitReader.js';
-import { extractCodestream } from './jxlContainer.js';
+import { extractCodestream, type JxlBoxMetadata, readJxlBoxMetadata } from './jxlContainer.js';
 import {
   frameDimensions,
   type JxlFrameDimensions,
@@ -429,7 +429,7 @@ export interface JxlAnimationFrame {
 
 function openJxl(data: Uint8Array, options: ReadJxlOptions) {
   const maxPixels = options.maxPixels ?? DEFAULT_MAX_PIXELS;
-  const { codestream, isContainer } = extractCodestream(data);
+  const { codestream, isContainer, boxes } = extractCodestream(data);
   const br = new JxlBitReader(codestream);
   const h = readImageHeader(br);
   checkPixels(h.width, h.height, maxPixels);
@@ -437,7 +437,7 @@ function openJxl(data: Uint8Array, options: ReadJxlOptions) {
   assertJxlIccSupported(h);
   // A preview is an independent frame and must not populate references or advance noise counters.
   const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
-  return { codestream, isContainer, h, start };
+  return { codestream, isContainer, h, start, boxMeta: readJxlBoxMetadata(boxes) };
 }
 
 /** Apply EXIF orientation to row-major interleaved samples without mutating the source. */
@@ -482,6 +482,7 @@ function displayedImage(
   h: JxlImageHeader,
   isContainer: boolean,
   options: ReadJxlOptions,
+  boxMeta: JxlBoxMetadata,
 ): HdrifyImage {
   const { canvas, fh } = first;
   const { width, height } = h;
@@ -549,6 +550,8 @@ function displayedImage(
       alphaPremultiplied: associated && !!options.keepPremultipliedAlpha,
       extraChannels,
       ...(h.icc && { iccProfile: h.icc }),
+      ...(boxMeta.exif && { exif: boxMeta.exif.slice() }),
+      ...(boxMeta.xmp !== undefined && { xmp: boxMeta.xmp }),
     },
   };
 }
@@ -557,16 +560,17 @@ function displayedImage(
  * Decode every coalesced displayed frame into linear-light RGBA, with duration in seconds.
  * Each frame owns its pixel/extra-channel buffers. This eager API retains the complete animation.
  * Embedded ICC profiles that cannot be colour-managed throw, as in readJxl.
+ * Every frame carries the file's metadata.exif / metadata.xmp, as described for readJxl.
  */
 export function readJxlFrames(
   data: Uint8Array,
   options: ReadJxlOptions = {},
 ): { frames: JxlAnimationFrame[]; numLoops: number } {
-  const { codestream, isContainer, h, start } = openJxl(data, options);
+  const { codestream, isContainer, h, start, boxMeta } = openJxl(data, options);
   const frames: JxlAnimationFrame[] = [];
   for (const frame of decodeDisplayedFrames(codestream, h, start, options.maxPixels)) {
     frames.push({
-      image: displayedImage(frame, h, isContainer, options),
+      image: displayedImage(frame, h, isContainer, options, boxMeta),
       duration: h.animation ? (frame.fh.duration * h.animation.tpsDenominator) / h.animation.tpsNumerator : 0,
       ...(h.animation?.haveTimecodes && { timecode: frame.fh.timecode }),
     });
@@ -588,12 +592,15 @@ export function readJxlFrames(
  * XYB frames used for composition or references are converted to the original primaries/transfer
  * encoding before blending. The coalesced canvas is linearized for public output.
  * Extra channel samples are retained in metadata.extraChannels. CMYK ICC conversion is unsupported.
+ * Container `Exif` and `xml ` boxes are returned as metadata.exif (raw TIFF bytes, without the 4-byte
+ * offset prefix) and metadata.xmp (UTF-8 string). Brotli-compressed `brob` metadata boxes are decoded
+ * in Node via zlib and skipped in browsers, which lack a synchronous Brotli decoder.
  */
 export function readJxl(data: Uint8Array, options: ReadJxlOptions = {}): HdrifyImage {
-  const { codestream, isContainer, h, start } = openJxl(data, options);
+  const { codestream, isContainer, h, start, boxMeta } = openJxl(data, options);
   const first = decodeDisplayedFrames(codestream, h, start, options.maxPixels).next().value;
   if (!first) throw new Error('JXL: no displayed frame');
-  const image = displayedImage(first, h, isContainer, options);
+  const image = displayedImage(first, h, isContainer, options, boxMeta);
   if (h.animation) {
     const ticks = [first.fh.duration];
     let pos = first.end;
