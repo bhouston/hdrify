@@ -3,6 +3,7 @@ import { readIccProfile, writeIccProfile } from 'hdrify-icc';
 import { encodeGainMap } from './gainMapEncoder.js';
 import { DEFAULT_ICC_PROFILE } from './libultrahdr/defaultIccProfile.js';
 import { extractIccProfileFromJpeg } from './libultrahdr/iccFromJpeg.js';
+import { encodeJPEGMetadata } from './libultrahdr/encode-jpeg-metadata.js';
 import { readJpegGainMap } from './readJpegGainMap.js';
 import { writeGainMapAsSeparateFiles, writeJpegGainMap } from './writeJpegGainMap.js';
 
@@ -17,7 +18,9 @@ function opaqueProfile(space = 'RGB ', large = false): Uint8Array {
   const profile = readIccProfile(DEFAULT_ICC_PROFILE.subarray(14));
   profile.header.set(new TextEncoder().encode(space), 16);
   profile.tags.push({ signature: 'A2B0', data: new Uint8Array([109, 65, 66, 32, 0, 0, 0, 0, 42]) });
-  profile.tags.push({ signature: 'priv', data: new Uint8Array(large ? 150_003 : 7).fill(173) });
+  const opaque = new Uint8Array(large ? 150_003 : 7).fill(173);
+  opaque.set([0xff, 0xd9, 0xff, 0xd8], 2); // These are profile bytes, not JPEG boundaries.
+  profile.tags.push({ signature: 'priv', data: opaque });
   const bytes = writeIccProfile(profile);
   bytes.fill(91, 84, 100); // Preserve an existing profile ID; embedding must not reserialize.
   return bytes;
@@ -93,5 +96,30 @@ describe('separate-file ICC metadata', () => {
     ).toEqual(DEFAULT_ICC_PROFILE.subarray(14));
     expect(extractIccProfileFromJpeg(writeGainMapAsSeparateFiles(input, { iccProfile: null }).sdrImage)).toBeNull();
     expect(() => writeGainMapAsSeparateFiles(input, { iccProfile: new Uint8Array() })).toThrow('ICC');
+  });
+});
+
+describe('pretagged compressed input', () => {
+  it('rejects duplicate or implicit ICC policies in the internal assembler entry point', () => {
+    const input = encoding();
+    const files = writeGainMapAsSeparateFiles(input);
+    const compressed = (data: Uint8Array) => ({
+      data,
+      width: input.width,
+      height: input.height,
+      mimeType: 'image/jpeg' as const,
+    });
+    for (const format of ['ultrahdr', 'adobe-gainmap'] as const) {
+      expect(() =>
+        encodeJPEGMetadata(
+          {
+            ...input.metadata,
+            sdr: compressed(files.sdrImage),
+            gainMap: compressed(files.gainMapImage),
+          },
+          { format, icc: null },
+        ),
+      ).toThrow('already contains ICC');
+    }
   });
 });

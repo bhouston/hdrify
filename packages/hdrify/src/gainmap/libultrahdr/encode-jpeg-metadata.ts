@@ -2,6 +2,7 @@ import { assembleJpegAdobeGainMap } from '../adobeGainMapAssembler.js';
 import type { GainMapFormat } from '../readJpegGainMap.js';
 import type { CompressedImage, GainMapMetadata, GainMapMetadataExtended } from '../types.js';
 import { gainMapIccPayloads, type GainMapIccOptions } from './gainMapIccMetadata.js';
+import { extractIccProfileFromJpeg } from './iccFromJpeg.js';
 import { assembleJpegWithGainMap } from './jpeg-assembler.js';
 
 export interface EncodeJPEGMetadataOptions extends GainMapIccOptions {
@@ -10,6 +11,7 @@ export interface EncodeJPEGMetadataOptions extends GainMapIccOptions {
   exif?: Uint8Array | null;
 }
 
+/** Primary JPEG must be untagged; ICC metadata is supplied through options. */
 export function encodeJPEGMetadata(
   encodingResult: GainMapMetadata & { sdr: CompressedImage; gainMap: CompressedImage },
   options: EncodeJPEGMetadataOptions = {},
@@ -20,6 +22,10 @@ export function encodeJPEGMetadata(
   }
   if (encodingResult.gainMap.mimeType !== 'image/jpeg') {
     throw new Error('This function expects a GainMap image compressed in jpeg');
+  }
+
+  if (extractIccProfileFromJpeg(encodingResult.sdr.data)) {
+    throw new Error('Primary JPEG already contains ICC data; supply an untagged JPEG and use ICC options');
   }
 
   const metadata: GainMapMetadataExtended = {

@@ -138,35 +138,49 @@ const SOI_MARKER = 0xd8;
 
 const EOI_MARKER = 0xd9;
 
-/**
- * Fallback when MPF is not present: find the second SOI (0xFF 0xD8).
- * Prefer one that immediately follows EOI (0xFF 0xD9); otherwise use first SOI after byte 2.
- * Primary = 0 to second SOI; gain map = second SOI to end.
+/** Locate the first real EOI, skipping metadata payloads and stuffed entropy bytes.
+ * ICC private tags can contain arbitrary SOI/EOI byte sequences.
  */
+function firstJpegEnd(buffer: Uint8Array): number {
+  let offset = 2;
+  let entropy = false;
+  while (offset < buffer.length) {
+    if (entropy) while (offset < buffer.length && buffer[offset] !== MARKER_PREFIX) offset++;
+    if (buffer[offset++] !== MARKER_PREFIX) break;
+    while (buffer[offset] === MARKER_PREFIX) offset++;
+    const marker = buffer[offset++];
+    if (marker === undefined) break;
+    if (entropy && (marker === 0 || (marker >= 0xd0 && marker <= 0xd7))) continue;
+    entropy = false;
+    if (marker === EOI_MARKER) return offset;
+    if (marker === 0 || marker === SOI_MARKER) break;
+    if (marker === 1 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+    if (offset + 2 > buffer.length) break;
+    const length = buffer[offset]! * 256 + buffer[offset + 1]!;
+    if (length < 2 || length > buffer.length - offset) break;
+    offset += length;
+    entropy = marker === 0xda;
+  }
+  throw new Error(GAIN_MAP_IMAGE_ERROR);
+}
+
+/** Fallback without MPF: find the second JPEG after the primary image's real EOI. */
 export function extractImagesBySecondSoi(buffer: Uint8Array): MpfExtractResult {
   if (buffer.length < 4 || buffer[0] !== MARKER_PREFIX || buffer[1] !== SOI_MARKER) {
     throw new Error(GAIN_MAP_IMAGE_ERROR);
   }
-  let secondSoiAfterEoi = -1;
-  let firstSecondSoi = -1;
-  for (let i = 2; i < buffer.length - 1; i++) {
+  const primaryEnd = firstJpegEnd(buffer);
+  let secondSoi = -1;
+  for (let i = primaryEnd; i < buffer.length - 1; i++) {
     if (buffer[i] === MARKER_PREFIX && buffer[i + 1] === SOI_MARKER) {
-      if (firstSecondSoi < 0) firstSecondSoi = i;
-      if (i >= 2 && buffer[i - 2] === MARKER_PREFIX && buffer[i - 1] === EOI_MARKER) {
-        secondSoiAfterEoi = i;
-        break;
-      }
+      secondSoi = i;
+      break;
     }
   }
-  const secondSoi = secondSoiAfterEoi >= 0 ? secondSoiAfterEoi : firstSecondSoi;
-  if (secondSoi < 0) {
-    throw new Error(GAIN_MAP_IMAGE_ERROR);
-  }
-  const primaryImage = buffer.subarray(0, secondSoi);
-  const gainmapImage = buffer.subarray(secondSoi);
+  if (secondSoi < 0) throw new Error(GAIN_MAP_IMAGE_ERROR);
   return {
-    primaryImage,
-    gainmapImage,
+    primaryImage: buffer.subarray(0, primaryEnd),
+    gainmapImage: buffer.subarray(secondSoi),
     format: 'ultrahdr',
   };
 }
