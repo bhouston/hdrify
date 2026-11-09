@@ -287,6 +287,18 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
   });
 });
 
+const fixture = (name: string): Uint8Array => fs.readFileSync(new URL(`features/${name}.jxl`, ASSETS));
+function expectSame(a: HdrifyImage, b: HdrifyImage): void {
+  expect([a.width, a.height]).toEqual([b.width, b.height]);
+  expect(firstMismatch(a.data, b.data, 0)).toBe('none');
+  const ecs = (img: HdrifyImage) =>
+    (img.metadata?.extraChannels as JxlExtraChannel[] | undefined)?.map((ec) => ({
+      ...ec,
+      data: Array.from(ec.data),
+    }));
+  expect(ecs(a)).toEqual(ecs(b));
+}
+
 describe.skipIf(!hasDjxl)('writeJxl channels and orientation match libjxl djxl', () => {
   let dir: string;
   beforeAll(() => {
@@ -295,7 +307,6 @@ describe.skipIf(!hasDjxl)('writeJxl channels and orientation match libjxl djxl',
   afterAll(() => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
-  const fixture = (name: string): Uint8Array => fs.readFileSync(new URL(`features/${name}.jxl`, ASSETS));
   /** djxl PFM output, plus one PFM per extra channel, as raw bytes. */
   function djxlFiles(bytes: Uint8Array, name: string): Buffer[] {
     const file = path.join(dir, `${name}.jxl`);
@@ -305,17 +316,6 @@ describe.skipIf(!hasDjxl)('writeJxl channels and orientation match libjxl djxl',
     const outputs = fs.readdirSync(dir).filter((f) => f.startsWith(`${name}.jxl`) && f.endsWith('.pfm'));
     return outputs.toSorted().map((f) => fs.readFileSync(path.join(dir, f)));
   }
-  function expectSame(a: HdrifyImage, b: HdrifyImage): void {
-    expect([a.width, a.height]).toEqual([b.width, b.height]);
-    expect(firstMismatch(a.data, b.data, 0)).toBe('none');
-    const ecs = (img: HdrifyImage) =>
-      (img.metadata?.extraChannels as JxlExtraChannel[] | undefined)?.map((ec) => ({
-        ...ec,
-        data: Array.from(ec.data),
-      }));
-    expect(ecs(a)).toEqual(ecs(b));
-  }
-
   for (let orientation = 1; orientation <= 8; orientation++) {
     it(`orientation ${orientation} round-trips through readJxl and djxl`, () => {
       const source = fixture(`orientation${orientation}`);
@@ -338,11 +338,9 @@ describe.skipIf(!hasDjxl)('writeJxl channels and orientation match libjxl djxl',
         expect(Buffer.from(writeJxl(image, { bitDepth: 'float32', lossy }))).toEqual(Buffer.from(bytes));
         const decoded = readJxl(bytes);
         const ecs = decoded.metadata?.extraChannels as JxlExtraChannel[];
-        expect(ecs.map(({ name, type, spotColor }) => ({ name, type, spotColor }))).toEqual(
-          extraChannels.map(({ name, type, spotColor }) => ({ name, type, spotColor })),
-        );
-        for (let i = 0; i < ecs.length; i++)
-          expect(firstMismatch(ecs[i].data, extraChannels[i].data, 0)).toBe('none');
+        const info = (ec: JxlExtraChannel) => [ec.name, ec.type, ec.spotColor];
+        expect(ecs.map(info)).toEqual(extraChannels.map(info));
+        for (let i = 0; i < ecs.length; i++) expect(firstMismatch(ecs[i].data, extraChannels[i].data, 0)).toBe('none');
         const [, ...decodedEcs] = djxlFiles(bytes, `${name}-${lossy}`);
         const [, ...referenceEcs] = djxlFiles(source, `${name}-${lossy}-ref`);
         expect(decodedEcs).toEqual(referenceEcs);

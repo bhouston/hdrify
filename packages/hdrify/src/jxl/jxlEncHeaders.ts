@@ -2,7 +2,7 @@ import { writeJxlIcc } from './jxlEncIcc.js';
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 import { encodeFloat16 } from '../exr/halfFloat.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
-import { EC_TYPES, type JxlExtraChannelType } from './jxlImageHeader.js';
+import type { JxlExtraChannelType } from './jxlImageHeader.js';
 
 /**
  * Codestream header writers for Modular and VarDCT JPEG XL images: SizeHeader,
@@ -57,10 +57,17 @@ const PRIMARIES: Record<LinearColorSpace, number> = {
   'linear-rec2020': 9,
 };
 
-const EC_TYPE_IDS = Object.fromEntries(Object.entries(EC_TYPES).map(([id, type]) => [type, Number(id)])) as Record<
-  JxlExtraChannelType,
-  number
->;
+const EC_TYPE_IDS: Record<JxlExtraChannelType, number> = {
+  alpha: 0,
+  depth: 1,
+  spotColor: 2,
+  selectionMask: 3,
+  black: 4,
+  cfa: 5,
+  thermal: 6,
+  unknown: 15,
+  optional: 16,
+};
 
 /** An ExtraChannelInfo to write: full resolution, in the image's bit depth. */
 export interface JxlEncExtraChannel {
