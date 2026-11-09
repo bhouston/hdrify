@@ -1,3 +1,4 @@
+import { writeJxlIcc } from './jxlEncIcc.js';
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
 
@@ -55,7 +56,7 @@ const PRIMARIES: Record<LinearColorSpace, number> = {
 };
 
 /**
- * ImageMetadata + default CustomTransformData, then byte alignment (no ICC, no preview).
+ * ImageMetadata + default CustomTransformData, optional ICC, then byte alignment (no preview).
  * Colour encoding: RGB, D65, `colorSpace` primaries, linear transfer, relative intent.
  */
 export function writeImageMetadata(
@@ -64,6 +65,7 @@ export function writeImageMetadata(
   hasAlpha: boolean,
   colorSpace: LinearColorSpace,
   xybEncoded = false,
+  iccProfile?: Uint8Array,
 ): void {
   w.writeBool(false); // all_default
   w.writeBool(false); // extra_fields
@@ -81,15 +83,18 @@ export function writeImageMetadata(
   w.writeBool(xybEncoded); // xyb_encoded
   // ColourEncoding
   w.writeBool(false); // all_default
-  w.writeBool(false); // want_icc
+  w.writeBool(!!iccProfile); // want_icc
   w.writeEnum(0); // colour_space = kRGB
-  w.writeEnum(1); // white_point = kD65
-  w.writeEnum(PRIMARIES[colorSpace]);
-  w.writeBool(false); // have_gamma
-  w.writeEnum(8); // transfer_function = kLinear
-  w.writeEnum(1); // rendering_intent = kRelative
+  if (!iccProfile) {
+    w.writeEnum(1); // white_point = kD65
+    w.writeEnum(PRIMARIES[colorSpace]);
+    w.writeBool(false); // have_gamma
+    w.writeEnum(8); // transfer_function = kLinear
+    w.writeEnum(1); // rendering_intent = kRelative
+  }
   w.writeU64(0); // extensions
   w.writeBool(true); // CustomTransformData.all_default
+  if (iccProfile) writeJxlIcc(w, iccProfile);
   w.zeroPadToByte();
 }
 

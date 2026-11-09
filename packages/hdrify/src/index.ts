@@ -76,8 +76,8 @@ export {
   type JxlAnimationFrame,
   type JxlExtraChannel,
 } from './jxl/readJxl.js';
-export type { WriteJxlOptions } from './jxl/writeJxl.js';
-export { writeJxl } from './jxl/writeJxl.js';
+export type { WriteJxlOptions, JxlEncodedImage } from './jxl/writeJxl.js';
+export { writeJxl, writeJxlEncoded } from './jxl/writeJxl.js';
 export { addRangeMetadata } from './rangeMetadata.js';
 export type { ResizeFilter, ResizeImageOptions } from './resize.js';
 export { RESIZE_FILTERS, resizeImage } from './resize.js';
