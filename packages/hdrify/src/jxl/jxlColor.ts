@@ -38,7 +38,6 @@ interface ColorTransform {
   decode: ((v: number) => number)[];
   encode: ((v: number) => number)[];
   hlgLuminances?: number[];
-  iccManaged?: boolean;
 }
 /** The header fields colour conversion reads; the encoder passes just these. */
 type JxlColorHeader = Pick<JxlImageHeader, 'colorEncoding' | 'toneMapping'> &
@@ -96,8 +95,9 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
   }
 }
 
+/** Matrix/TRC (RGB or gray) or recognized cICP interpretation of the embedded profile; throws otherwise. */
 function iccTransform(h: JxlColorHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
-  if (!h.icc) return {};
+  if (!h.icc) throw new Error('JXL: colour encoding requires an ICC profile but none was read');
   const p = readIccProfile(h.icc),
     cicp = readIccCicp(p);
   if (cicp && cicp.matrix === 0 && cicp.fullRange) {
@@ -109,27 +109,26 @@ function iccTransform(h: JxlColorHeader): { rgb?: IccRgbTransform; ce?: JxlColor
     if (primaries && transferFunction)
       return { ce: { ...h.colorEncoding, wantIcc: false, primaries, whitePoint: 'd65', transferFunction } };
   }
-  return { rgb: readIccRgbTransform(p) };
+  const rgb = readIccRgbTransform(p);
+  if (rgb) return { rgb };
+  const sig = (o: number) => String.fromCharCode(...p.header.subarray(o, o + 4)).trim();
+  const lut = p.tags.some((t) => /^(A2B|B2A|D2B|B2D)/.test(t.signature));
+  throw new Error(
+    `JXL: embedded ICC profile cannot be colour-managed ('${sig(12)}' class, '${sig(16)}' colour space, ` +
+      `'${sig(20)}' PCS${lut ? ', LUT-based' : ''}); only matrix/TRC RGB, gray TRC and recognized cICP profiles ` +
+      'are supported',
+  );
 }
 
 function transform(h: JxlColorHeader): ColorTransform {
   const existing = cache.get(h);
   if (existing) return existing;
   let ce = h.colorEncoding,
-    rgb: IccRgbTransform | undefined,
-    iccManaged: boolean | undefined;
+    rgb: IccRgbTransform | undefined;
   if (ce.wantIcc) {
     const icc = iccTransform(h);
     rgb = icc.rgb;
     ce = icc.ce ?? ce;
-    iccManaged = !!(icc.rgb || icc.ce);
-    if (!iccManaged)
-      ce = {
-        ...ce,
-        primaries: 'srgb',
-        whitePoint: 'd65',
-        transferFunction: h.bitDepth?.floatSample ? 'linear' : 'srgb',
-      };
   }
   const ch = jxlChromaticities(ce);
   let toSrgb: Mat3,
@@ -174,7 +173,6 @@ function transform(h: JxlColorHeader): ColorTransform {
     fromSrgb: invert3(toSrgb),
     decode,
     encode,
-    iccManaged,
     ...(ce.transferFunction === 'hlg' && { hlgLuminances: chromaticitiesToRgbXyzMatrix(ch)[1] }),
   };
   cache.set(h, result);
@@ -288,12 +286,16 @@ export function convertOutputColor(h: JxlColorHeader, out: Float32Array, linear:
   return t.space;
 }
 
+/** Throw early (before pixel decoding) when an embedded ICC profile cannot be colour-managed. */
+export function assertJxlIccSupported(h: JxlImageHeader): void {
+  if (h.colorEncoding.wantIcc) transform(h);
+}
+
 export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
   return {
     ...(!h.colorEncoding.wantIcc && { originalChromaticities: jxlChromaticities(h.colorEncoding) }),
     linearReferenceWhiteNits: h.toneMapping.intensityTarget,
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
-    ...(h.colorEncoding.wantIcc && { iccColorManaged: transform(h).iccManaged }),
   };
 }
 
@@ -311,11 +313,19 @@ function encoderHeader(image: HdrifyImage, transfer: JxlEncTransfer, intensityTa
   };
 }
 
-/** Encoder: linear RGBA → a copy encoded with `transfer` (the decoder's own inverse). Alpha is copied. */
-export function encodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): Float32Array {
+/**
+ * Encoder: linear RGBA → a copy encoded with `transfer` (the decoder's own inverse). Alpha is copied.
+ * With `grey`, R is the grey sample: it is encoded into all three channels.
+ */
+export function encodeTransfer(
+  image: HdrifyImage,
+  transfer: JxlEncTransfer,
+  intensityTarget: number,
+  grey = false,
+): Float32Array {
   const { data } = image;
   const n = data.length / 4;
-  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + c]!));
+  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + (grey ? 0 : c)]!));
   xybFromLinear(encoderHeader(image, transfer, intensityTarget), planes, true);
   const out = data.slice();
   for (let c = 0; c < 3; c++) for (let i = 0; i < n; i++) out[i * 4 + c] = planes[c]![i]!;

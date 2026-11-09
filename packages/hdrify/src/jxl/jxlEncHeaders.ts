@@ -3,6 +3,7 @@ import type { HdrifyImage } from '../hdrifyImage.js';
 import { writeJxlIcc } from './jxlEncIcc.js';
 import type { LinearColorSpace } from '../color/colorSpaces.js';
 import type { JxlBitWriter } from './jxlBitWriter.js';
+import type { JxlExtraChannelType } from './jxlImageHeader.js';
 
 /**
  * Codestream header writers for Modular and VarDCT JPEG XL images: SizeHeader,
@@ -61,6 +62,55 @@ const PRIMARIES: Record<LinearColorSpace, number> = {
 export const JXL_ENC_TRANSFERS = { linear: 8, srgb: 13, pq: 16, hlg: 18 } as const;
 export type JxlEncTransfer = keyof typeof JXL_ENC_TRANSFERS;
 
+const EC_TYPE_IDS: Record<JxlExtraChannelType, number> = {
+  alpha: 0,
+  depth: 1,
+  spotColor: 2,
+  selectionMask: 3,
+  black: 4,
+  cfa: 5,
+  thermal: 6,
+  unknown: 15,
+  optional: 16,
+};
+
+/** An ExtraChannelInfo to write: full resolution, in the image's bit depth. */
+export interface JxlEncExtraChannel {
+  type: JxlExtraChannelType;
+  name?: string;
+  /** Alpha only: colour samples are premultiplied (alpha_associated). */
+  alphaAssociated?: boolean;
+  /** Required for type 'spotColor': linear RGB and solidity. */
+  spotColor?: [number, number, number, number];
+  /** CFA channel index (type 'cfa', default 1). */
+  cfaChannel?: number;
+}
+
+/** Channel layout and orientation written in ImageMetadata. */
+export interface JxlEncLayout {
+  /** colour_space kGrey: one colour channel. */
+  grey: boolean;
+  /** EXIF orientation 1..8. */
+  orientation: number;
+  extraChannels: readonly JxlEncExtraChannel[];
+}
+
+const NAME_LEN = [0, { bits: 4, offset: 0 }, { bits: 5, offset: 16 }, { bits: 10, offset: 48 }] as const;
+
+function writeExtraChannelInfo(w: JxlBitWriter, ec: JxlEncExtraChannel, bitDepth: JxlEncBitDepth): void {
+  w.writeBool(false); // all_default
+  w.writeEnum(EC_TYPE_IDS[ec.type]);
+  writeBitDepth(w, bitDepth);
+  w.writeU32(0, 0, 3, 4, { bits: 3, offset: 1 }); // dim_shift
+  const name = new TextEncoder().encode(ec.name ?? '');
+  w.writeU32(name.length, ...NAME_LEN);
+  for (const b of name) w.writeBits(8, b);
+  if (ec.type === 'alpha') w.writeBool(!!ec.alphaAssociated);
+  if (ec.type === 'spotColor') for (const v of ec.spotColor!) w.writeBits(16, encodeFloat16(v));
+  if (ec.type === 'cfa')
+    w.writeU32(ec.cfaChannel ?? 1, 1, { bits: 2, offset: 0 }, { bits: 4, offset: 3 }, { bits: 8, offset: 19 });
+}
+
 /**
  * ToneMapping.intensity_target for an image: `metadata.linearReferenceWhiteNits` (as reported by readJxl),
  * else the JPEG XL default of 255 nits. Throws unless it is a positive finite F16 value.
@@ -75,47 +125,41 @@ export function jxlIntensityTarget(image: HdrifyImage): number {
 
 /**
  * ImageMetadata + default CustomTransformData, optional ICC, then byte alignment (no preview).
- * Colour encoding: RGB, D65, `colorSpace` primaries, `transfer` (default linear), relative intent.
+ * Colour encoding: RGB or grey, D65, `colorSpace` primaries, `transfer` (default linear), relative intent.
  * A non-default `intensityTarget` (nits) is written in the ToneMapping bundle via extra_fields.
  */
 export function writeImageMetadata(
   w: JxlBitWriter,
   bitDepth: JxlEncBitDepth,
-  hasAlpha: boolean,
+  layout: JxlEncLayout,
   colorSpace: LinearColorSpace,
   xybEncoded = false,
   iccProfile?: Uint8Array,
   intensityTarget = 255,
   transfer: JxlEncTransfer = 'linear',
 ): void {
-  const extraFields = intensityTarget !== 255;
+  const extraFields = layout.orientation !== 1 || intensityTarget !== 255;
   w.writeBool(false); // all_default
   w.writeBool(extraFields);
   if (extraFields) {
-    w.writeBits(3, 0); // orientation - 1
+    w.writeBits(3, layout.orientation - 1);
     w.writeBool(false); // have_intrinsic_size
     w.writeBool(false); // have_preview
     w.writeBool(false); // have_animation
   }
   writeBitDepth(w, bitDepth);
   w.writeBool(bitDepth.bitsPerSample <= 12); // modular_16_bit_buffer_sufficient
-  w.writeU32(hasAlpha ? 1 : 0, 0, 1, { bits: 4, offset: 2 }, { bits: 12, offset: 1 }); // num_extra_channels
-  if (hasAlpha) {
-    w.writeBool(false); // ExtraChannelInfo.all_default
-    w.writeEnum(0); // type = kAlpha
-    writeBitDepth(w, bitDepth);
-    w.writeU32(0, 0, 3, 4, { bits: 3, offset: 1 }); // dim_shift
-    w.writeU32(0, 0, { bits: 4, offset: 0 }, { bits: 5, offset: 16 }, { bits: 10, offset: 48 }); // name_len
-    w.writeBool(false); // alpha_associated
-  }
+  const { extraChannels } = layout;
+  w.writeU32(extraChannels.length, 0, 1, { bits: 4, offset: 2 }, { bits: 12, offset: 1 }); // num_extra_channels
+  for (const ec of extraChannels) writeExtraChannelInfo(w, ec, bitDepth);
   w.writeBool(xybEncoded); // xyb_encoded
   // ColourEncoding
   w.writeBool(false); // all_default
   w.writeBool(!!iccProfile); // want_icc
-  w.writeEnum(0); // colour_space = kRGB
+  w.writeEnum(layout.grey ? 1 : 0); // colour_space = kGrey or kRGB
   if (!iccProfile) {
     w.writeEnum(1); // white_point = kD65
-    w.writeEnum(PRIMARIES[colorSpace]);
+    if (!layout.grey) w.writeEnum(PRIMARIES[colorSpace]);
     w.writeBool(false); // have_gamma
     w.writeEnum(JXL_ENC_TRANSFERS[transfer]); // transfer_function
     w.writeEnum(1); // rendering_intent = kRelative
@@ -134,14 +178,19 @@ export function writeImageMetadata(
 }
 
 /** FrameHeader of a single last, regular Modular or XYB VarDCT frame. */
-export function writeFrameHeader(w: JxlBitWriter, hasAlpha: boolean, groupSizeShift: number, vardct = false): void {
+export function writeFrameHeader(
+  w: JxlBitWriter,
+  numExtraChannels: number,
+  groupSizeShift: number,
+  vardct = false,
+): void {
   w.writeBool(false); // all_default
   w.writeBits(2, 0); // frame_type = kRegularFrame
   w.writeBool(!vardct); // encoding
   w.writeU64(vardct ? 0x80 : 0); // skip adaptive LF smoothing for VarDCT
   if (!vardct) w.writeBool(false); // do_YCbCr (implicit false for XYB)
   w.writeU32(1, 1, 2, 4, 8); // upsampling
-  if (hasAlpha) w.writeU32(1, 1, 2, 4, 8); // ec_upsampling
+  for (let i = 0; i < numExtraChannels; i++) w.writeU32(1, 1, 2, 4, 8); // ec_upsampling
   if (vardct) {
     w.writeBits(3, 3); // x_qm_scale
     w.writeBits(3, 2); // b_qm_scale
@@ -149,9 +198,9 @@ export function writeFrameHeader(w: JxlBitWriter, hasAlpha: boolean, groupSizeSh
   w.writeU32(1, 1, 2, 3, { bits: 3, offset: 4 }); // num_passes
   w.writeBool(false); // custom_size_or_origin
   w.writeU32(0, 0, 1, 2, { bits: 2, offset: 3 }); // blending mode = kReplace
-  if (hasAlpha) w.writeU32(0, 0, 1, 2, { bits: 2, offset: 3 }); // ec blending mode
+  for (let i = 0; i < numExtraChannels; i++) w.writeU32(0, 0, 1, 2, { bits: 2, offset: 3 }); // ec blending mode
   w.writeBool(true); // is_last
-  w.writeU32(0, 0, { bits: 4, offset: 0 }, { bits: 5, offset: 16 }, { bits: 10, offset: 48 }); // name_len
+  w.writeU32(0, ...NAME_LEN); // name_len
   // RestorationFilter: Gaborish and EPF off (their defaults are on).
   w.writeBool(false); // all_default
   w.writeBool(false); // gab
