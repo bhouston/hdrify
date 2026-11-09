@@ -5,6 +5,52 @@ Pure TypeScript ICC v2/v4 profile data reader and writer for browsers and Node.j
 CMYK, gray, and unknown/private tags. Reading and writing a profile does not
 require support for its color transform. `readIccCicp` reads HDR identification data.
 
+`parse(bytes)` returns metadata compatible with npm [`icc` 4.0.0](https://www.npmjs.com/package/icc),
+including header names, description, copyright, device model description, viewing conditions
+description, and whitepoint. It accepts `Uint8Array` and Node `Buffer`, including sliced views.
+`readIccMetadata(profile)` decodes the same metadata from an already parsed or edited profile;
+`readIccHeaderMetadata(header)` decodes just the friendly header metadata.
+
+```ts
+import { parse, readIccProfile, writeIccProfile, writeIccLocalizedText } from 'hdrify-icc';
+
+const metadata = parse(bytes);
+const profile = readIccProfile(bytes);
+profile.tags = profile.tags.filter((tag) => tag.signature !== 'desc');
+profile.tags.push({
+  signature: 'desc',
+  data: writeIccLocalizedText([{ language: 'en', country: 'US', text: 'My edited profile' }]),
+});
+const editedBytes = writeIccProfile(profile);
+```
+
+Metadata codecs support v2 `desc`/`text`, v4 `mluc`, and signed fixed-point `XYZ ` payloads.
+Use `readIccTagValue(data)` for the decoded string or XYZ triple, and
+`readIccLocalizedText(data)` for all language/country records. The compatible metadata parser
+selects the first `mluc` record, and the last supported duplicate tag wins, matching `icc`.
+`writeIccDescription`, `writeIccText`, `writeIccLocalizedText`, and `writeIccXyz` author payloads
+for the binary writer. The v2 string writers require ASCII; use `mluc` for Unicode.
+
+Compatibility covers metadata extraction, not colour transforms: `icc` does not implement
+transforms or writing. Unknown header versions/intents return `undefined` like `icc`.
+Metadata tag fields have a string-or-XYZ union because `icc` decodes by payload type even
+when it differs from the usual type of that tag. Unknown tags/types remain opaque in binary I/O.
+`parse` requires an exact declared profile length, while `readIccProfile` permits trailing
+container bytes. Metadata codecs validate tag-local bounds and Unicode; malformed inputs
+accepted by `icc` may be rejected. The raw reader/writer can still preserve uninterpreted tags.
+
+The differential suite pins `icc` as a development-only oracle and tests all five checked-in
+libjxl profiles, all seven [upstream icc fixtures](../../assets/icc/reference/README.md),
+independent v2/v4 metadata fixtures, header mappings, and writer interoperability.
+Run `pnpm exec vitest run packages/icc/src`. Installed profiles are automatically discovered
+in `/System/Library/ColorSync/Profiles` when present; these optional comparisons are skipped
+when no local profiles are available. No macOS profile files are redistributed.
+To use another installed or downloaded corpus:
+
+```sh
+ICC_COMPAT_CORPUS=/path/to/profiles pnpm exec vitest run packages/icc/src/compatibility.test.ts
+```
+
 This package does not evaluate curves, transform pixels, or modify image data.
 Image consumers are responsible for interpreting profile data and applying color
 management. The existing JPEG XL color conversion remains in `hdrify`.

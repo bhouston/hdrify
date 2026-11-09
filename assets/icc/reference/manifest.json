@@ -1,0 +1,48 @@
+{
+  "upstream": "https://github.com/lovell/icc",
+  "revision": "2b437f3251a61a070b6fc248e66b2be85eee0c95",
+  "profiles": [
+    {
+      "file": "D65_XYZ.icc",
+      "bytes": 968,
+      "sha256": "be611e953eb7f15120607cfdded4c2fbb72822dd6086ac05e46de107c34b5f04",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/D65_XYZ.icc"
+    },
+    {
+      "file": "ILFORD_CANpro-4000_GPGFG_ProPlatin.icc",
+      "bytes": 2781940,
+      "sha256": "3f0b12d3e4a68ad68f582df615e3db0062fea286e09e88096e35099e2838c48b",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/ILFORD_CANpro-4000_GPGFG_ProPlatin.icc"
+    },
+    {
+      "file": "Probev1_ICCv2.icc",
+      "bytes": 146136,
+      "sha256": "19d3e3456beee7d8b7fe7ad644ad8a1a890ec710ed92d55dfcd2cb7dfcd8aa32",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/Probev1_ICCv2.icc"
+    },
+    {
+      "file": "Probev1_ICCv4.icc",
+      "bytes": 146800,
+      "sha256": "47f4e71af3c03b5801f6555a57be645040c8a83011947a35bc50b599bfc8613a",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/Probev1_ICCv4.icc"
+    },
+    {
+      "file": "USWebCoatedSWOP.icc",
+      "bytes": 557168,
+      "sha256": "35f401731df11a4eba3502af632e51d68bc394bcb7d34632a331c1ba3f4a0bf6",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/USWebCoatedSWOP.icc"
+    },
+    {
+      "file": "sRGB_ICC_v4_Appearance.icc",
+      "bytes": 63868,
+      "sha256": "eb7536f90e734be7fd7a8868967f85391858b290d5c1f80fb48130a187aade5b",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/sRGB_ICC_v4_Appearance.icc"
+    },
+    {
+      "file": "sRGB_IEC61966-2-1_black_scaled.icc",
+      "bytes": 3048,
+      "sha256": "c4c1153168e817be61a676e403c370ce2c485a6bd54fbb59c3850845cfefad00",
+      "source": "https://raw.githubusercontent.com/lovell/icc/2b437f3251a61a070b6fc248e66b2be85eee0c95/test/fixtures/sRGB_IEC61966-2-1_black_scaled.icc"
+    }
+  ]
+}
