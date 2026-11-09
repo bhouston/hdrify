@@ -19,7 +19,9 @@ import {
 } from '../color/matrixConversion.js';
 import { linearToSrgb as linearTosRGB, srgbToLinear as sRGBToLinear } from './jxlXyb.js';
 import { hlgToScene, nitsToPq, pqToNits, sceneToHlg } from '../color/transfer.js';
-import type { JxlColorEncoding, JxlImageHeader } from './jxlImageHeader.js';
+import type { HdrifyImage } from '../hdrifyImage.js';
+import type { JxlEncTransfer } from './jxlEncHeaders.js';
+import { defaultColorEncoding, type JxlColorEncoding, type JxlImageHeader } from './jxlImageHeader.js';
 
 const D50 = [0.34567, 0.3585];
 const D65 = [0.3127, 0.329];
@@ -37,7 +39,10 @@ interface ColorTransform {
   encode: ((v: number) => number)[];
   hlgLuminances?: number[];
 }
-const cache = new WeakMap<JxlImageHeader, ColorTransform>();
+/** The header fields colour conversion reads; the encoder passes just these. */
+type JxlColorHeader = Pick<JxlImageHeader, 'colorEncoding' | 'toneMapping'> &
+  Partial<Pick<JxlImageHeader, 'bitDepth' | 'icc'>>;
+const cache = new WeakMap<JxlColorHeader, ColorTransform>();
 const signedPower = (v: number, power: number) => Math.sign(v) * Math.abs(v) ** power;
 
 /** Chromaticities of the original encoding, retained in metadata when converted to a supported space. */
@@ -91,13 +96,13 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
 }
 
 /** Shared ICC policy ({@link interpretIccProfile}): matrix/TRC (RGB or gray) or recognized cICP; throws otherwise. */
-function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
+function iccTransform(h: JxlColorHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
   if (!h.icc) throw new Error('JXL: colour encoding requires an ICC profile but none was read');
   const { cicp, rgb } = interpretIccProfile(h.icc, 'JXL');
   return cicp ? { ce: { ...h.colorEncoding, wantIcc: false, ...cicp, whitePoint: 'd65' } } : { rgb };
 }
 
-function transform(h: JxlImageHeader): ColorTransform {
+function transform(h: JxlColorHeader): ColorTransform {
   const existing = cache.get(h);
   if (existing) return existing;
   let ce = h.colorEncoding,
@@ -157,7 +162,7 @@ function transform(h: JxlImageHeader): ColorTransform {
 }
 
 /** HLG OOTF luminance weights and gamma, or undefined when the OOTF is a no-op (loop-invariant). */
-function ootfParams(h: JxlImageHeader, t: ColorTransform, forward: boolean) {
+function ootfParams(h: JxlColorHeader, t: ColorTransform, forward: boolean) {
   if (!t.hlgLuminances) return undefined;
   const intensity = h.toneMapping.intensityTarget;
   if (295 <= intensity && intensity <= 305) return undefined;
@@ -168,8 +173,11 @@ function ootfParams(h: JxlImageHeader, t: ColorTransform, forward: boolean) {
   return { w0: w[0]!, w1: w[1]!, w2: w[2]!, exponent: gamma - 1, normalize: forward && gamma < 1 };
 }
 
-/** Convert linear-sRGB XYB output into the image's encoded space before blending/referencing. */
-export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
+/**
+ * Convert linear-sRGB XYB output into the image's encoded space before blending/referencing.
+ * With `native`, planes are already linear in the encoding's own primaries (the encoder's input).
+ */
+export function xybFromLinear(h: JxlColorHeader, planes: Float32Array[], native = false): void {
   const t = transform(h),
     n = planes[0]!.length;
   const p0 = planes[0]!,
@@ -178,7 +186,7 @@ export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
   const e0 = t.encode[0]!,
     e1 = t.encode[1]!,
     e2 = t.encode[2]!;
-  const m = t.fromSrgb,
+  const m = native ? identity : t.fromSrgb,
     id = m === identity;
   const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
   const o = ootfParams(h, t, false);
@@ -217,7 +225,7 @@ export function xybFromLinear(h: JxlImageHeader, planes: Float32Array[]): void {
 }
 
 /** Final RGBA conversion. XYB frames kept linear are linear sRGB; encoded canvases retain original primaries. */
-export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear: boolean): LinearColorSpace {
+export function convertOutputColor(h: JxlColorHeader, out: Float32Array, linear: boolean): LinearColorSpace {
   if (linear) return 'linear-rec709';
   const t = transform(h);
   const d0 = t.decode[0]!,
@@ -271,4 +279,42 @@ export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
     linearReferenceWhiteNits: h.toneMapping.intensityTarget,
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
   };
+}
+
+const COLOR_PRIMARIES = { 'linear-rec709': 'srgb', 'linear-p3': 'p3', 'linear-rec2020': 'bt2100' } as const;
+
+/** The colour header the encoder writes for an image: its native primaries, `transfer`, `intensityTarget`. */
+function encoderHeader(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): JxlColorHeader {
+  return {
+    colorEncoding: {
+      ...defaultColorEncoding(),
+      primaries: COLOR_PRIMARIES[image.linearColorSpace],
+      transferFunction: transfer,
+    },
+    toneMapping: { intensityTarget, minNits: 0, relativeToMaxDisplay: false, linearBelow: 0 },
+  };
+}
+
+/**
+ * Encoder: linear RGBA → a copy encoded with `transfer` (the decoder's own inverse). Alpha is copied.
+ * With `grey`, R is the grey sample: it is encoded into all three channels.
+ */
+export function encodeTransfer(
+  image: HdrifyImage,
+  transfer: JxlEncTransfer,
+  intensityTarget: number,
+  grey = false,
+): Float32Array {
+  const { data } = image;
+  const n = data.length / 4;
+  const planes = [0, 1, 2].map((c) => Float32Array.from({ length: n }, (_, i) => data[i * 4 + (grey ? 0 : c)]!));
+  xybFromLinear(encoderHeader(image, transfer, intensityTarget), planes, true);
+  const out = data.slice();
+  for (let c = 0; c < 3; c++) for (let i = 0; i < n; i++) out[i * 4 + c] = planes[c]![i]!;
+  return out;
+}
+
+/** Encoder: inverse of {@link encodeTransfer}, in place on interleaved RGBA, back to native linear light. */
+export function decodeTransfer(image: HdrifyImage, transfer: JxlEncTransfer, intensityTarget: number): void {
+  convertOutputColor(encoderHeader(image, transfer, intensityTarget), image.data, false);
 }

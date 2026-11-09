@@ -6,10 +6,12 @@ import { convertLinearColorSpace } from '../color/convert.js';
 import { decodeFloat16, encodeFloat16 } from '../exr/halfFloat.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { JxlBitWriter } from './jxlBitWriter.js';
+import { decodeTransfer, encodeTransfer } from './jxlColor.js';
 import { JxlEncEntropyCode, packSigned, type TokenStream } from './jxlEncEntropy.js';
 import {
   jxlIntensityTarget,
   type JxlEncBitDepth,
+  type JxlEncTransfer,
   type JxlEncLayout,
   writeFrameHeader,
   writeImageMetadata,
@@ -83,6 +85,7 @@ export function writeVardctJxl(
   bitDepth: JxlEncBitDepth,
   layout: JxlEncLayout,
   ecPlanes: Int32Array[],
+  transfer: JxlEncTransfer,
 ): Uint8Array {
   const distance = options.distance ?? 1;
   if (!Number.isFinite(distance) || distance <= 0 || distance > 25)
@@ -90,9 +93,12 @@ export function writeVardctJxl(
   const { width, height } = image;
   const bw = Math.ceil(width / 8),
     bh = Math.ceil(height / 8);
+  const intensityTarget = jxlIntensityTarget(image);
   let source = image;
   if (!bitDepth.float || bitDepth.bitsPerSample === 16) {
-    const data = image.data.slice();
+    // Simulate the source samples: integers sit on the grid of the declared transfer function, as in lossless output.
+    const encoded = !bitDepth.float && transfer !== 'linear';
+    const data = encoded ? encodeTransfer(image, transfer, intensityTarget, layout.grey) : image.data.slice();
     const max = 2 ** bitDepth.bitsPerSample - 1;
     for (let i = 0; i < data.length; i++) {
       if ((i & 3) === 3) continue;
@@ -102,9 +108,9 @@ export function writeVardctJxl(
         : Math.round(Math.max(0, Math.min(1, value)) * max) / max;
     }
     source = { ...image, data };
+    if (encoded) decodeTransfer(source, transfer, intensityTarget);
   }
   const rgb = convertLinearColorSpace(source, 'linear-rec709').data;
-  const intensityTarget = jxlIntensityTarget(image);
   // XYB is absolute: libjxl scales linear input by intensity_target / 255 before the opsin matrix.
   const m = JXL_OPSIN_ABSORBANCE_MATRIX.map((v) => (v * intensityTarget) / 255);
   const globalScale = Math.max(1, Math.min(73728, Math.round(4096 / distance)));
@@ -278,7 +284,7 @@ export function writeVardctJxl(
   out.writeBits(8, 0xff);
   out.writeBits(8, 0x0a);
   writeSizeHeader(out, width, height);
-  writeImageMetadata(out, bitDepth, layout, image.linearColorSpace, true, undefined, intensityTarget);
+  writeImageMetadata(out, bitDepth, layout, image.linearColorSpace, true, undefined, intensityTarget, transfer);
   writeFrameHeader(out, layout.extraChannels.length, 1, true);
   writeToc(
     out,

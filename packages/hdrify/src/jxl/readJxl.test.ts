@@ -108,7 +108,7 @@ describe('readJxl ∘ writeJxl round-trip', async () => {
           src.data[i * 4] = src.data[i * 4] * 7.5; // HDR range
           src.data[i * 4 + 3] = (i % 5) / 4;
         }
-        const out = readJxl(writeJxl(src, { bitDepth, container: w === 17 }));
+        const out = readJxl(writeJxl(src, { bitDepth, container: w === 17, transferFunction: 'linear' }));
         expect([out.width, out.height, out.linearColorSpace]).toEqual([w, h, src.linearColorSpace]);
         const tol = bitDepth === 'float32' ? 0 : bitDepth === 'float16' ? 7.5 * 2 ** -10 : 1 / 65535;
         let err = 0;

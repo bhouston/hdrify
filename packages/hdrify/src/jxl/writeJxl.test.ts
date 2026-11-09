@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeFloat16, encodeFloat16 } from '../exr/halfFloat.js';
+import { linearTosRGB } from '../color/srgb.js';
+import { nitsToPq, sceneToHlg } from '../color/transfer.js';
 import { readExr } from '../exr/readExr.js';
 import type { HdrifyImage } from '../hdrifyImage.js';
 import { ASSETS } from './jxlTestAssets.js';
@@ -12,6 +14,16 @@ import { type WriteJxlOptions, writeJxl } from './writeJxl.js';
 
 const hasDjxl = spawnSync('djxl', ['--version']).status === 0;
 const COLOR_ASSETS = new URL('../../../../assets/jxl/color/', import.meta.url);
+/** Grey ramp 0..1 at 1000 nits, and the reference encodings of a grey value (HLG OOTF gamma is 1.2 at 1000 nits). */
+const greyRamp = (n: number): HdrifyImage => ({
+  ...makeImage(n, 1, (x, _y, c) => (c === 3 ? 1 : x / (n - 1))),
+  metadata: { linearReferenceWhiteNits: 1000 },
+});
+const TRANSFER_REFERENCE = {
+  srgb: linearTosRGB,
+  pq: (v: number) => nitsToPq(v * 1000),
+  hlg: (v: number) => sceneToHlg(v ** (1 / 1.2)),
+} as const;
 const readColorAsset = (name: string): HdrifyImage => readJxl(fs.readFileSync(new URL(name, COLOR_ASSETS)));
 
 function makeImage(
@@ -160,13 +172,57 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
       expect(djxlLossy[i]).toBeCloseTo(ours[Math.floor(i / 3) * 4 + (i % 3)], 3);
   });
 
+  for (const transferFunction of ['srgb', 'pq', 'hlg'] as const) {
+    for (const bitDepth of ['uint8', 'uint16'] as const) {
+      it(`${bitDepth} ${transferFunction} decodes in djxl to the encoded reference`, () => {
+        const image = greyRamp(1000);
+        const file = encode(image, { bitDepth, transferFunction });
+        expect(jxlinfo(file)).toMatch(
+          new RegExp(`Transfer function: ${transferFunction === 'srgb' ? 'sRGB' : transferFunction.toUpperCase()}`),
+        );
+        const { rgb } = readPfm(djxl(file, 'pfm'));
+        const tol = 0.5 / (bitDepth === 'uint8' ? 255 : 65535) + 1e-6;
+        for (let i = 0; i < image.width; i++) {
+          expect(Math.abs(rgb[i * 3] - TRANSFER_REFERENCE[transferFunction](image.data[i * 4]))).toBeLessThanOrEqual(
+            tol,
+          );
+        }
+      });
+    }
+  }
+
+  it('grey uint8 defaults to an sRGB grey encoding that djxl and readJxl decode', () => {
+    const image = greyRamp(256);
+    const file = encode(image, { bitDepth: 'uint8' });
+    expect(jxlinfo(file)).toMatch(/8-bit Grayscale/);
+    expect(jxlinfo(file)).toMatch(/Transfer function: sRGB/);
+    const pgm = djxl(file, 'pgm');
+    const codes = pgm.subarray(pgm.length - image.width);
+    const decoded = readJxl(fs.readFileSync(file)).data;
+    for (let i = 0; i < image.width; i++) {
+      const code = Math.round(linearTosRGB(image.data[i * 4]) * 255);
+      expect(codes[i]).toBe(code);
+      for (let c = 0; c < 3; c++) expect(linearTosRGB(decoded[i * 4 + c]) * 255).toBeCloseTo(code, 3);
+    }
+  });
+
+  it('declares the transfer function on lossy output, which djxl decodes the same as readJxl', () => {
+    const image = { ...pattern(32, 32), metadata: { linearReferenceWhiteNits: 1000 } };
+    const file = encode(image, { lossy: true, transferFunction: 'pq' });
+    expect(jxlinfo(file)).toMatch(/Transfer function: PQ/);
+    const ours = readJxl(fs.readFileSync(file)).data;
+    const { rgb } = readPfm(djxl(file, 'pfm'));
+    for (let i = 0; i < rgb.length; i++)
+      expect(rgb[i]).toBeCloseTo(nitsToPq(ours[Math.floor(i / 3) * 4 + (i % 3)] * 1000), 3);
+  });
+
   it('large groups (groupSizeShift 3)', () => expectRgb(pattern(300, 40), { groupSizeShift: 3 }));
 
   it('high-effort ANS round trips with djxl for every sample format and partial groups', () => {
     for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
       expectRgb(
         pattern(270, 23, (x, y) => ((x + y) % 7) / 6),
-        { bitDepth, effort: 'high', groupSizeShift: 0 },
+        { bitDepth, effort: 'high', groupSizeShift: 0, transferFunction: 'linear' },
       );
     }
   });
@@ -240,8 +296,8 @@ describe.skipIf(!hasDjxl)('writeJxl decoded by libjxl djxl', () => {
   });
 
   it('uint8 and uint16', () => {
-    expectRgb(pattern(37, 11), { bitDepth: 'uint16' });
-    expectRgb(pattern(37, 11), { bitDepth: 'uint8' });
+    expectRgb(pattern(37, 11), { bitDepth: 'uint16', transferFunction: 'linear' });
+    expectRgb(pattern(37, 11), { bitDepth: 'uint8', transferFunction: 'linear' });
   });
 
   for (const [space, primaries] of [
@@ -431,7 +487,7 @@ describe('writeJxl', () => {
   for (const bitDepth of ['float16', 'float32', 'uint8', 'uint16'] as const) {
     it(`${bitDepth}: prediction and LZ77 retain samples across partial groups and alpha`, () => {
       const image = pattern(270, 23, (x, y) => ((x + y) % 7) / 6);
-      const decoded = readJxl(writeJxl(image, { bitDepth, groupSizeShift: 0 }));
+      const decoded = readJxl(writeJxl(image, { bitDepth, groupSizeShift: 0, transferFunction: 'linear' }));
       expect([decoded.width, decoded.height]).toEqual([image.width, image.height]);
       for (let i = 0; i < image.data.length; i++) {
         expect(decoded.data[i]).toBeCloseTo(expected(image.data[i], bitDepth), 6);
@@ -456,7 +512,7 @@ describe('writeJxl', () => {
       seed ^= seed << 5;
       return (((seed >>> 0) % 100) * 2) / 255;
     });
-    const bytes = writeJxl(image, { bitDepth: 'uint8' });
+    const bytes = writeJxl(image, { bitDepth: 'uint8', transferFunction: 'linear' });
     expect(bytes.length).toBeLessThan(12000); // The fixed density threshold produced 12,878 bytes.
     expect(readJxl(bytes).data).toEqual(image.data);
   });
@@ -512,6 +568,55 @@ describe('writeJxl', () => {
     expect(sum / want).toBeCloseTo(1, 2);
   });
 
+  for (const transferFunction of ['linear', 'srgb', 'pq', 'hlg'] as const) {
+    for (const bitDepth of ['uint8', 'uint16', 'float32'] as const) {
+      it(`${bitDepth} ${transferFunction} round trips through readJxl within quantization error`, () => {
+        const image = greyRamp(1000);
+        const decoded = readJxl(writeJxl(image, { bitDepth, transferFunction }));
+        const ref = transferFunction === 'linear' ? (v: number) => v : TRANSFER_REFERENCE[transferFunction];
+        const tol = (bitDepth === 'uint8' ? 0.5 / 255 : bitDepth === 'uint16' ? 0.5 / 65535 : 0) + 1e-5;
+        for (let i = 0; i < decoded.data.length; i++) {
+          if (i % 4 === 3) continue;
+          expect(Math.abs(ref(decoded.data[i]) - ref(image.data[i]))).toBeLessThanOrEqual(tol);
+        }
+      });
+    }
+  }
+
+  it('uint8 defaults to sRGB, banding no worse than an 8-bit sRGB PNG', () => {
+    const image = greyRamp(4096);
+    const srgbError = (options: WriteJxlOptions): number => {
+      const decoded = readJxl(writeJxl(image, options)).data;
+      let max = 0;
+      for (let i = 0; i < decoded.length; i += 4) {
+        const png = Math.round(linearTosRGB(image.data[i]) * 255) / 255; // 8-bit sRGB PNG sample
+        max = Math.max(max, Math.abs(linearTosRGB(decoded[i]) - png));
+      }
+      return max;
+    };
+    expect(srgbError({ bitDepth: 'uint8' })).toBeLessThan(1e-5);
+    expect(srgbError({ bitDepth: 'uint8', transferFunction: 'linear' })).toBeGreaterThan(5 / 255); // linear 8-bit: 6 codes off in the shadows
+    expect(readJxl(writeJxl(image)).metadata?.transferFunction).toBe('linear');
+  });
+
+  it('lossy uint8 sRGB pre-quantizes on the sRGB grid, without linear shadow banding', () => {
+    const image = greyRamp(1024);
+    const shadowError = (options: WriteJxlOptions): number => {
+      const decoded = readJxl(writeJxl(image, { lossy: true, distance: 0.1, bitDepth: 'uint8', ...options })).data;
+      let max = 0;
+      for (let i = 0; i < decoded.length && image.data[i] < 0.05; i += 4)
+        max = Math.max(max, Math.abs(linearTosRGB(decoded[i]) - linearTosRGB(image.data[i])));
+      return max;
+    };
+    const srgb = shadowError({});
+    const lossless = readJxl(writeJxl(image, { bitDepth: 'uint8' })).data;
+    let losslessError = 0;
+    for (let i = 0; i < lossless.length && image.data[i] < 0.05; i += 4)
+      losslessError = Math.max(losslessError, Math.abs(linearTosRGB(lossless[i]) - linearTosRGB(image.data[i])));
+    expect(srgb).toBeLessThan(losslessError + 2 / 255); // distance 0.1 error on top of the 0.5-code grid
+    expect(shadowError({ transferFunction: 'linear' })).toBeGreaterThan(5 / 255);
+  });
+
   it('defaults the intensity target to 255 nits and validates it', () => {
     expect(readJxl(writeJxl(pattern(2, 2))).metadata?.linearReferenceWhiteNits).toBe(255);
     const bad = { ...pattern(2, 2), metadata: { linearReferenceWhiteNits: 1e6 } };
@@ -529,5 +634,6 @@ describe('writeJxl', () => {
     expect(() => writeJxl(ok, { lossy: true, effort: 'high' })).toThrow(/only supported for lossless/);
     expect(() => writeJxl(ok, { lossy: true, effort: 'standard' })).not.toThrow();
     expect(() => writeJxl(ok, { bitDepth: 'int7' as 'uint8' })).toThrow(/bitDepth/);
+    expect(() => writeJxl(ok, { transferFunction: 'gamma' as 'srgb' })).toThrow(/transferFunction/);
   });
 });
