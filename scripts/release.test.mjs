@@ -7,7 +7,8 @@ import { checkPullRequest } from './check-pr.mjs';
 
 // Published via pnpm publish directly (see release.config.js): pnpm rewrites
 // workspace:* deps and packs the `files` field natively, so these packages
-// just need a real LICENSE and a `files` field that ships `dist`.
+// just need a real LICENSE, a `files` field that ships `dist`, and a `repository.url` that npm provenance
+// can match against this repository (npm rejects the publish otherwise).
 const packages = ['packages/icc', 'packages/hdrify', 'packages/cli', 'packages/hdrify-react'];
 
 for (const path of packages) {
@@ -15,6 +16,11 @@ for (const path of packages) {
     assert.ok(existsSync(resolve(path, 'LICENSE')), `${path}/LICENSE is missing`);
     const pkg = JSON.parse(readFileSync(resolve(path, 'package.json'), 'utf8'));
     assert.ok(pkg.files?.includes('dist'), `${path}/package.json files must include "dist"`);
+    assert.match(
+      pkg.repository?.url ?? '',
+      /github\.com\/bhouston\/hdrify(\.git)?$/,
+      `${path}/package.json needs repository.url`,
+    );
   });
 }
 
