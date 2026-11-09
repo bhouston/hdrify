@@ -16,7 +16,7 @@ export interface GainMapWriterOptions extends GainMapIccOptions {
 /**
  * Write an {@link encodeGainMap} result as a single JPEG-R file with an embedded gain map.
  * Both Ultra HDR and Adobe gain-map layouts support the ICC options on {@link GainMapWriterOptions}.
- * Profiles are embedded as metadata without transforming pixels.
+ * The base is always sRGB, so a supplied profile must describe sRGB; other profiles throw.
  *
  * @param encodingResult - SDR base, gain map, and reconstruction metadata.
  * @param options - JPEG quality, layout, and optional ICC/EXIF metadata.
@@ -48,7 +48,7 @@ export interface SeparateFilesResult {
 /**
  * Write an {@link encodeGainMap} result as separate SDR JPEG, gain-map JPEG, and metadata.
  * ICC options follow {@link GainMapWriterOptions}; the profile is embedded only in the SDR JPEG.
- * Pixels are not color converted and the gain-map JPEG has no ICC profile.
+ * The profile must describe sRGB, and the gain-map JPEG has no ICC profile.
  *
  * @param encodingResult - SDR base, gain map, and reconstruction metadata.
  * @param options - JPEG quality and ICC metadata options.
