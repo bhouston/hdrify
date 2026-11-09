@@ -1,6 +1,6 @@
 /** JPEG XL encoded colour ↔ linear-light conversion, shared by composition and public output. */
 import type { IccRgbTransform } from '../color/iccTransform.js';
-import { interpretIccProfile } from '../color/iccPolicy.js';
+import { interpretIccProfile, matchLinearColorSpace } from '../color/iccPolicy.js';
 import {
   CHROMATICITIES_P3,
   CHROMATICITIES_REC2020,
@@ -121,8 +121,10 @@ function transform(h: JxlColorHeader): ColorTransform {
   if (rgb) {
     const toD65 = multiply3(bradfordAdaptation(D50, D65), rgb.matrix);
     toSrgb = multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC709), toD65);
-    toOutput = multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC2020), toD65);
-    space = 'linear-rec2020';
+    // Primaries matching a native space (as for gain maps) keep it; others are adapted to Rec.2020.
+    const native = matchLinearColorSpace(toD65);
+    space = native ?? 'linear-rec2020';
+    toOutput = native ? identity : multiply3(chromaticitiesToXyzRgbMatrix(CHROMATICITIES_REC2020), toD65);
     decode = rgb.curves.map((c) => c.evaluate);
     encode = rgb.curves.map((c) => c.inverse);
   } else {
@@ -224,17 +226,21 @@ export function xybFromLinear(h: JxlColorHeader, planes: Float32Array[], native 
   }
 }
 
-/** Final RGBA conversion. XYB frames kept linear are linear sRGB; encoded canvases retain original primaries. */
+/**
+ * Final RGBA conversion into the header's output space. XYB frames kept linear are linear sRGB: they are
+ * mapped (fromSrgb, then toOutput) to the same space as an encoded canvas, so wide gamuts stay in range.
+ */
 export function convertOutputColor(h: JxlColorHeader, out: Float32Array, linear: boolean): LinearColorSpace {
-  if (linear) return 'linear-rec709';
   const t = transform(h);
-  const d0 = t.decode[0]!,
-    d1 = t.decode[1]!,
-    d2 = t.decode[2]!;
-  const m = t.toOutput,
+  const lin = (x: number) => x;
+  const d0 = linear ? lin : t.decode[0]!,
+    d1 = linear ? lin : t.decode[1]!,
+    d2 = linear ? lin : t.decode[2]!;
+  const m = !linear ? t.toOutput : t.space === 'linear-rec709' ? identity : multiply3(t.toOutput, t.fromSrgb),
     id = m === identity;
+  if (linear && id) return t.space;
   const [[m00, m01, m02], [m10, m11, m12], [m20, m21, m22]] = m;
-  const o = ootfParams(h, t, true);
+  const o = linear ? undefined : ootfParams(h, t, true);
   for (let i = 0; i < out.length; i += 4) {
     let r = d0(out[i]!),
       g = d1(out[i + 1]!),

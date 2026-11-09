@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { applyMatrix3ToFloat32Array, getLinearToLinearMatrix } from '../color/matrixConversion.js';
 import { ASSETS, readPfm } from './jxlTestAssets.js';
 import { readJxl } from './readJxl.js';
+import { writeJxl } from './writeJxl.js';
+import { readJpegGainMap } from '../gainmap/readJpegGainMap.js';
 describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () => {
   for (const name of ['display_p3', 'adobe_rgb', 'prophoto', 'pq_icc', 'gray_icc'])
     for (const d of [0, 1]) {
@@ -10,6 +12,11 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
         const path = `color/${name}-d${d}`;
         const img = readJxl(fs.readFileSync(new URL(`${path}.jxl`, ASSETS)));
         const ref = readPfm(`${path}.ref.pfm`);
+        // Matrix/TRC primaries matching a native space keep it, for modular (d0) and XYB (d1) alike.
+        // gray_icc-d1 declares an enum sRGB-primaries gray encoding instead of an ICC profile.
+        expect(img.linearColorSpace).toBe(
+          name === 'display_p3' ? 'linear-p3' : name === 'gray_icc' && d ? 'linear-rec709' : 'linear-rec2020',
+        );
         const m = getLinearToLinearMatrix(img.linearColorSpace, 'linear-rec2020');
         if (m) applyMatrix3ToFloat32Array(img.data, m);
         let err = 0;
@@ -22,6 +29,27 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
         expect(img.metadata?.linearReferenceWhiteNits).toBe(img.metadata?.intensityTarget);
       });
     }
+});
+
+it('labels a Display P3 ICC profile linear-p3, as gain-map JPEGs do', () => {
+  const asset = (name: string) => fs.readFileSync(new URL(`../../../../assets/${name}`, import.meta.url));
+  const jxl = readJxl(fs.readFileSync(new URL('color/display_p3-d0.jxl', ASSETS)));
+  expect(jxl.linearColorSpace).toBe('linear-p3');
+  expect(readJpegGainMap(new Uint8Array(asset('gainmap/p3.jpg'))).linearColorSpace).toBe(jxl.linearColorSpace);
+});
+
+it('keeps lossy Display P3 wide-gamut colours through a sanitizing lossless round trip', () => {
+  const img = readJxl(fs.readFileSync(new URL('color/display_p3-d1.jxl', ASSETS)));
+  expect(img.linearColorSpace).toBe('linear-p3');
+  const back = readJxl(writeJxl(structuredClone(img), { bitDepth: 'float32' }));
+  expect(back.linearColorSpace).toBe('linear-p3');
+  const srgb = img.data.slice();
+  applyMatrix3ToFloat32Array(srgb, getLinearToLinearMatrix('linear-p3', 'linear-rec709')!);
+  // Out-of-sRGB colours are negative in linear sRGB; in P3 they survive writeJxl's negative sanitizing.
+  expect(Math.min(...srgb.filter((_, i) => i % 4 !== 3))).toBeLessThan(-0.05);
+  let err = 0;
+  for (let i = 0; i < img.data.length; i++) err = Math.max(err, Math.abs(Math.max(0, img.data[i]) - back.data[i]));
+  expect(err).toBeLessThan(1e-6);
 });
 
 it('rejects singular embedded ICC matrices instead of returning nonfinite colour pixels', async () => {
