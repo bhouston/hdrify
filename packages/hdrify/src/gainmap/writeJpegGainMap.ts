@@ -1,15 +1,14 @@
 import { encodeToJpeg } from './jpegEncoder.js';
+import { gainMapIccPayloads, insertJpegIcc, type GainMapIccOptions } from './libultrahdr/gainMapIccMetadata.js';
 import { encodeJPEGMetadata } from './libultrahdr/encode-jpeg-metadata.js';
 import type { GainMapFormat } from './readJpegGainMap.js';
 import type { EncodingResult, GainMapMetadata } from './types.js';
 
-export interface GainMapWriterOptions {
+export interface GainMapWriterOptions extends GainMapIccOptions {
   /** JPEG quality 0-100. Default: 90 */
   quality?: number;
   /** Output format: ultrahdr (default) or adobe-gainmap */
   format?: GainMapFormat;
-  /** ICC profile (APP2 payload). For ultrahdr, default is sRGB matching reference memorial.jpg. Pass null to omit. */
-  icc?: Uint8Array | null;
   /** EXIF (APP1 payload). For ultrahdr, default is null (no EXIF, matches reference). Pass Uint8Array to add. */
   exif?: Uint8Array | null;
 }
@@ -30,7 +29,7 @@ export function writeJpegGainMap(encodingResult: EncodingResult, options: GainMa
       sdr: sdrCompressed,
       gainMap: gainMapCompressed,
     },
-    { format, icc: options.icc, exif: options.exif },
+    { format, icc: options.icc, iccProfile: options.iccProfile, exif: options.exif },
   );
 }
 
@@ -49,7 +48,10 @@ export function writeGainMapAsSeparateFiles(
 ): SeparateFilesResult {
   const quality = options.quality ?? 90;
 
-  const sdrImage = encodeToJpeg(encodingResult.sdr, encodingResult.width, encodingResult.height, quality).data;
+  const sdrImage = insertJpegIcc(
+    encodeToJpeg(encodingResult.sdr, encodingResult.width, encodingResult.height, quality).data,
+    gainMapIccPayloads(options),
+  );
   const gainMapImage = encodeToJpeg(encodingResult.gainMap, encodingResult.width, encodingResult.height, quality).data;
 
   return {

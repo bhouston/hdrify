@@ -4,6 +4,8 @@
  */
 
 import './ensureBuffer.js';
+import { readIccProfile } from 'hdrify-icc';
+import { extractIccProfileFromJpeg } from './libultrahdr/iccFromJpeg.js';
 import { decode as jpegDecode } from 'jpeg-js';
 import { ensureNonNegativeFinite, type HdrifyImage } from '../hdrifyImage.js';
 import { decodeGainMapCpu } from './readJpegGainMap/decodeGainMapCpu.js';
@@ -15,6 +17,9 @@ export type GainMapFormat = 'ultrahdr' | 'adobe-gainmap';
 /**
  * Read a JPEG buffer that contains embedded gain map (XMP + MPF) and return
  * decoded HDR as HdrifyImage. Supports UltraHDR/JPEG-R layout.
+ * Embedded ICC bytes are validated and retained, but are not applied to pixels.
+ * Pixel reconstruction retains the historical sRGB-base assumption; callers must
+ * handle non-sRGB base color conversion externally. metadata.iccColorManaged is false.
  *
  * @param buffer - Full JPEG-R file bytes
  * @returns HdrifyImage with linear HDR RGBA; metadata.format is 'ultrahdr' or 'adobe-gainmap'
@@ -37,6 +42,9 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
     format = fallback.format;
   }
 
+  const iccProfile = extractIccProfileFromJpeg(primaryImage);
+  if (iccProfile) readIccProfile(iccProfile);
+
   const sdrDecoded = jpegDecode(primaryImage, { useTArray: true, formatAsRGBA: true });
   const gainDecoded = jpegDecode(gainmapImage, { useTArray: true, formatAsRGBA: true });
 
@@ -56,6 +64,7 @@ export function readJpegGainMap(buffer: Uint8Array): HdrifyImage {
   result.metadata = {
     ...metadata,
     format,
+    ...(iccProfile && { iccProfile: new Uint8Array(iccProfile), iccColorManaged: false }),
   };
 
   ensureNonNegativeFinite(result.data);
