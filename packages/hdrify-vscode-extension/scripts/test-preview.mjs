@@ -32,7 +32,12 @@ const server = createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 let browser;
 try {
-  browser = await chromium.launch({ channel: 'chrome', headless: false, args: ['--disable-software-rasterizer'] });
+  browser = await chromium.launch({
+    channel: 'chrome',
+    headless: false,
+    ignoreDefaultArgs: ['--force-color-profile=srgb'],
+    args: ['--disable-software-rasterizer'],
+  });
   const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
   const errors = [];
   page.on('pageerror', (error) => errors.push(String(error)));
@@ -60,6 +65,7 @@ try {
     const gl = document.createElement('canvas').getContext('webgl2');
     const debug = gl?.getExtension('WEBGL_debug_renderer_info');
     return {
+      hdrDisplay: matchMedia('(dynamic-range: high)').matches,
       adapter: adapter
         ? {
             vendor: adapter.info.vendor,
@@ -74,6 +80,30 @@ try {
   assert.doesNotMatch(hardware.renderer, /swiftshader|llvmpipe|lavapipe/i);
   assert.ok(!hardware.adapter?.fallback);
   const results = [{ name: 'immediate ready response', status: await page.locator('#status').textContent() }];
+  const exposure = page.getByRole('slider', { name: 'Exposure in stops' });
+  assert.equal(await exposure.getAttribute('min'), '-10');
+  assert.equal(await exposure.getAttribute('max'), '10');
+  assert.equal(await exposure.inputValue(), '0');
+  const mode = await page.locator('canvas').getAttribute('data-display-mode');
+  assert.equal(mode, hardware.hdrDisplay && hardware.adapter ? 'hdr' : 'sdr');
+  assert.equal(await page.locator('canvas').getAttribute('data-tone-mapping'), mode === 'hdr' ? 'none' : 'neutral');
+  await page.getByRole('button', { name: 'Viewer options', exact: true }).click();
+  const mapper = page.getByRole('combobox').first();
+  await mapper.selectOption('none');
+  await page.waitForFunction(() => document.querySelector('canvas')?.dataset.toneMapping === 'none');
+  await page.getByRole('spinbutton').fill('1');
+  await page.waitForFunction(() => document.querySelector('.hdrify-viewer-exposure output')?.textContent === '+1 EV');
+  assert.equal(await exposure.inputValue(), '1');
+  await exposure.dblclick();
+  await page.waitForFunction(() => document.querySelector('.hdrify-viewer-exposure output')?.textContent === '0 EV');
+  if (!(await mapper.isVisible())) await page.getByRole('button', { name: 'Viewer options', exact: true }).click();
+  await mapper.selectOption('');
+  await page.waitForFunction(
+    (expected) => document.querySelector('canvas')?.dataset.toneMapping === expected,
+    mode === 'hdr' ? 'none' : 'neutral',
+  );
+  results.push({ name: 'shared EV controls and None/Automatic tone mapping', mode });
+
   const send = async (fileName, bytes) =>
     page.evaluate(
       ({ fileName, bytes }) => {
@@ -91,6 +121,15 @@ try {
     }, name);
     results.push({ name, status: await page.locator('#status').textContent() });
     if (name.includes('anim_gif')) assert.match(results.at(-1).status, /frames \(showing first\)/);
+  }
+
+  for (const reference of ['memorial.jxl', 'memorial_lossy.jxl', 'reference_gradient.jxl', 'reference_cie.jxl']) {
+    await send(reference, await readFile(new URL(`../../assets/${reference}`, root)));
+    await page.waitForFunction(
+      (file) => document.querySelector('#status')?.textContent.startsWith(`${file} ·`),
+      reference,
+    );
+    results.push({ name: reference, status: await page.locator('#status').textContent() });
   }
   await send('broken.jxl', [0xff, 0x0a]);
   await page.waitForSelector('#status.error');

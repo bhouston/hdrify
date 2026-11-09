@@ -35,14 +35,26 @@ A VS Code and Cursor extension that adds HDR image conversion and preview for EX
 
 To install from a VSIX, run `pnpm run package` in `packages/hdrify-vscode-extension`, then use **Extensions: Install from VSIX...** and select the generated `.vsix` file.
 
+For repeated local development installs, give each VSIX a unique version without changing the release manifest:
+
+```sh
+pnpm build
+pnpm exec vsce package 1.1.4-dev.20261108204156 --no-update-package-json --no-dependencies
+code --install-extension hdrify-vscode-extension-1.1.4-dev.20261108204156.vsix --force
+```
+
+Replace the timestamp suffix for each build. If VS Code requests an extension restart, reload the window to activate the new host code and recreate retained preview webviews.
+
 ## HDR Image Preview
 
-- **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
+- **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (−10 to +10 EV, initially 0), and the shared tone-mapper selector (Automatic, None, Neutral, AgX, ACES, Reinhard).
 - **JPEG**: For UltraHDR Jpeg files, right-click and choose **Open with HDR Image Preview**. Standard JPEGs open with the built-in viewer by default; use "Reopen Editor With → HDR Image Preview" to try opening as HDR (will show an error if not a gain-map JPEG).
 
 ![HDR Image Preview](https://raw.githubusercontent.com/bhouston/hdrify/main/packages/hdrify-vscode-extension/images/image-preview.webp)
 
 JPEG XL uses the shared React `ImageViewer` loader, also used by `<image-viewer>`. Both bare codestreams and containers are supported, with lossless or lossy pixels. Animated files show their first displayed frame; the status includes bit depth, encoding, color space and frame count.
+
+The exposure controls and tone mapping are the same React `ImageViewer` used by `<image-viewer>`: +1 EV doubles brightness, −1 EV halves it, and double-clicking the slider resets to 0 EV. **Automatic** selects **None** for true HDR through the native WebGPU backend when the display and browser support extended floating-point presentation; otherwise it selects **Neutral** on the SDR fallback. Explicit **None** skips tone mapping, but cannot make an SDR-only display produce HDR. If an already-open preview still shows the older linear exposure scale after installing a VSIX, run **Developer: Reload Window** to activate the installed extension and recreate its webviews.
 
 ## Convert HDR Image
 

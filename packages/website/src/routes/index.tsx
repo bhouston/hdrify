@@ -32,6 +32,10 @@ export const Route = createFileRoute('/')({
 });
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [
+  { value: `${import.meta.env.BASE_URL}examples/memorial.jxl`, label: 'Memorial (JPEG XL, lossless)' },
+  { value: `${import.meta.env.BASE_URL}examples/memorial_lossy.jxl`, label: 'Memorial (JPEG XL, lossy)' },
+  { value: `${import.meta.env.BASE_URL}examples/reference_gradient.jxl`, label: 'Reference Gradient (JPEG XL)' },
+  { value: `${import.meta.env.BASE_URL}examples/reference_cie.jxl`, label: 'Reference CIE (JPEG XL, Rec.2020)' },
   { value: `${import.meta.env.BASE_URL}examples/vardct_float.jxl`, label: 'Floating-point JPEG XL (lossy)' },
   { value: `${import.meta.env.BASE_URL}examples/blouberg_sunrise_2_1k.hdr`, label: 'Blouberg Sunrise 1k (HDR)' },
   { value: `${import.meta.env.BASE_URL}examples/blouberg_sunrise_2_1k.jpg`, label: 'Blouberg Sunrise 1k (Ultra HDR)' },
