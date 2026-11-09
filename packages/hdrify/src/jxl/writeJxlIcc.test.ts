@@ -24,21 +24,15 @@ for (const name of ['adobe_rgb', 'display_p3', 'prophoto', 'pq_icc']) {
     expect(header(bytes).icc).toEqual(iccProfile);
   });
 }
-it('retains raw RGB LUT samples and opaque tags without evaluating the profile', () => {
+it('retains RGB LUT profiles and opaque tags without evaluating the profile', () => {
   const parsed = readIccProfile(load('adobe_rgb'));
   parsed.tags.push({ signature: 'test', data: Uint8Array.from([1, 2, 3, 4, 5]) });
   parsed.tags.push({ signature: 'A2B0', data: new Uint8Array(12) });
   const iccProfile = writeIccProfile(parsed);
-  const data = samples();
-  data[0] = -0.2;
-  data[1] = 2;
-  // Existing decoder's documented unsupported-profile float fallback preserves raw samples.
-  const decoded = readJxl(writeJxlEncoded({ width: 8, height: 8, data, iccProfile }, { bitDepth: 'float32' }));
-  // readJxl sanitizes negatives at its public boundary; positive HDR values and alpha remain exact.
-  expect(decoded.data[1]).toBe(2);
-  expect(decoded.data.slice(2)).toEqual(data.slice(2));
-  expect(decoded.metadata?.iccProfile).toEqual(iccProfile);
-  expect(decoded.metadata?.iccColorManaged).toBe(false);
+  const bytes = writeJxlEncoded({ width: 8, height: 8, data: samples(), iccProfile }, { bitDepth: 'float32' });
+  expect(header(bytes).icc).toEqual(iccProfile);
+  // The decoder cannot colour-manage LUT profiles and rejects them instead of guessing.
+  expect(() => readJxl(bytes)).toThrow('LUT-based');
 });
 it('transports arbitrary RGB, gray, CMYK profiles with opaque tags and header platform variants', () => {
   const parsed = readIccProfile(load('adobe_rgb'));

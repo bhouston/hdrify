@@ -36,9 +36,6 @@ interface ColorTransform {
   decode: ((v: number) => number)[];
   encode: ((v: number) => number)[];
   hlgLuminances?: number[];
-  iccManaged?: boolean;
-  /** Why an embedded ICC profile fell back to sRGB, when it did. */
-  iccUnsupported?: string;
 }
 const cache = new WeakMap<JxlImageHeader, ColorTransform>();
 const signedPower = (v: number, power: number) => Math.sign(v) * Math.abs(v) ** power;
@@ -93,8 +90,9 @@ function curves(ce: JxlColorEncoding, intensity: number): [(v: number) => number
   }
 }
 
-function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding; unsupported?: string } {
-  if (!h.icc) return {};
+/** Matrix/TRC (RGB or gray) or recognized cICP interpretation of the embedded profile; throws otherwise. */
+function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColorEncoding } {
+  if (!h.icc) throw new Error('JXL: colour encoding requires an ICC profile but none was read');
   const p = readIccProfile(h.icc),
     cicp = readIccCicp(p);
   if (cicp && cicp.matrix === 0 && cicp.fullRange) {
@@ -110,31 +108,22 @@ function iccTransform(h: JxlImageHeader): { rgb?: IccRgbTransform; ce?: JxlColor
   if (rgb) return { rgb };
   const sig = (o: number) => String.fromCharCode(...p.header.subarray(o, o + 4)).trim();
   const lut = p.tags.some((t) => /^(A2B|B2A|D2B|B2D)/.test(t.signature));
-  return {
-    unsupported: `'${sig(12)}' class, '${sig(16)}' colour space, '${sig(20)}' PCS${lut ? ', LUT-based' : ''}`,
-  };
+  throw new Error(
+    `JXL: embedded ICC profile cannot be colour-managed ('${sig(12)}' class, '${sig(16)}' colour space, ` +
+      `'${sig(20)}' PCS${lut ? ', LUT-based' : ''}); only matrix/TRC RGB, gray TRC and recognized cICP profiles ` +
+      'are supported',
+  );
 }
 
 function transform(h: JxlImageHeader): ColorTransform {
   const existing = cache.get(h);
   if (existing) return existing;
   let ce = h.colorEncoding,
-    rgb: IccRgbTransform | undefined,
-    iccManaged: boolean | undefined,
-    iccUnsupported: string | undefined;
+    rgb: IccRgbTransform | undefined;
   if (ce.wantIcc) {
     const icc = iccTransform(h);
     rgb = icc.rgb;
     ce = icc.ce ?? ce;
-    iccManaged = !!(icc.rgb || icc.ce);
-    iccUnsupported = icc.unsupported;
-    if (!iccManaged)
-      ce = {
-        ...ce,
-        primaries: 'srgb',
-        whitePoint: 'd65',
-        transferFunction: h.bitDepth.floatSample ? 'linear' : 'srgb',
-      };
   }
   const ch = jxlChromaticities(ce);
   let toSrgb: Mat3,
@@ -179,8 +168,6 @@ function transform(h: JxlImageHeader): ColorTransform {
     fromSrgb: invert3(toSrgb),
     decode,
     encode,
-    iccManaged,
-    iccUnsupported,
     ...(ce.transferFunction === 'hlg' && { hlgLuminances: chromaticitiesToRgbXyzMatrix(ch)[1] }),
   };
   cache.set(h, result);
@@ -291,15 +278,9 @@ export function convertOutputColor(h: JxlImageHeader, out: Float32Array, linear:
   return t.space;
 }
 
-/** Throw when an embedded ICC profile cannot be evaluated (ReadJxlOptions.unsupportedIcc = 'throw'). */
+/** Throw early (before pixel decoding) when an embedded ICC profile cannot be colour-managed. */
 export function assertJxlIccSupported(h: JxlImageHeader): void {
-  if (!h.colorEncoding.wantIcc) return;
-  const reason = transform(h).iccUnsupported;
-  if (reason)
-    throw new Error(
-      `JXL: embedded ICC profile cannot be colour-managed (${reason}); only matrix/TRC RGB, gray TRC and ` +
-        'recognized cICP profiles are supported',
-    );
+  if (h.colorEncoding.wantIcc) transform(h);
 }
 
 export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
@@ -307,6 +288,5 @@ export function jxlColorMetadata(h: JxlImageHeader): Record<string, unknown> {
     ...(!h.colorEncoding.wantIcc && { originalChromaticities: jxlChromaticities(h.colorEncoding) }),
     linearReferenceWhiteNits: h.toneMapping.intensityTarget,
     ...(h.colorEncoding.transferFunction === 'hlg' && { hlgLight: 'display', hlgOotf: 'libjxl intensity-target OOTF' }),
-    ...(h.colorEncoding.wantIcc && { iccColorManaged: transform(h).iccManaged }),
   };
 }

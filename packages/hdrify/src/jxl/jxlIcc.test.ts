@@ -8,7 +8,7 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
     for (const d of [0, 1]) {
       it(`${name} distance ${d}`, () => {
         const path = `color/${name}-d${d}`;
-        const img = readJxl(fs.readFileSync(new URL(`${path}.jxl`, ASSETS)), { unsupportedIcc: 'throw' });
+        const img = readJxl(fs.readFileSync(new URL(`${path}.jxl`, ASSETS)));
         const ref = readPfm(`${path}.ref.pfm`);
         const m = getLinearToLinearMatrix(img.linearColorSpace, 'linear-rec2020');
         if (m) applyMatrix3ToFloat32Array(img.data, m);
@@ -19,28 +19,9 @@ describe('JPEG XL colour corpus against djxl linear Rec.2020 float output', () =
           err = Math.max(err, Math.abs(expected - img.data[Math.floor(i / 3) * 4 + (i % 3)]));
         }
         expect(err).toBeLessThan(0.00015);
-        if (img.metadata?.iccProfile) expect(img.metadata.iccColorManaged).toBe(true);
         expect(img.metadata?.linearReferenceWhiteNits).toBe(img.metadata?.intensityTarget);
       });
     }
-});
-
-it('marks unsupported LUT profiles and applies the documented integer-sRGB fallback', async () => {
-  const { readIccProfile, writeIccProfile } = await import('hdrify-icc');
-  const { JxlBitReader } = await import('./jxlBitReader.js');
-  const { readImageHeader } = await import('./jxlImageHeader.js');
-  const { extractCodestream } = await import('./jxlContainer.js');
-  const { convertOutputColor, jxlColorMetadata } = await import('./jxlColor.js');
-  const file = fs.readFileSync(new URL('color/adobe_rgb-d0.jxl', ASSETS));
-  const h = readImageHeader(new JxlBitReader(extractCodestream(file).codestream));
-  const p = readIccProfile(h.icc!);
-  p.tags.push({ signature: 'A2B0', data: new Uint8Array(12) });
-  h.icc = writeIccProfile(p);
-  const rgba = new Float32Array([0.5, 0.5, 0.5, 0.25]);
-  expect(convertOutputColor(h, rgba, false)).toBe('linear-rec709');
-  expect(rgba[0]).toBeCloseTo(0.21404114, 7);
-  expect(rgba[3]).toBe(0.25);
-  expect(jxlColorMetadata(h).iccColorManaged).toBe(false);
 });
 
 it('rejects singular embedded ICC matrices instead of returning nonfinite colour pixels', async () => {
@@ -92,7 +73,6 @@ it('preserves native linear float samples including nonfinite neighbours and sig
 it('retains an embedded ICC profile without reporting placeholder enum chromaticities', () => {
   const image = readJxl(fs.readFileSync(new URL('color/adobe_rgb-d0.jxl', ASSETS)));
   expect(image.metadata?.iccProfile).toBeInstanceOf(Uint8Array);
-  expect(image.metadata?.iccColorManaged).toBe(true);
   expect(image.metadata).not.toHaveProperty('originalChromaticities');
 });
 
@@ -127,49 +107,39 @@ const withProfile = async (name: string, edit: (p: import('hdrify-icc').IccProfi
   return h;
 };
 
-describe("unsupportedIcc: 'fallback' (default) vs 'throw'", () => {
-  it('LUT RGB profile: sRGB fallback by default, descriptive error with throw', async () => {
+describe('embedded ICC profiles that cannot be colour-managed throw', () => {
+  it('LUT RGB profile', async () => {
     const { readIccProfile, writeIccProfile } = await import('hdrify-icc');
     const { writeJxlEncoded } = await import('./writeJxl.js');
+    const { readJxlFrames } = await import('./readJxl.js');
     const p = readIccProfile(new Uint8Array(fs.readFileSync(new URL('color/adobe_rgb.icc', ASSETS))));
     p.tags.push({ signature: 'A2B0', data: new Uint8Array(12) });
     const data = Float32Array.from({ length: 16 }, (_, i) => (i % 4 === 3 ? 1 : 0.5));
     const file = writeJxlEncoded({ width: 2, height: 2, data, iccProfile: writeIccProfile(p) });
-    const fallback = readJxl(file, { unsupportedIcc: 'fallback' });
-    expect(fallback.metadata?.iccColorManaged).toBe(false);
-    expect(fallback.linearColorSpace).toBe('linear-rec709');
-    expect(readJxl(file).data).toEqual(fallback.data);
-    const { readJxlFrames } = await import('./readJxl.js');
     for (const read of [readJxl, readJxlFrames])
-      expect(() => read(file, { unsupportedIcc: 'throw' })).toThrow(
+      expect(() => read(file)).toThrow(
         "JXL: embedded ICC profile cannot be colour-managed ('mntr' class, 'RGB' colour space, 'XYZ' PCS, LUT-based)",
       );
   });
 
-  it('CMYK profile: sRGB fallback by default, descriptive error with throw', async () => {
-    const { assertJxlIccSupported, convertOutputColor, jxlColorMetadata } = await import('./jxlColor.js');
+  it('CMYK profile', async () => {
+    const { assertJxlIccSupported, convertOutputColor } = await import('./jxlColor.js');
     const h = await withProfile('adobe_rgb-d0', (p) => {
       p.header.set(new TextEncoder().encode('prtrCMYKLab '), 12);
       p.tags.push({ signature: 'A2B0', data: new Uint8Array(12) });
     });
-    const rgba = new Float32Array([0.5, 0.5, 0.5, 1]);
-    expect(convertOutputColor(h, rgba, false)).toBe('linear-rec709');
-    expect(rgba[0]).toBeCloseTo(0.21404114, 7);
-    expect(jxlColorMetadata(h).iccColorManaged).toBe(false);
-    expect(() => assertJxlIccSupported(h)).toThrow("('prtr' class, 'CMYK' colour space, 'Lab' PCS, LUT-based)");
+    const message = "('prtr' class, 'CMYK' colour space, 'Lab' PCS, LUT-based)";
+    expect(() => assertJxlIccSupported(h)).toThrow(message);
+    expect(() => convertOutputColor(h, new Float32Array(4), false)).toThrow(message);
   });
 
-  it('gray kTRC profile is colour-managed in both modes; LUT gray falls back or throws', async () => {
-    const file = fs.readFileSync(new URL('color/gray_icc-d0.jxl', ASSETS));
-    const managed = readJxl(file);
-    expect(managed.metadata?.iccColorManaged).toBe(true);
-    expect(readJxl(file, { unsupportedIcc: 'throw' }).data).toEqual(managed.data);
+  it('gray kTRC profiles are colour-managed; LUT gray profiles throw', async () => {
+    const managed = readJxl(fs.readFileSync(new URL('color/gray_icc-d0.jxl', ASSETS)));
     // kTRC gamma 1.8 applied to the first sample 1/33, with R = G = B.
     expect(managed.data[0]).toBeCloseTo((1 / 33) ** 1.8, 4);
     expect(managed.data[1]).toBeCloseTo(managed.data[0], 4);
-    const { assertJxlIccSupported, jxlColorMetadata } = await import('./jxlColor.js');
+    const { assertJxlIccSupported } = await import('./jxlColor.js');
     const lut = await withProfile('gray_icc-d0', (p) => p.tags.push({ signature: 'A2B0', data: new Uint8Array(12) }));
-    expect(jxlColorMetadata(lut).iccColorManaged).toBe(false);
     expect(() => assertJxlIccSupported(lut)).toThrow("'GRAY' colour space, 'XYZ' PCS, LUT-based");
   });
 });

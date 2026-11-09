@@ -393,15 +393,6 @@ export interface ReadJxlOptions {
   /** Composite spot-colour channels onto RGB (default false: expose the planes only). */
   renderSpotColors?: boolean;
   /**
-   * What to do with an embedded ICC profile that cannot be evaluated (LUT-based profiles, CMYK, Lab and
-   * other non-RGB/gray colour spaces). Matrix/TRC RGB, gray TRC and recognized cICP profiles are always
-   * colour-managed.
-   * - `'fallback'` (default): decode as sRGB primaries (linear transfer for float samples, sRGB transfer
-   *   for integer samples) and report `metadata.iccColorManaged = false`. Colours may be wrong.
-   * - `'throw'`: throw an error naming the profile class and colour space before decoding pixels.
-   */
-  unsupportedIcc?: 'fallback' | 'throw';
-  /**
    * Largest width x height accepted for the image, preview and each frame (including LF and
    * reference frames), checked before any pixel buffer is allocated. Larger codestreams throw
    * `JXL: image exceeds maxPixels`. Default 2^28 (16384 x 16384); `Infinity` disables the limit.
@@ -443,7 +434,7 @@ function openJxl(data: Uint8Array, options: ReadJxlOptions) {
   const h = readImageHeader(br);
   checkPixels(h.width, h.height, maxPixels);
   if (h.preview) checkPixels(h.preview.width, h.preview.height, maxPixels);
-  if (options.unsupportedIcc === 'throw') assertJxlIccSupported(h);
+  assertJxlIccSupported(h);
   // A preview is an independent frame and must not populate references or advance noise counters.
   const start = h.preview ? skipFrame(codestream, br.byteOffset, h, true).end : br.byteOffset;
   return { codestream, isContainer, h, start };
@@ -565,6 +556,7 @@ function displayedImage(
 /**
  * Decode every coalesced displayed frame into linear-light RGBA, with duration in seconds.
  * Each frame owns its pixel/extra-channel buffers. This eager API retains the complete animation.
+ * Embedded ICC profiles that cannot be colour-managed throw, as in readJxl.
  */
 export function readJxlFrames(
   data: Uint8Array,
@@ -589,9 +581,9 @@ export function readJxlFrames(
  * PQ uses 1.0 = the header intensityTarget in nits, matching djxl float linear output.
  * HLG returns display light after libjxl's RGB-dependent intensity-target OOTF.
  * Custom primaries and non-D65 white points are Bradford-adapted to linear Rec.2020.
- * RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are managed; unsupported LUT/CMYK
- * profiles silently use an sRGB fallback with metadata.iccColorManaged = false, unless
- * `unsupportedIcc: 'throw'` is passed. originalChromaticities is
+ * Embedded RGB matrix/TRC, gray TRC and recognized HDR cICP ICC profiles are colour-managed; any other
+ * profile (LUT-based RGB or gray, CMYK, Lab, ...) throws an error naming its class, colour space and
+ * PCS before pixels are decoded. originalChromaticities is
  * supplied for enum/custom encodings; embedded ICC sources retain metadata.iccProfile instead.
  * XYB frames used for composition or references are converted to the original primaries/transfer
  * encoding before blending. The coalesced canvas is linearized for public output.
