@@ -100,21 +100,27 @@ export interface JxlBoxMetadata {
 
 type BrotliDecompress = (data: Uint8Array) => Uint8Array;
 
+/** Largest decompressed `brob` payload accepted (64 MiB), bounding Brotli expansion of crafted boxes. */
+const MAX_BROB_OUTPUT = 1 << 26;
+
 /**
  * Synchronous Brotli decoder from Node's zlib, looked up without a static import so browser bundles
  * never reference `node:zlib`. Undefined outside Node (browsers only offer asynchronous streams).
  */
 function nodeBrotliDecompress(): BrotliDecompress | undefined {
-  type ZlibModule = { brotliDecompressSync?: BrotliDecompress };
+  type ZlibModule = { brotliDecompressSync?: (data: Uint8Array, opts: { maxOutputLength: number }) => Uint8Array };
   const proc = (globalThis as { process?: { getBuiltinModule?: (id: 'node:zlib') => ZlibModule | undefined } }).process;
-  return proc?.getBuiltinModule?.('node:zlib')?.brotliDecompressSync;
+  const decompress = proc?.getBuiltinModule?.('node:zlib')?.brotliDecompressSync;
+  return decompress && ((data) => decompress(data, { maxOutputLength: MAX_BROB_OUTPUT }));
 }
 
 /**
  * Collect EXIF (`Exif`) and XMP (`xml `) metadata from container boxes, using the first box of each kind.
  * Brotli-compressed `brob` boxes wrapping `Exif` or `xml ` are decompressed with Node's
  * `zlib.brotliDecompressSync`; where that is unavailable (browsers), `brob` boxes are skipped.
- * An `Exif` box whose TIFF header offset points outside the box is ignored.
+ * Invalid metadata never fails the image decode: a `brob` box that is corrupt or would decompress
+ * past 64 MiB (the decoder throws) is skipped, and an `Exif` box whose TIFF header offset points
+ * outside the box is ignored.
  *
  * @param boxes - Non-codestream boxes from {@link extractCodestream}.
  * @param brotliDecompress - Brotli decoder for `brob` boxes (default: Node zlib when available; `null` skips them).
@@ -130,7 +136,11 @@ export function readJxlBoxMetadata(
       if (data.length < 4 || !brotliDecompress) continue;
       type = boxType(data, 0);
       if (type !== 'Exif' && type !== 'xml ') continue;
-      data = new Uint8Array(brotliDecompress(data.subarray(4)));
+      try {
+        data = new Uint8Array(brotliDecompress(data.subarray(4)));
+      } catch {
+        continue; // corrupt or oversize (maxOutputLength) brob box
+      }
     }
     if (type === 'Exif' && !out.exif && data.length >= 4) {
       const offset = new DataView(data.buffer, data.byteOffset, 4).getUint32(0);

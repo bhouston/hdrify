@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import * as zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { extractCodestream, isJxl, readJxlBoxMetadata } from './jxlContainer.js';
@@ -14,6 +15,9 @@ const be32 = (v: number) => [v >>> 24, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 
 const box = (type: string, body: number[]) => [...be32(body.length + 8), ...ascii(type), ...body];
 const ftyp = box('ftyp', [...ascii('jxl '), 0, 0, 0, 0, ...ascii('jxl ')]);
 const exifBox = (offset: number) => ({ type: 'Exif', data: new Uint8Array([...be32(offset), 9, 9, 0x4d, 0x4d]) });
+const reject = () => {
+  throw new RangeError('Cannot create a Buffer larger than maxOutputLength');
+};
 const file = (...parts: number[][]) => new Uint8Array([...SIG, ...ftyp, ...parts.flat()]);
 
 describe('extractCodestream', () => {
@@ -95,6 +99,17 @@ describe('EXIF/XMP container boxes', () => {
   it('skips brob boxes without a Brotli decoder (browsers)', () => {
     const { boxes } = extractCodestream(load('features/metadata_brob.jxl'));
     expect(readJxlBoxMetadata(boxes, null)).toEqual({});
+  });
+
+  it('skips brob boxes the Brotli decoder rejects (corrupt or oversize)', () => {
+    const { boxes } = extractCodestream(load('features/metadata_brob.jxl'));
+    expect(readJxlBoxMetadata(boxes, reject)).toEqual({});
+  });
+
+  it('caps Node Brotli output at 64 MiB', () => {
+    const bomb = zlib.brotliCompressSync(new Uint8Array((1 << 26) + 1));
+    const brob = new Uint8Array([...ascii('Exif'), ...bomb]);
+    expect(readJxlBoxMetadata([{ type: 'brob', data: brob }])).toEqual({});
   });
 
   it('honours the Exif TIFF header offset and ignores out-of-range offsets', () => {
