@@ -2,7 +2,7 @@
   "name": "hdrify-vscode-extension",
   "displayName": "Hdrify Image Viewer",
   "version": "1.1.3",
-  "description": "Preview, convert EXR, HDR and UltraJPG images.",
+  "description": "Preview EXR, HDR, JPEG XL and UltraJPG images; convert EXR, HDR and UltraJPG.",
   "categories": [
     "Other",
     "Visualization"
@@ -13,6 +13,8 @@
     "gainmap",
     "hdr",
     "image",
+    "jpeg-xl",
+    "jxl",
     "preview",
     "ultrahdr"
   ],
@@ -34,18 +36,21 @@
   "main": "./dist/extension.js",
   "scripts": {
     "compile": "tsc -p .",
-    "tsc": "tsc --noEmit",
+    "tsc": "tsc --noEmit && tsc -p tsconfig.preview.json",
     "build:preview": "node scripts/build-preview.js",
     "build:extension": "node scripts/build-extension.js",
     "build": "pnpm run build:preview && pnpm run build:extension",
     "watch": "tsc -watch -p .",
-    "package": "pnpm run build && vsce package --no-dependencies"
+    "package": "pnpm run build && vsce package --no-dependencies",
+    "test:preview": "node scripts/test-preview.mjs"
   },
   "dependencies": {
     "hdrify": "workspace:*",
     "hdrify-react": "workspace:*"
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.27.3",
@@ -116,6 +121,12 @@
           },
           {
             "filenamePattern": "*.hdr"
+          },
+          {
+            "filenamePattern": "*.jxl"
+          },
+          {
+            "filenamePattern": "*.JXL"
           }
         ],
         "priority": "default"

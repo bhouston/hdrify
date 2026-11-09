@@ -1,0 +1,49 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+/* The shared React viewer follows the editor theme. */
+.preview-viewer {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  --hdrify-viewer-background: var(--vscode-editor-background);
+  --hdrify-viewer-foreground: var(--vscode-foreground);
+  --hdrify-viewer-muted-foreground: var(--vscode-descriptionForeground);
+  --hdrify-viewer-popover: var(--vscode-editorWidget-background);
+  --hdrify-viewer-border: var(--vscode-widget-border, var(--vscode-panel-border));
+  --hdrify-viewer-input: var(--vscode-input-background);
+  --hdrify-viewer-primary: var(--vscode-button-background);
+  --hdrify-viewer-ring: var(--vscode-focusBorder);
+  --hdrify-viewer-destructive: var(--vscode-errorForeground);
+}
+#status {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--vscode-panel-border, transparent);
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+#status.error {
+  color: var(--vscode-errorForeground);
+}
+
+#root,
+.preview-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}

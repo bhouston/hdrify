@@ -3,7 +3,7 @@
 src/**
 scripts/**
 .gitignore
-tsconfig.json
+tsconfig*.json
 **/*.map
 **/*.ts
 node_modules/**

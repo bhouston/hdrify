@@ -15,7 +15,7 @@
 
 # HDRify VS Code Extension
 
-> Preview and convert EXR, HDR, and Ultra HDR images in VS Code.
+> Preview EXR, HDR, JPEG XL, and Ultra HDR images in VS Code. Convert EXR, HDR, and Ultra HDR images.
 
 - 👁️ Built-in HDR Image Preview
 - 🎚️ Exposure and Tone Mapper Controls
@@ -37,10 +37,12 @@ To install from a VSIX, run `pnpm run package` in `packages/hdrify-vscode-extens
 
 ## HDR Image Preview
 
-- **EXR and HDR**: Click any `.exr` or `.hdr` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
+- **EXR, HDR and JPEG XL**: Click any `.exr`, `.hdr` or `.jxl` file in the Explorer to open it with the HDR Image Preview (default action). The preview shows metadata (width, height, file size, pixels, internal format), an exposure slider (0.1–10), and a tonemapper selector (Neutral, AgX, ACES).
 - **JPEG**: For UltraHDR Jpeg files, right-click and choose **Open with HDR Image Preview**. Standard JPEGs open with the built-in viewer by default; use "Reopen Editor With → HDR Image Preview" to try opening as HDR (will show an error if not a gain-map JPEG).
 
 ![HDR Image Preview](https://raw.githubusercontent.com/bhouston/hdrify/main/packages/hdrify-vscode-extension/images/image-preview.webp)
+
+JPEG XL uses the shared React `ImageViewer` loader, also used by `<image-viewer>`. Both bare codestreams and containers are supported, with lossless or lossy pixels. Animated files show their first displayed frame; the status includes bit depth, encoding, color space and frame count.
 
 ## Convert HDR Image
 
@@ -57,6 +59,7 @@ Right-click an EXR, HDR, or UltraHDR Jpeg in the Explorer. A **Convert HDR Image
 | Format        | Extension       | Preview  | Convert |
 | ------------- | --------------- | -------- | ------- |
 | OpenEXR       | `.exr`          | Default  | ✓       |
+| JPEG XL       | `.jxl`          | Default  | —       |
 | Radiance HDR  | `.hdr`          | Default  | ✓       |
 | UltraHDR Jpeg | `.jpg`, `.jpeg` | Optional | ✓       |
 

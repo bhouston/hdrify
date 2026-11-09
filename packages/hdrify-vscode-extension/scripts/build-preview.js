@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 /**
  * Bundle the webview preview script with esbuild.
- * Includes hdrify's applyToneMapping for canvas rendering.
+ * Includes the shared React ImageViewer and its content-based decoder.
  */
 import * as esbuild from 'esbuild';
 
@@ -18,7 +18,9 @@ if (!existsSync(outDir)) {
 }
 
 await esbuild.build({
-  entryPoints: [join(root, 'src', 'preview', 'preview.ts')],
+  entryPoints: [join(root, 'src', 'preview', 'preview.tsx')],
+  jsx: 'automatic',
+  platform: 'browser',
   bundle: true,
   outfile: outFile,
   format: 'iife',
