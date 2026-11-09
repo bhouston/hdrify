@@ -1,6 +1,6 @@
 ---
 title: Command line
-sidebar_position: 5
+sidebar_label: CLI reference
 ---
 
 # Command line
@@ -12,7 +12,7 @@ npm install --global hdrify-cli
 hdrify --help
 ```
 
-For every command, argument, option, default, and allowed value, see the [CLI reference](/docs/cli/reference), generated with clidoc from the actual command definitions. This guide focuses on practical workflows.
+Start with the workflows below, then browse the command pages in this section for every argument, option, default, and allowed value. The [command overview](/docs/cli/reference) and individual references are generated from the actual command definitions.
 
 ## Convert HDR assets
 
@@ -26,7 +26,7 @@ hdrify convert environment.exr adobe.jpg --format adobe-gainmap
 hdrify convert environment.jpg reconstructed.exr
 ```
 
-JPEG output defaults to Ultra HDR / JPEG-R with an embedded gain map. JPEG input must contain a supported gain map; ordinary SDR JPEG input is not supported. HDR inputs are `.exr`, `.hdr`, `.jpg`, and `.jpeg`.
+JPEG output defaults to Ultra HDR / JPEG-R with an embedded gain map. JPEG input must contain a supported gain map; ordinary SDR JPEG input is not supported. HDR inputs are `.exr`, `.hdr`, `.jxl`, `.jpg`, and `.jpeg`.
 
 ## Create SDR previews
 

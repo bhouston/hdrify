@@ -30,8 +30,6 @@ CLI for converting and inspecting EXR, HDR, and JPEG gain map (Ultra HDR / Adobe
 
 Try the **[online demo](https://hdrify.ben3d.ca/demo/)** — HDR, EXR, and Ultra HDR viewer and converter; try it in your browser without installing the CLI.
 
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
-
 ## Installation
 
 ```sh
@@ -48,7 +46,11 @@ hdrify info input.exr
 hdrify reference gradient.exr --type gradient
 ```
 
-See the [CLI guide](https://hdrify.ben3d.ca/docs/cli/) for recipes and the [command reference](https://hdrify.ben3d.ca/docs/cli/reference/) for every option. Run `hdrify convert --help` for help in your terminal.
+Run `hdrify convert --help` for help in your terminal.
+
+## Documentation
+
+Full documentation for the CLI is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/cli/), with practical recipes and generated command references in one section.
 
 ## Contribution
 

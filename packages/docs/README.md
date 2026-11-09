@@ -17,6 +17,10 @@ Run the documentation scripts from this package or use the root workspace comman
 
 ## CLI documentation
 
-The `@clidoc/docusaurus` plugin generates `/docs/cli/reference/` and its command pages from the OpenCLI document produced by `hdrify docgen`. The documentation prebuild and predev scripts export that document from the built CLI to `.generated/hdrify.opencli.json`; the plugin writes ignored Markdown pages in `docs/generated-cli/` before Docusaurus loads the sidebar. Keep command descriptions/options in `packages/cli/src/commands/`, and practical recipes in `docs/cli.md`.
+The Command line guide (`docs/cli.md`) is the landing page for the CLI reference sidebar category at `/docs/cli/`. The `@clidoc/docusaurus` plugin generates `/docs/cli/reference/` and its command pages from the OpenCLI document produced by `hdrify docgen`. The documentation prebuild and predev scripts export that document from the built CLI to `.generated/hdrify.opencli.json`; the plugin writes ignored Markdown pages in `docs/generated-cli/` before Docusaurus loads the sidebar. Keep command descriptions/options in `packages/cli/src/commands/`, and practical recipes in `docs/cli.md`.
 
 From the repository root, run `pnpm docs:build` for production output or `pnpm docs:dev` for documentation development. Both build the CLI and its dependencies first. For direct package commands, build the CLI first with `pnpm --filter hdrify-cli... build`.
+
+## Documentation
+
+Read the published guides and API references [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/).

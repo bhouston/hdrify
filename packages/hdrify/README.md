@@ -28,8 +28,6 @@ Universal EXR, HDR, and gain map image library for Node.js and browsers. Read an
 
 **Related packages:** [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool) · [hdrify-react](https://www.npmjs.com/package/hdrify-react) (React component)
 
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
-
 ## Capabilities
 
 - Read and write RGB EXR files (none, RLE, ZIPS, ZIP, PIZ, PXR24, B44, B44A, DWAA and DWAB compression)
@@ -144,6 +142,8 @@ const flipped = flipImage(image, { y: -1 });
 API reference: [`flipImage`](https://hdrify.ben3d.ca/docs/api/core/functions/flipImage/).
 
 ## Documentation
+
+Full documentation for the library is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/).
 
 [Code examples](https://hdrify.ben3d.ca/docs/examples/) · [Formats and color](https://hdrify.ben3d.ca/docs/formats/) · [Full API reference](https://hdrify.ben3d.ca/docs/api/core/)
 

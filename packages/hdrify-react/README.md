@@ -30,8 +30,6 @@ React component for displaying HDR images from [hdrify](https://www.npmjs.com/pa
 
 Try the **[online demo](https://hdrify.ben3d.ca/demo/)** — HDR, EXR, and Ultra HDR viewer and converter built with this component; try it in your browser.
 
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
-
 ## Installation
 
 ```sh
@@ -70,7 +68,11 @@ The same viewer is available as a web component for plain HTML and other framewo
 
 API reference: [`ImageViewer`](https://hdrify.ben3d.ca/docs/api/react/functions/ImageViewer/) · [`ImageViewerProps`](https://hdrify.ben3d.ca/docs/api/react/interfaces/ImageViewerProps/) · [`ImageViewerHandle`](https://hdrify.ben3d.ca/docs/api/react/interfaces/ImageViewerHandle/).
 
-With a bundler, `import 'hdrify-react/element'` to register the web component. See the [React guide](https://hdrify.ben3d.ca/docs/react/) and [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for loading, capture, attributes, events, and theming.
+With a bundler, `import 'hdrify-react/element'` to register the web component.
+
+## Documentation
+
+Full documentation for the React components is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/react/). See the [React guide](https://hdrify.ben3d.ca/docs/react/) and [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for loading, capture, attributes, events, and theming.
 
 ## Contribution
 

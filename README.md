@@ -28,8 +28,6 @@ HDRify reads and writes HDR (Radiance RGBE), EXR (OpenEXR), and JPEG with gain m
 
 Every reader returns a shared `HdrifyImage` (float RGBA pixels) and every writer accepts it, so converting between formats is a read followed by a write.
 
-[Read the Docs to Learn More](https://hdrify.ben3d.ca/).
-
 ## Packages
 
 | Package                                                     | Version (click for changelogs)                                                                                                                                          |
@@ -66,7 +64,9 @@ Read and write OpenEXR, Radiance HDR, JPEG XL, and JPEG gain maps with one float
 - **Terminal:** Install [hdrify-cli](packages/cli) and run `hdrify convert input.exr output.jpg`.
 - **VS Code and Cursor:** [Preview and convert HDR images in your editor](packages/hdrify-vscode-extension).
 
-See the [getting started guide](https://hdrify.ben3d.ca/docs/), [supported formats](https://hdrify.ben3d.ca/docs/formats/), and [API reference](https://hdrify.ben3d.ca/docs/api/core/) for more.
+## Documentation
+
+Full documentation is available [on the HDRify documentation website](https://hdrify.ben3d.ca/docs/). See the [getting started guide](https://hdrify.ben3d.ca/docs/), [supported formats](https://hdrify.ben3d.ca/docs/formats/), and [API reference](https://hdrify.ben3d.ca/docs/api/core/) for more.
 
 ## Acknowledgements
 

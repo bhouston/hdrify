@@ -125,7 +125,7 @@ const config: Config = {
       items: [
         { to: '/docs/', label: 'Docs', position: 'left' },
         { to: '/docs/api/core/', label: 'API', position: 'left' },
-        { to: '/docs/cli/reference/', label: 'CLI', position: 'left' },
+        { to: '/docs/cli/', label: 'CLI', position: 'left' },
         { to: '/docs/image-viewer/', label: '<image-viewer>', position: 'left' },
         {
           href: `pathname://${baseUrl}demo/`,

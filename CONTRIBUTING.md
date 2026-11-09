@@ -40,7 +40,7 @@ The Husky pre-commit hook formats and lints staged files (`oxfmt`, `oxlint --fix
 
 ## Documentation
 
-Keep READMEs focused on what a package offers, installation, a few key examples, and license/acknowledgement/author credits. Link examples to the relevant function or component pages at https://hdrify.ben3d.ca instead of listing every parameter or advanced feature.
+Keep READMEs focused on what a package offers, installation, a few key examples, and license/acknowledgement/author credits. Place a Documentation section after installation and the main usage examples, linking to the relevant guide on the documentation website; keep the docs badge. Link examples to the relevant function or component pages at https://hdrify.ben3d.ca instead of listing every parameter or advanced feature.
 
 Document function behavior, options, defaults, and limitations in public JSDoc/TSDoc comments; the website generates API references from those comments. Put longer recipes and conceptual explanations in `packages/docs/docs/`. Do not edit generated API or CLI reference pages directly.
 
