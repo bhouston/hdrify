@@ -227,19 +227,26 @@ export class JxlEncEntropyCode {
    * MA trees and context maps keep the prefix-only build() path.
    */
   static buildModular(numContexts: number, streams: TokenStream[], allowAns = false): JxlEncEntropyCode {
-    const histogram = (count: number, encoded?: Map<TokenStream, LzStream>): Uint32Array[] => {
-      const hist = Array.from({ length: count }, () => new Uint32Array(224 + JXL_ENC_NUM_TOKENS));
-      for (const original of streams) {
-        const lz = encoded?.get(original);
-        const { contexts, values } = lz ?? original;
-        for (let i = 0; i < values.length; i++)
-          hist[contexts[i]!]![hybridUintToken(values[i]!) + (lz?.offsets[i] ?? 0)]!++;
-      }
-      return hist;
+    const newHist = (count: number): Uint32Array[] =>
+      Array.from({ length: count }, () => new Uint32Array(224 + JXL_ENC_NUM_TOKENS));
+    const add = (hist: Uint32Array[], { contexts, values }: TokenStream, offsets?: ArrayLike<number>): void => {
+      for (let i = 0; i < values.length; i++) hist[contexts[i]!]![hybridUintToken(values[i]!) + (offsets?.[i] ?? 0)]!++;
     };
-    const rawHist = histogram(numContexts);
-    const lzStreams = new Map(streams.map((stream) => [stream, lz77Tokens(stream, numContexts)]));
-    const lzHist = histogram(numContexts + 1, lzStreams);
+    const rawHist = newHist(numContexts);
+    const lzHist = newHist(numContexts + 1);
+    // Prefix sizing needs only histograms, so without ANS each parse is dropped and
+    // redone only if the LZ77 model wins.
+    const lzStreams = new Map<TokenStream, LzStream>();
+    for (const stream of streams) {
+      add(rawHist, stream);
+      if (!allowAns) {
+        lz77Tokens(stream, numContexts, lzHist);
+        continue;
+      }
+      const lz = lz77Tokens(stream, numContexts);
+      add(lzHist, lz, lz.offsets);
+      lzStreams.set(stream, lz);
+    }
     const plain = new JxlEncEntropyCode(rawHist.map(buildPrefixCode));
     const prefixLz = new JxlEncEntropyCode(lzHist.map(buildPrefixCode), { lzStreams });
     const candidates = [plain, prefixLz];
@@ -300,6 +307,8 @@ export class JxlEncEntropyCode {
         best = code;
       }
     }
+    if (best === prefixLz && !allowAns)
+      for (const stream of streams) lzStreams.set(stream, lz77Tokens(stream, numContexts));
     return best;
   }
 
@@ -392,6 +401,9 @@ export function packSigned(v: number): number {
   return v >= 0 ? 2 * v : -2 * v - 1;
 }
 
+/** Shared hash table for lz77Tokens, which runs synchronously. */
+const LZ_LAST = new Int32Array(1 << 16);
+
 interface LzStream extends TokenStream {
   offsets: ArrayLike<number>;
 }
@@ -400,16 +412,25 @@ interface LzStream extends TokenStream {
  * Matches may overlap and cross contexts: the decoder copies residual values before
  * consulting their context. Each stream starts with a fresh history, as the decoder does.
  */
-function lz77Tokens(stream: TokenStream, distanceContext: number, minSymbol = 224): LzStream {
+function lz77Tokens(stream: TokenStream, distanceContext: number): LzStream;
+/** Histogram-only parse: count each token in `hist` (offset alphabet) instead of storing it. */
+function lz77Tokens(stream: TokenStream, distanceContext: number, hist: Uint32Array[]): undefined;
+function lz77Tokens(stream: TokenStream, distanceContext: number, hist?: Uint32Array[]): LzStream | undefined {
+  const minSymbol = 224;
   const { values } = stream;
-  const contexts = new Uint8Array(values.length);
-  const output = new Uint32Array(values.length);
-  const offsets = new Uint8Array(values.length);
+  const size = hist ? 0 : values.length;
+  const contexts = new Uint8Array(size);
+  const output = new Uint32Array(size);
+  const offsets = new Uint8Array(size);
   let count = 0;
-  const last = new Int32Array(1 << 16).fill(-1);
+  const last = LZ_LAST.fill(-1);
   const hash = (i: number): number =>
     (Math.imul(values[i]!, 0x1e35a7bd) ^ Math.imul(values[i + 1]!, 0x9e3779b1) ^ values[i + 2]!) >>> 16;
   const push = (ctx: number, value: number, offset = 0): void => {
+    if (hist) {
+      hist[ctx]![hybridUintToken(value) + offset]!++;
+      return;
+    }
     contexts[count] = ctx;
     output[count] = value;
     offsets[count++] = offset;
@@ -434,6 +455,7 @@ function lz77Tokens(stream: TokenStream, distanceContext: number, minSymbol = 22
     for (let j = i; j < i + length && j + 2 < values.length; j++) last[hash(j)] = j;
     i += length;
   }
+  if (hist) return undefined;
   return {
     contexts: contexts.subarray(0, count),
     values: output.subarray(0, count),

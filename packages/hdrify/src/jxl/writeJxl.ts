@@ -181,11 +181,13 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
 
   // Pick the cheaper of: channel palettes on the raw channels, or YCoCg RCT followed by
   // channel palettes (a cheap stand-in for libjxl's transform search).
-  let plan = transformPlan(planes, width, height, false);
-  const withRct = transformPlan(planes, width, height, true);
-  if (withRct.estimatedBits < plan.estimatedBits) plan = withRct;
+  const plan = [false, true]
+    .map((rct) => transformPlan(planes, width, height, rct))
+    .reduce((best, next) => (next.estimatedBits < best.estimatedBits ? next : best));
   const { transforms, metaChannels } = plan;
   planes = plan.planes;
+  // The losing plan is gone, so the chosen planes can be indexed in place.
+  plan.palettes.forEach((palette, c) => palette && applyPalette(planes[c]!, palette));
 
   const groupDim = 128 << groupSizeShift;
   const groupsX = Math.ceil(width / groupDim);
@@ -211,60 +213,69 @@ function writeJxlImage(image: HdrifyImage, options: WriteJxlOptions, iccProfile?
     ctx: ctx(i),
   }));
   if (singleGroup) globalChannels.push(...imageChannels(metaChannels.length, 0, 0, width, height));
-  let globalStream = tokenize(globalChannels);
-  let groupStreams: TokenStream[] = [];
-  const groupChannels: ChannelRect[][] = [];
+  const allChannels = [globalChannels];
   if (!singleGroup) {
     for (let gy = 0; gy < groupsY; gy++) {
       for (let gx = 0; gx < groupsX; gx++) {
         const x0 = gx * groupDim;
         const y0 = gy * groupDim;
-        const channels = imageChannels(0, x0, y0, Math.min(groupDim, width - x0), Math.min(groupDim, height - y0));
-        groupChannels.push(channels);
-        groupStreams.push(tokenize(channels));
+        allChannels.push(imageChannels(0, x0, y0, Math.min(groupDim, width - x0), Math.min(groupDim, height - y0)));
       }
     }
   }
-  let dataCode = JxlEncEntropyCode.buildModular(
-    tree.numLeaves,
-    [globalStream, ...groupStreams],
-    options.effort === 'high',
-  );
-  const originalStreams = [globalStream, ...groupStreams];
+  const high = options.effort === 'high';
+  let streams = allChannels.map((channels) => tokenize(channels));
+  let dataCode: JxlEncEntropyCode | undefined = JxlEncEntropyCode.buildModular(tree.numLeaves, streams, high);
+  const gradientSize = modelSize(dataCode, tree.stream);
   const samples: JxlMaSample[] = [];
-  const stride = Math.max(1, Math.ceil(originalStreams.reduce((sum, stream) => sum + stream.values.length, 0) / 65536));
-  const allChannels = [globalChannels, ...groupChannels];
-  const weightedStreams = allChannels.map((channels, i) =>
-    tokenize(
-      channels,
-      true,
-      undefined,
-      options.effort === 'high' ? { stride, samples, gradient: originalStreams[i]! } : undefined,
-    ),
+  const stride = Math.max(1, Math.ceil(streams.reduce((sum, stream) => sum + stream.values.length, 0) / 65536));
+  // Switch each context to weighted prediction when its residuals are cheaper, in place.
+  // Contexts are tried one at a time, so only that context's weighted candidate is held.
+  const gradientCosts = estimateContextBits(streams, tree.numLeaves);
+  const predictors = new Array<number>(tree.numLeaves).fill(PREDICTOR_GRADIENT);
+  const rects = Array.from(
+    { length: tree.numLeaves },
+    () => [] as { channel: ChannelRect; j: number; offset: number }[],
   );
-  const gradientCosts = estimateContextBits(originalStreams, tree.numLeaves);
-  const weightedCosts = estimateContextBits(weightedStreams, tree.numLeaves);
-  const predictors = Array.from({ length: tree.numLeaves }, (_, ctx) =>
-    weightedCosts[ctx]! < gradientCosts[ctx]! ? 6 : PREDICTOR_GRADIENT,
+  allChannels.forEach((channels, j) => {
+    let offset = 0;
+    for (const channel of channels) {
+      rects[channel.ctx]!.push({ channel, j, offset });
+      offset += channel.w * channel.h;
+    }
+  });
+  const candidateBuffer = scratch(
+    Math.max(...rects.map((list) => list.reduce((n, { channel }) => n + channel.w * channel.h, 0))),
   );
-  if (predictors.includes(6)) {
-    const mixedStreams = originalStreams.map((stream, j) => {
-      const values = new Uint32Array(stream.values.length);
-      const weighted = weightedStreams[j]!.values;
-      for (let i = 0; i < values.length; i++)
-        values[i] = predictors[stream.contexts[i]!] === 6 ? weighted[i]! : stream.values[i]!;
-      return { contexts: stream.contexts, values };
+  for (let leaf = 0; leaf < tree.numLeaves; leaf++) {
+    let at = 0;
+    const candidates = rects[leaf]!.map(({ channel, j, offset }) => {
+      const out = { contexts: candidateBuffer.contexts.subarray(at), values: candidateBuffer.values.subarray(at) };
+      at += channel.w * channel.h;
+      const capture = high ? { stride, samples, offset } : undefined;
+      return { ...tokenize([channel], true, undefined, capture, out), target: streams[j]!.values, offset };
     });
-    const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
-    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, mixedStreams, options.effort === 'high');
-    if (modelSize(mixedCode, mixedTree.stream) < modelSize(dataCode, tree.stream)) {
-      tree = mixedTree;
-      dataCode = mixedCode;
-      globalStream = mixedStreams[0]!;
-      groupStreams = mixedStreams.slice(1);
+    if (estimateContextBits(candidates, tree.numLeaves)[leaf]! < gradientCosts[leaf]!) {
+      predictors[leaf] = 6;
+      for (const { values, target, offset } of candidates) target.set(values, offset);
     }
   }
-  if (options.effort === 'high') {
+  if (predictors.includes(6)) {
+    dataCode = undefined; // release the gradient model and any LZ77 parse it holds
+    const mixedTree = channelTreeTokens(metaChannels.length + numChannels, predictors);
+    const mixedCode = JxlEncEntropyCode.buildModular(tree.numLeaves, streams, high);
+    if (modelSize(mixedCode, mixedTree.stream) < gradientSize) {
+      tree = mixedTree;
+      dataCode = mixedCode;
+    } else {
+      // Gradient residuals are cheap to recompute, so they are not kept beside the mix.
+      streams = allChannels.map((channels) => tokenize(channels));
+    }
+  }
+  dataCode ??= JxlEncEntropyCode.buildModular(tree.numLeaves, streams, high);
+  let globalStream: TokenStream = streams[0]!;
+  let groupStreams: TokenStream[] = streams.slice(1);
+  if (high) {
     const learned = learnMaTree(samples, tree.channelContext);
     if (learned) {
       const streams = factorMaResiduals(
@@ -362,15 +373,19 @@ function writeModularHeader(w: JxlBitWriter, transforms: Transform[]): void {
 }
 
 interface TransformPlan {
+  /** RCT-transformed (or source) planes, before `palettes` are applied. */
   planes: Int32Array[];
+  palettes: (Int32Array | undefined)[];
   metaChannels: Int32Array[];
   transforms: Transform[];
   estimatedBits: number;
 }
 
-/** Apply (optionally) RCT, then a channel palette to each channel it compacts. */
+/** Plan (optionally) RCT, then a channel palette for each channel it compacts.
+ * Palettes are evaluated in a scratch plane and applied by the caller to the chosen plan.
+ */
 function transformPlan(source: Int32Array[], width: number, height: number, rct: boolean): TransformPlan {
-  const planes = source.map((p) => p.slice());
+  const planes = rct ? source.map((p) => p.slice()) : source.slice();
   const transforms: Transform[] = [];
   if (rct) {
     forwardYCoCg(planes);
@@ -378,44 +393,38 @@ function transformPlan(source: Int32Array[], width: number, height: number, rct:
   }
   // Each palette inserts its meta channel (the sorted values, nb_colours x 1) at index 0.
   const metaChannels: Int32Array[] = [];
+  const palettes: (Int32Array | undefined)[] = [];
+  const metaBits: number[] = [];
+  const planeBits: number[] = [];
+  const indexed = new Int32Array(width * height);
+  // Estimates tokenize one channel at a time into a reused buffer. Contexts are
+  // independent, so per-channel sums equal one estimate over a context per channel.
+  const buffer = scratch(Math.max(width * height, MAX_PALETTE_COLOURS));
+  const estimate = (plane: Int32Array, w: number, h: number): number =>
+    estimateStreamBits(
+      tokenize([{ plane, stride: w, x0: 0, y0: 0, w, h, ctx: 0 }], false, undefined, undefined, buffer),
+      1,
+    );
   for (let c = 0; c < planes.length; c++) {
+    planeBits[c] = estimate(planes[c]!, width, height);
     const palette = channelPalette(planes[c]!);
     if (!palette) continue;
-    const indexed = planes[c]!.slice();
+    indexed.set(planes[c]!);
     applyPalette(indexed, palette);
-    const channel = (plane: Int32Array, w: number, h: number, ctx: number): ChannelRect => ({
-      plane,
-      stride: w,
-      x0: 0,
-      y0: 0,
-      w,
-      h,
-      ctx,
-    });
-    const originalBits = estimateStreamBits(tokenize([channel(planes[c]!, width, height, 0)]), 1);
-    const paletteBits =
-      estimateStreamBits(tokenize([channel(palette, palette.length, 1, 0), channel(indexed, width, height, 1)]), 2) +
-      48; // transform fields and an additional entropy context
-    if (paletteBits >= originalBits) continue;
-    planes[c] = indexed;
+    const paletteBits = estimate(palette, palette.length, 1);
+    const indexedBits = estimate(indexed, width, height);
+    // Transform fields and an additional entropy context.
+    if (paletteBits + indexedBits + 48 >= planeBits[c]!) continue;
+    planeBits[c] = indexedBits;
+    palettes[c] = palette;
     transforms.push({ type: 'palette', beginC: c + metaChannels.length, numColours: palette.length });
     metaChannels.unshift(palette);
+    metaBits.unshift(paletteBits);
   }
   // Estimate as one group with a context per channel, as encoded below.
-  const channels: ChannelRect[] = [
-    ...metaChannels.map((plane, i) => ({ plane, stride: plane.length, x0: 0, y0: 0, w: plane.length, h: 1, ctx: i })),
-    ...planes.map((plane, c) => ({
-      plane,
-      stride: width,
-      x0: 0,
-      y0: 0,
-      w: width,
-      h: height,
-      ctx: metaChannels.length + c,
-    })),
-  ];
-  const estimatedBits = estimateStreamBits(tokenize(channels), channels.length);
-  return { planes, metaChannels, transforms, estimatedBits };
+  let estimatedBits = 0;
+  for (const bits of [...metaBits, ...planeBits]) estimatedBits += bits;
+  return { planes, palettes, metaChannels, transforms, estimatedBits };
 }
 
 /** Largest nb_colours the Palette transform can code. */
@@ -550,17 +559,22 @@ interface ChannelRect {
   ctx: number;
 }
 
-/** Predict channels in order, returning (context, packed residual) per sample. */
+type Scratch = { contexts: Uint8Array; values: Uint32Array };
+
+const scratch = (size: number): Scratch => ({ contexts: new Uint8Array(size), values: new Uint32Array(size) });
+
+/** Predict channels in order, returning (context, packed residual) per sample, in `out` if given. */
 function tokenize(
   channels: ChannelRect[],
   weighted = false,
   model?: JxlLearnedModel,
-  capture?: { stride: number; samples: JxlMaSample[]; gradient: TokenStream },
-): TokenStream {
+  capture?: { stride: number; samples: JxlMaSample[]; offset: number },
+  out?: Scratch,
+): Scratch {
   let total = 0;
   for (const ch of channels) total += ch.w * ch.h;
-  const contexts = new Uint8Array(total);
-  const values = new Uint32Array(total);
+  const contexts = out ? out.contexts.subarray(0, total) : new Uint8Array(total);
+  const values = out ? out.values.subarray(0, total) : new Uint32Array(total);
   let k = 0;
   for (const { plane: p, stride, x0, y0, w, h, ctx } of channels) {
     contexts.fill(ctx, k, k + w * h);
@@ -577,11 +591,13 @@ function tokenize(
         const grad = west + north - northWest;
         const lo = Math.min(west, north);
         const hi = Math.max(west, north);
+        const clamped = grad < lo ? lo : grad > hi ? hi : grad;
         const northEast = x + 1 < w && y > 0 ? p[up + x + 1]! : north;
         const northNorth = y > 1 ? p[row - stride * 2 + x]! : north;
         const wpPred = wp?.predict(x, y, north, west, northEast, northWest, northNorth) ?? 0;
         let predictor = weighted ? 6 : 5;
-        const sample = capture && capture.samples.length < 65536 && k % capture.stride === 0;
+        // Sample positions are counted within the whole stream, from the rect's offset.
+        const sample = capture && capture.samples.length < 65536 && (capture.offset + k) % capture.stride === 0;
         if (model || sample) {
           properties[4] = Math.abs(north);
           properties[5] = Math.abs(west);
@@ -604,11 +620,7 @@ function tokenize(
           predictor === 6
             ? wpPred
             : predictor === 5
-              ? grad < lo
-                ? lo
-                : grad > hi
-                  ? hi
-                  : grad
+              ? clamped
               : predictOne(
                   predictor,
                   west,
@@ -626,7 +638,7 @@ function tokenize(
           capture.samples.push({
             context: ctx,
             properties: properties.slice(),
-            gradient: capture.gradient.values[k]!,
+            gradient: packSigned((p[row + x]! - clamped) | 0),
             weighted: values[k]!,
             left: packSigned((p[row + x]! - west) | 0),
             top: packSigned((p[row + x]! - north) | 0),
