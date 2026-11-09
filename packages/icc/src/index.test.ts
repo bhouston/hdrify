@@ -145,3 +145,23 @@ it('coalesces overlapping payloads and aligns unaligned caller views', () => {
     expect(Buffer.from(decoded[i].data).equals(profile.tags[i].data)).toBe(true);
   }
 });
+
+it('provides independent default sRGB profiles and owned ADGC GUIDs', async () => {
+  const { createSrgbIccProfile, readIccAdgcGuid } = await import('./index.js');
+  const bytes = createSrgbIccProfile();
+  expect(bytes.length).toBe(456);
+  const p = readIccProfile(bytes);
+  const t = readIccRgbTransform(p)!;
+  expect(t.curves[0].evaluate(0.5)).toBeCloseTo(0.21404, 4);
+  bytes.fill(0);
+  expect(readIccProfile(createSrgbIccProfile()).tags).toEqual(p.tags);
+  expect(readIccAdgcGuid(p)).toBeUndefined();
+  const data = Uint8Array.from({ length: 28 }, (_, i) => i);
+  p.tags.push({ signature: 'ADGC', data });
+  const guid = readIccAdgcGuid(p)!;
+  expect(guid).toEqual(data.slice(12));
+  guid.fill(0);
+  expect(readIccAdgcGuid(p)).toEqual(data.slice(12));
+  p.tags.at(-1)!.data = data.subarray(0, 27);
+  expect(readIccAdgcGuid(p)).toBeUndefined();
+});

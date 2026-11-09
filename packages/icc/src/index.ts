@@ -231,3 +231,15 @@ export function readIccCicp(
   if (!t || t.length < 12 || signature(t, 0) !== 'cicp') return undefined;
   return { primaries: t[8]!, transfer: t[9]!, matrix: t[10]!, fullRange: t[11] === 1 };
 }
+
+export { createSrgbIccProfile } from './srgb.js';
+
+/** Read the opaque 16-byte Adobe gain-map GUID, or undefined for an absent/truncated tag.
+ * Pass a profile returned by readIccProfile to validate its header and tag bounds first.
+ */
+export function readIccAdgcGuid(profile: IccProfile): Uint8Array | undefined {
+  const tag = profile.tags.find((t) => t.signature === 'ADGC')?.data;
+  return tag && tag.length >= 28 ? Uint8Array.from(tag.subarray(12, 28)) : undefined;
+}
+
+export { getIccTag, readIccHeader, removeIccTags, setIccTag, writeIccHeader, type IccHeader } from './profileData.js';
