@@ -147,3 +147,12 @@ bash "$ROOT/scripts/generate-jxl-color-assets.sh"
 djxl "$FEAT/widegamut_animation.jxl" "$SRC/widegamut_animation.pfm" --quiet \
   --color_space=RGB_D65_202_Rel_Lin --output_frames
 for i in 0 1 2; do mv "$SRC/widegamut_animation.pfm-$i.pfm" "$FEAT/widegamut_animation.ref$i.pfm"; done
+
+# --- EXIF/XMP container boxes (requires exiftool). cjxl copies both from the PNG; metadata_brob wraps them in
+# Brotli-compressed brob boxes (the cjxl default). The .exif/.xmp oracles are exiftool's extraction. ---
+magick -size 8x8 xc:'#336699' "$SRC/meta.png"
+exiftool -q -overwrite_original -EXIF:Artist='hdrify test' -EXIF:Copyright=CC0 -XMP-dc:Title='hdrify xmp' "$SRC/meta.png"
+cjxl "$SRC/meta.png" "$FEAT/metadata_boxes.jxl" --quiet -d 0 --compress_boxes=0
+cjxl "$SRC/meta.png" "$FEAT/metadata_brob.jxl" --quiet -d 0 --compress_boxes=1
+exiftool -b -EXIF "$FEAT/metadata_boxes.jxl" >"$FEAT/metadata_boxes.exif"
+exiftool -b -XMP "$FEAT/metadata_boxes.jxl" >"$FEAT/metadata_boxes.xmp"

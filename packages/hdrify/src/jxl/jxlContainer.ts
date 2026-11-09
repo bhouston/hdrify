@@ -89,3 +89,55 @@ export function extractCodestream(data: Uint8Array): JxlExtracted {
   }
   return { codestream, boxes, isContainer: true };
 }
+
+/** EXIF and XMP metadata carried by container boxes. */
+export interface JxlBoxMetadata {
+  /** Raw TIFF-structured EXIF bytes (starting `II*\0` or `MM\0*`), without the box's 4-byte offset prefix. */
+  exif?: Uint8Array;
+  /** XMP packet decoded as UTF-8. */
+  xmp?: string;
+}
+
+type BrotliDecompress = (data: Uint8Array) => Uint8Array;
+
+/**
+ * Synchronous Brotli decoder from Node's zlib, looked up without a static import so browser bundles
+ * never reference `node:zlib`. Undefined outside Node (browsers only offer asynchronous streams).
+ */
+function nodeBrotliDecompress(): BrotliDecompress | undefined {
+  type ZlibModule = { brotliDecompressSync?: BrotliDecompress };
+  const proc = (globalThis as { process?: { getBuiltinModule?: (id: 'node:zlib') => ZlibModule | undefined } }).process;
+  return proc?.getBuiltinModule?.('node:zlib')?.brotliDecompressSync;
+}
+
+/**
+ * Collect EXIF (`Exif`) and XMP (`xml `) metadata from container boxes, using the first box of each kind.
+ * Brotli-compressed `brob` boxes wrapping `Exif` or `xml ` are decompressed with Node's
+ * `zlib.brotliDecompressSync`; where that is unavailable (browsers), `brob` boxes are skipped.
+ * An `Exif` box whose TIFF header offset points outside the box is ignored.
+ *
+ * @param boxes - Non-codestream boxes from {@link extractCodestream}.
+ * @param brotliDecompress - Brotli decoder for `brob` boxes (default: Node zlib when available; `null` skips them).
+ * @returns The metadata found; fields are absent when the file carries none.
+ */
+export function readJxlBoxMetadata(
+  boxes: readonly JxlBox[],
+  brotliDecompress: BrotliDecompress | null | undefined = nodeBrotliDecompress(),
+): JxlBoxMetadata {
+  const out: JxlBoxMetadata = {};
+  for (let { type, data } of boxes) {
+    if (type === 'brob') {
+      if (data.length < 4 || !brotliDecompress) continue;
+      type = boxType(data, 0);
+      if (type !== 'Exif' && type !== 'xml ') continue;
+      data = new Uint8Array(brotliDecompress(data.subarray(4)));
+    }
+    if (type === 'Exif' && !out.exif && data.length >= 4) {
+      const offset = new DataView(data.buffer, data.byteOffset, 4).getUint32(0);
+      if (offset <= data.length - 4) out.exif = data.slice(4 + offset);
+    } else if (type === 'xml ' && out.xmp === undefined) {
+      out.xmp = new TextDecoder().decode(data);
+    }
+  }
+  return out;
+}
