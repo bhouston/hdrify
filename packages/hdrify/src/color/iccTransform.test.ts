@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readIccProfile, writeIccProfile } from 'hdrify-icc';
+import { createSrgbIccProfile, readIccProfile, writeIccProfile } from 'hdrify-icc';
 import { readIccCurve, readIccRgbTransform } from './iccTransform.js';
 const load = (name: string) =>
   new Uint8Array(readFileSync(new URL(`../../../../assets/jxl/color/${name}.icc`, import.meta.url)));
@@ -78,4 +78,9 @@ describe('ICC RGB matrix/TRC interpretation', () => {
     p.header.set([67, 77, 89, 75], 16);
     expect(readIccRgbTransform(p)).toBeUndefined();
   });
+});
+
+it('evaluates the shared default sRGB profile in the image consumer', () => {
+  const transform = readIccRgbTransform(readIccProfile(createSrgbIccProfile()))!;
+  expect(transform.curves[0].evaluate(0.5)).toBeCloseTo(0.21404, 4);
 });

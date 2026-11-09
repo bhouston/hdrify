@@ -75,8 +75,6 @@ it('provides independent default sRGB profiles and owned ADGC GUIDs', async () =
   const bytes = createSrgbIccProfile();
   expect(bytes.length).toBe(456);
   const p = readIccProfile(bytes);
-  const t = readIccRgbTransform(p)!;
-  expect(t.curves[0].evaluate(0.5)).toBeCloseTo(0.21404, 4);
   bytes.fill(0);
   expect(readIccProfile(createSrgbIccProfile()).tags).toEqual(p.tags);
   expect(readIccAdgcGuid(p)).toBeUndefined();
