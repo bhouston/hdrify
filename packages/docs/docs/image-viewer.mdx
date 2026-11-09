@@ -16,10 +16,19 @@ This is a live `<image-viewer>` showing an OpenEXR file. Drag the slider on the 
 
 - OpenEXR (`.exr`), all compressions HDRify supports
 - Radiance HDR (`.hdr`)
+- JPEG XL (`.jxl`), lossless or lossy, bare codestream or container
 - JPEG gain maps: Ultra HDR (JPEG-R) and Adobe gain map JPEGs
 - Any of these compressed with gzip, such as `.hdr.gz`
 
+React `ImageViewer` and `<image-viewer>` use the same content-based `decodeHdrifyImage` loader. Animated JPEG XL files show their first displayed frame.
+
 It decodes on the CPU and displays HDR through native WebGPU when supported, with a tone-mapped 2D canvas fallback for SDR.
+
+## JPEG XL example
+
+<LiveImageViewer src="/viewer/vardct_float.jxl" exposure-control="" />
+
+This lossy floating-point JPEG XL uses the same loading and display path as OpenEXR.
 
 ## Add it to a page
 

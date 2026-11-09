@@ -4,15 +4,12 @@ import {
   addRangeMetadata,
   encodeGainMap,
   EXR_COMPRESSION_NAMES,
-  readExr,
-  readHdr,
-  readJpegGainMap,
   type ToneMappingType,
   writeExr,
   writeHdr,
   writeJpegGainMap,
 } from 'hdrify';
-import { HdrifyCanvas } from 'hdrify-react';
+import { decodeHdrifyImage, HdrifyCanvas } from 'hdrify-react';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -35,6 +32,7 @@ export const Route = createFileRoute('/')({
 });
 
 const EXAMPLE_FILES: { value: string; label: string }[] = [
+  { value: `${import.meta.env.BASE_URL}examples/vardct_float.jxl`, label: 'Floating-point JPEG XL (lossy)' },
   { value: `${import.meta.env.BASE_URL}examples/blouberg_sunrise_2_1k.hdr`, label: 'Blouberg Sunrise 1k (HDR)' },
   { value: `${import.meta.env.BASE_URL}examples/blouberg_sunrise_2_1k.jpg`, label: 'Blouberg Sunrise 1k (Ultra HDR)' },
   { value: `${import.meta.env.BASE_URL}examples/moonless_golf_1k.hdr`, label: 'Moonless Golf 1k (HDR)' },
@@ -72,13 +70,13 @@ const EXAMPLE_FILES: { value: string; label: string }[] = [
 ];
 
 type ImageLoadSource = 'drag_drop' | 'example' | 'file_input';
-type ImageLoadFormat = 'exr' | 'hdr' | 'jpeg' | 'jpg';
+type ImageLoadFormat = 'exr' | 'hdr' | 'jpeg' | 'jpg' | 'jxl';
 type DownloadFormat = 'exr' | 'hdr' | 'jpeg' | 'webp';
 
 function getFileExtension(name: string): ImageLoadFormat | '' {
   const ext = name.toLowerCase().split('.').pop() ?? '';
 
-  if (ext === 'exr' || ext === 'hdr' || ext === 'jpg' || ext === 'jpeg') {
+  if (ext === 'exr' || ext === 'hdr' || ext === 'jpg' || ext === 'jpeg' || ext === 'jxl') {
     return ext;
   }
 
@@ -113,7 +111,7 @@ function Index() {
   const ldrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const trackImageLoad = useCallback(
-    (source: ImageLoadSource, fileName: string, format: ImageLoadFormat) => {
+    (source: ImageLoadSource, fileName: string, format: ImageLoadFormat | 'unknown') => {
       ga.event('image_load', { file_name: fileName, format, source });
     },
     [ga],
@@ -133,23 +131,12 @@ function Index() {
         const buffer = new Uint8Array(arrayBuffer);
 
         const ext = getFileExtension(file.name);
-        let parsed: HdrifyImage;
-
-        if (ext === 'exr') {
-          parsed = readExr(buffer);
-        } else if (ext === 'hdr') {
-          parsed = readHdr(buffer);
-        } else if (ext === 'jpg' || ext === 'jpeg') {
-          parsed = readJpegGainMap(buffer);
-        } else {
-          toast.error('Unsupported file format. Please use .exr, .hdr, or .jpg (gain map) files.');
-          return;
-        }
+        const parsed = await decodeHdrifyImage(buffer);
 
         setHdrifyImage(parsed);
         setSourceFileName(file.name);
         setSelectedExampleUrl('');
-        trackImageLoad(source, file.name, ext);
+        trackImageLoad(source, file.name, ext || 'unknown');
         void navigate({ to: '.', search: {} });
       } catch (error) {
         console.error('Error parsing file:', error);
@@ -169,21 +156,11 @@ function Index() {
         const buffer = new Uint8Array(arrayBuffer);
         const ext = getFileExtension(url);
         const fileName = url.split('/').pop() ?? '';
-        let parsed: HdrifyImage;
-        if (ext === 'exr') {
-          parsed = readExr(buffer);
-        } else if (ext === 'hdr') {
-          parsed = readHdr(buffer);
-        } else if (ext === 'jpg' || ext === 'jpeg') {
-          parsed = readJpegGainMap(buffer);
-        } else {
-          toast.error('Unsupported format. Example must be .exr, .hdr, or .jpg (gain map).');
-          return;
-        }
+        const parsed = await decodeHdrifyImage(buffer);
         setHdrifyImage(parsed);
         setSourceFileName(fileName);
         setSelectedExampleUrl(url);
-        trackImageLoad('example', fileName, ext);
+        trackImageLoad('example', fileName, ext || 'unknown');
         toast.success('Example loaded');
       } catch (error) {
         console.error('Error loading example:', error);
@@ -381,7 +358,7 @@ function Index() {
 
         {/* Center: integrated drop zone + image viewer */}
         <button
-          aria-label="Drop EXR, HDR or JPEG gain map here, or click to select a file"
+          aria-label="Drop EXR, HDR, JPEG XL or JPEG gain map here, or click to select a file"
           className={cn(
             'flex min-h-[400px] w-full flex-1 cursor-pointer items-center justify-center rounded-lg border-2 border-dashed bg-transparent transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring',
             isDragging
@@ -395,7 +372,7 @@ function Index() {
           type="button"
         >
           <input
-            accept=".exr,.hdr,.jpg,.jpeg"
+            accept=".exr,.hdr,.jxl,.jpg,.jpeg"
             className="sr-only"
             onChange={handleFileInput}
             ref={fileInputRef}
@@ -413,12 +390,14 @@ function Index() {
                 />
               </div>
               <p className="shrink-0 text-center text-xs text-muted-foreground">
-                Drag another file here (HDR, EXR, or UltraHDR JPG) or click to load a different image
+                Drag another file here (HDR, EXR, JPEG XL, or UltraHDR JPG) or click to load a different image
               </p>
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
-              <p className="text-lg">{isDragging ? 'Drop the file here' : 'Drop EXR, HDR or JPEG gain map here'}</p>
+              <p className="text-lg">
+                {isDragging ? 'Drop the file here' : 'Drop EXR, HDR, JPEG XL or JPEG gain map here'}
+              </p>
               <p className="mt-1 text-sm">or click to select a file.</p>
               <p className="mt-1 text-sm">
                 Or load an example image from the <b>Examples dropdown</b>.
@@ -555,8 +534,8 @@ function Index() {
         </h2>
         <ul className="grid grid-cols-1 gap-2 text-sm text-muted-foreground md:grid-cols-2">
           <li>
-            <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), and Ultra
-            HDR (JPEG with gain maps).
+            <strong className="text-foreground">Formats:</strong> Supports HDR (Radiance RGBE), EXR (OpenEXR), JPEG XL,
+            and Ultra HDR (JPEG with gain maps).
           </li>
           <li>
             <strong className="text-foreground">Pure JavaScript:</strong> Read and write these formats in pure

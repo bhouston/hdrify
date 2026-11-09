@@ -23,7 +23,7 @@ function oneOf<T extends string>(value: string | null, allowed: readonly T[]): T
 const ElementBase = typeof HTMLElement === 'undefined' ? (class {} as typeof HTMLElement) : HTMLElement;
 
 /**
- * `<image-viewer>`: displays an EXR, HDR or gain map JPEG with tone mapping. A web component wrapping
+ * `<image-viewer>`: displays an EXR, HDR, JPEG XL or gain map JPEG with tone mapping. A web component wrapping
  * {@link ImageViewer}; it works in plain HTML and any framework.
  *
  * Attributes: `src`, `tone-mapping`, `exposure` (stops), `fit`, `settings-panel`, `exposure-control`.
@@ -63,7 +63,7 @@ export class ImageViewerElement extends ElementBase {
     this.#sourceChanged();
     this.#render();
   }
-  /** Encoded EXR, HDR or gain map JPEG bytes; takes precedence over `src`. */
+  /** Encoded EXR, HDR, JPEG XL or gain map JPEG bytes; takes precedence over `src`. */
   get data(): ArrayBuffer | Uint8Array | undefined {
     return this.#data;
   }

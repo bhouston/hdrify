@@ -47,7 +47,11 @@
     },
     "./image-viewer.js": "./dist/image-viewer.js",
     "./dist/*": "./dist/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./decode": {
+      "types": "./dist/decode.d.ts",
+      "default": "./dist/decode.js"
+    }
   },
   "publishConfig": {
     "access": "public",

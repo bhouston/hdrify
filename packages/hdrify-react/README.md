@@ -24,7 +24,7 @@
 - 🖼️ Works With hdrify Readers
 - 🔷 Typed Props
 
-React component for displaying HDR images from [hdrify](https://www.npmjs.com/package/hdrify). Accepts `HdrifyImage` (returned by `readHdr`, `readExr`, `readJpegGainMap`) and renders with configurable tone mapping and exposure.
+React component for displaying HDR images from [hdrify](https://www.npmjs.com/package/hdrify). Accepts `HdrifyImage` (returned by `readHdr`, `readExr`, `readJxl`, `readJpegGainMap`) and renders with configurable tone mapping and exposure.
 
 **Related packages:** [hdrify](https://www.npmjs.com/package/hdrify) (core library) · [hdrify-cli](https://www.npmjs.com/package/hdrify-cli) (CLI tool)
 
@@ -55,7 +55,7 @@ Display sizing follows the viewport and device pixel ratio; `fit="actual"` retai
 
 ### Image viewer
 
-`ImageViewer` loads an EXR, HDR or gain map JPEG (detected from its content, gzip allowed) and adds an options panel and an optional vertical exposure slider:
+`ImageViewer` loads an EXR, HDR, JPEG XL or gain map JPEG (detected from its content, gzip allowed) and adds an options panel and an optional vertical exposure slider:
 
 ```tsx
 import { ImageViewer } from 'hdrify-react';
@@ -74,15 +74,17 @@ While loading, a progress bar fills across the top (`onProgress` / the `progress
 
 With a bundler, `import 'hdrify-react/element'` instead. See the [`<image-viewer>` documentation](https://hdrify.ben3d.ca/docs/image-viewer/) for all attributes, events and theming.
 
+The same content-based loader is available without importing React through `import { decodeHdrifyImage } from 'hdrify-react/decode'`. This is useful for Node.js and editor conversion commands.
+
 ### HdrifyCanvas props
 
-| Prop           | Type                                                   | Description                                                 |
-| -------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
-| `hdrifyImage`  | `HdrifyImage`                                          | Image from `readHdr`, `readExr`, or `readJpegGainMap`       |
-| `toneMapping`  | `'none' \| 'aces' \| 'reinhard' \| 'neutral' \| 'agx'` | Optional override; None for HDR, Neutral for SDR by default |
-| `exposure`     | `number`                                               | Exposure value (1.0 = nominal)                              |
-| `className`    | `string`                                               | Optional CSS class for the canvas wrapper                   |
-| `forwardedRef` | `RefObject<HTMLCanvasElement \| null>`                 | Optional ref for canvas access (e.g. `toBlob`)              |
+| Prop           | Type                                                   | Description                                                      |
+| -------------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `hdrifyImage`  | `HdrifyImage`                                          | Image from `readHdr`, `readExr`, `readJxl`, or `readJpegGainMap` |
+| `toneMapping`  | `'none' \| 'aces' \| 'reinhard' \| 'neutral' \| 'agx'` | Optional override; None for HDR, Neutral for SDR by default      |
+| `exposure`     | `number`                                               | Exposure value (1.0 = nominal)                                   |
+| `className`    | `string`                                               | Optional CSS class for the canvas wrapper                        |
+| `forwardedRef` | `RefObject<HTMLCanvasElement \| null>`                 | Optional ref for canvas access (e.g. `toBlob`)                   |
 
 ## Contribution
 

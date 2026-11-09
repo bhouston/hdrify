@@ -4,19 +4,19 @@ import {
   encodeGainMap,
   EXR_COMPRESSION_CODES,
   type ExrCompression,
-  readExr,
-  readHdr,
-  readJpegGainMap,
   writeExr,
   writeHdr,
   writeJpegGainMap,
+  writeJxl,
 } from 'hdrify';
 import * as vscode from 'vscode';
+import { decodeHdrifyImage } from 'hdrify-react/decode';
 
 const FORMAT_TO_EXTENSION: Record<string, string> = {
   exr: '.exr',
   hdr: '.hdr',
   jpeg: '.jpg',
+  jxl: '.jxl',
 };
 
 function getConfig() {
@@ -35,23 +35,9 @@ export interface ConvertOptions {
   silent?: boolean;
 }
 
-function readImage(buffer: Uint8Array, ext: string) {
-  const lower = ext.toLowerCase();
-  if (lower === '.exr') {
-    return readExr(buffer);
-  }
-  if (lower === '.hdr') {
-    return readHdr(buffer);
-  }
-  if (lower === '.jpg' || lower === '.jpeg') {
-    return readJpegGainMap(buffer);
-  }
-  throw new Error(`Unsupported input format: ${ext}`);
-}
-
 export async function convertToFormat(
   uri: vscode.Uri,
-  targetFormat: 'exr' | 'hdr' | 'jpeg',
+  targetFormat: 'exr' | 'hdr' | 'jpeg' | 'jxl',
   options?: ConvertOptions,
 ): Promise<void> {
   const config = getConfig();
@@ -67,8 +53,7 @@ export async function convertToFormat(
   try {
     const raw = await vscode.workspace.fs.readFile(uri);
     const buffer = new Uint8Array(raw);
-    const ext = path.extname(inputPath);
-    const image = readImage(buffer, ext);
+    const image = await decodeHdrifyImage(buffer);
 
     if (targetFormat === 'exr') {
       const bytes = writeExr(image, { compression: exrCompression });
@@ -79,6 +64,12 @@ export async function convertToFormat(
     } else if (targetFormat === 'jpeg') {
       const encoding = encodeGainMap(image, { toneMapping: 'neutral' });
       const bytes = writeJpegGainMap(encoding, { quality });
+      await vscode.workspace.fs.writeFile(vscode.Uri.file(outputPath), bytes);
+    } else if (targetFormat === 'jxl') {
+      const bitDepth = config.get<string>('jxlBitDepth', 'float16');
+      if (bitDepth !== 'float16' && bitDepth !== 'float32')
+        throw new Error('JPEG XL bit depth must be float16 or float32');
+      const bytes = writeJxl(image, { bitDepth });
       await vscode.workspace.fs.writeFile(vscode.Uri.file(outputPath), bytes);
     } else {
       throw new Error(`Unsupported target format: ${String(targetFormat)}`);

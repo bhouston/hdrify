@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { convertToFormat } from './hdrifyOperations.js';
 import { HdrPreviewProvider } from './hdrPreviewProvider.js';
 
-const SUPPORTED_EXTENSIONS = new Set(['.exr', '.hdr', '.jpg', '.jpeg']);
+const SUPPORTED_EXTENSIONS = new Set(['.exr', '.hdr', '.jpg', '.jpeg', '.jxl']);
 
 function filterImageUris(uris: vscode.Uri[]): vscode.Uri[] {
   return uris.filter((u) => {
@@ -28,7 +28,7 @@ function normalizeUris(uri: vscode.Uri | undefined, selectedResources?: vscode.U
   return result;
 }
 
-async function runConvert(uris: vscode.Uri[], format: 'exr' | 'hdr' | 'jpeg'): Promise<void> {
+async function runConvert(uris: vscode.Uri[], format: 'exr' | 'hdr' | 'jpeg' | 'jxl'): Promise<void> {
   const formatLabel = format === 'jpeg' ? 'UltraHDR Jpeg' : format.toUpperCase();
   if (uris.length > 1) {
     await vscode.window.withProgress(
@@ -73,9 +73,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
   );
 
-  const convertFormats = ['exr', 'hdr', 'jpeg'] as const;
-  for (const format of convertFormats) {
-    const command = `hdrify.convertTo${format === 'exr' ? 'Exr' : format === 'hdr' ? 'Hdr' : 'UltraHdrJpeg'}` as const;
+  const convertFormats = { exr: 'Exr', hdr: 'Hdr', jpeg: 'UltraHdrJpeg', jxl: 'Jxl' } as const;
+  for (const [format, suffix] of Object.entries(convertFormats)) {
+    const command = `hdrify.convertTo${suffix}`;
     context.subscriptions.push(
       vscode.commands.registerCommand(command, async (uri: vscode.Uri, selectedResources?: vscode.Uri[]) => {
         const all = normalizeUris(uri, selectedResources);
@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         const uris = filterImageUris(all);
         if (!uris.length) return;
-        await runConvert(uris, format);
+        await runConvert(uris, format as keyof typeof convertFormats);
       }),
     );
   }

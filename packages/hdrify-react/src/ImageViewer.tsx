@@ -51,7 +51,7 @@ export interface ImageViewerHandle {
 
 /** Props for {@link ImageViewer}. Settings props override the user's choice whenever they change. */
 export interface ImageViewerProps extends Partial<ImageViewerSettings> {
-  /** URL of an EXR, HDR or gain map JPEG (optionally gzipped). Fetching is cancelled when it changes. */
+  /** URL of an EXR, HDR, JPEG XL or gain map JPEG (optionally gzipped). Fetching is cancelled when it changes. */
   src?: string;
   /** Encoded file bytes; takes precedence over `src`. */
   data?: ArrayBuffer | Uint8Array;
