@@ -127,6 +127,7 @@ const config: Config = {
         { to: '/docs/api/core/', label: 'API', position: 'left' },
         { to: '/docs/cli/', label: 'CLI', position: 'left' },
         { to: '/docs/image-viewer/', label: '<image-viewer>', position: 'left' },
+        { to: '/docs/vscode/', label: 'VS Code extension', position: 'left' },
         {
           href: `pathname://${baseUrl}demo/`,
           label: 'Live demo',
