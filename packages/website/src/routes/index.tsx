@@ -99,7 +99,8 @@ function Index() {
   const [hdrifyImage, setHdrifyImage] = useState<HdrifyImage | null>(null);
   const [exposure, setExposure] = useState(1.0);
   const [toneMapping, setToneMapping] = useState<ViewerToneMapping>();
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('sdr');
+  // Presentation is unknown until the renderer completes its capability check and first draw.
+  const [displayMode, setDisplayMode] = useState<DisplayMode>();
   const resolvedToneMapping = toneMapping ?? (displayMode === 'hdr' ? 'none' : 'neutral');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedExampleUrl, setSelectedExampleUrl] = useState<string>('');
@@ -336,7 +337,11 @@ function Index() {
           <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
             <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
             <span className="text-xs font-medium text-muted-foreground">Exposure</span>
-            <Select onValueChange={(v) => setToneMapping(v as ViewerToneMapping)} value={resolvedToneMapping}>
+            <Select
+              disabled={displayMode === undefined}
+              onValueChange={(v) => setToneMapping(v as ViewerToneMapping)}
+              value={displayMode === undefined ? '' : resolvedToneMapping}
+            >
               <SelectTrigger className="w-full min-w-[140px]" size="sm">
                 <SelectValue />
               </SelectTrigger>
