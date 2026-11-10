@@ -1,15 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import type { HdrifyImage } from 'hdrify';
-import {
-  addRangeMetadata,
-  encodeGainMap,
-  EXR_COMPRESSION_NAMES,
-  type ToneMappingType,
-  writeExr,
-  writeHdr,
-  writeJpegGainMap,
-} from 'hdrify';
-import { decodeHdrifyImage, HdrifyCanvas } from 'hdrify-react';
+import { addRangeMetadata, encodeGainMap, EXR_COMPRESSION_NAMES, writeExr, writeHdr, writeJpegGainMap } from 'hdrify';
+import { captureImage, decodeHdrifyImage, type DisplayMode, HdrifyCanvas, type ViewerToneMapping } from 'hdrify-react';
 import { Download } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -106,13 +98,20 @@ function Index() {
   const { image: imageParam } = Route.useSearch();
   const [hdrifyImage, setHdrifyImage] = useState<HdrifyImage | null>(null);
   const [exposure, setExposure] = useState(1.0);
-  const [displayMode, setDisplayMode] = useState<ToneMappingType>('neutral');
+  const [toneMapping, setToneMapping] = useState<ViewerToneMapping>();
+  // Presentation is unknown until the renderer completes its capability check and first draw.
+  const [displayMode, setDisplayMode] = useState<DisplayMode>();
+  const resolvedToneMapping = toneMapping ?? (displayMode === 'hdr' ? 'none' : 'neutral');
   const [isDragging, setIsDragging] = useState(false);
   const [selectedExampleUrl, setSelectedExampleUrl] = useState<string>('');
   const [loadingExample, setLoadingExample] = useState(false);
   const [sourceFileName, setSourceFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const ldrCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  const handleDraw = useCallback((_image: HdrifyImage, mode: DisplayMode) => {
+    setDisplayMode(mode);
+    if (mode === 'sdr') setToneMapping((current) => (current === 'none' ? 'neutral' : current));
+  }, []);
 
   const trackImageLoad = useCallback(
     (source: ImageLoadSource, fileName: string, format: ImageLoadFormat | 'unknown') => {
@@ -240,7 +239,10 @@ function Index() {
   const handleDownloadJpegR = useCallback(() => {
     if (!hdrifyImage) return;
     try {
-      const encoding = encodeGainMap(hdrifyImage, { toneMapping: displayMode });
+      // The gain map still needs a tone-mapped SDR base when displaying native HDR.
+      const encoding = encodeGainMap(hdrifyImage, {
+        toneMapping: resolvedToneMapping === 'none' ? 'neutral' : resolvedToneMapping,
+      });
       const bytes = writeJpegGainMap(encoding, { quality: 90 });
       const blob = new Blob([toBlobPart(bytes)], { type: 'image/jpeg' });
       downloadBlob(blob, 'image.jpg');
@@ -248,22 +250,22 @@ function Index() {
     } catch (err) {
       toast.error(`Failed to create Ultra HDR JPEG: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [hdrifyImage, displayMode, trackDownload]);
+  }, [hdrifyImage, resolvedToneMapping, trackDownload]);
 
-  const handleDownloadWebP = useCallback(() => {
-    const canvas = ldrCanvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob(
-      (blob) => {
-        if (blob) {
-          downloadBlob(blob, 'image.webp');
-          trackDownload('webp');
-        }
-      },
-      'image/webp',
-      0.92,
-    );
-  }, [trackDownload]);
+  const handleDownloadWebP = useCallback(async () => {
+    if (!hdrifyImage) return;
+    try {
+      // Capture independently of the WebGPU presentation canvas for portable SDR output.
+      const blob = await captureImage(hdrifyImage, resolvedToneMapping, exposure, {
+        type: 'image/webp',
+        quality: 0.92,
+      });
+      downloadBlob(blob, 'image.webp');
+      trackDownload('webp');
+    } catch (err) {
+      toast.error(`Failed to create WebP: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, [hdrifyImage, resolvedToneMapping, exposure, trackDownload]);
 
   const handleAreaClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -335,11 +337,16 @@ function Index() {
           <div className="grid w-full grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2">
             <span className="text-xs font-medium text-muted-foreground">Tone mapping</span>
             <span className="text-xs font-medium text-muted-foreground">Exposure</span>
-            <Select onValueChange={(v) => setDisplayMode(v as ToneMappingType)} value={displayMode}>
+            <Select
+              disabled={displayMode === undefined}
+              onValueChange={(v) => setToneMapping(v as ViewerToneMapping)}
+              value={displayMode === undefined ? '' : resolvedToneMapping}
+            >
               <SelectTrigger className="w-full min-w-[140px]" size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                {displayMode === 'hdr' && <SelectItem value="none">None</SelectItem>}
                 <SelectItem value="aces">ACES</SelectItem>
                 <SelectItem value="neutral">Neutral</SelectItem>
                 <SelectItem value="agx">AgX</SelectItem>
@@ -388,9 +395,9 @@ function Index() {
                 <HdrifyCanvas
                   className="max-h-full max-w-full rounded object-contain"
                   exposure={exposure}
-                  forwardedRef={ldrCanvasRef}
                   hdrifyImage={hdrifyImage}
-                  toneMapping={displayMode}
+                  onDraw={handleDraw}
+                  toneMapping={toneMapping}
                 />
               </div>
               <p className="shrink-0 text-center text-xs text-muted-foreground">
@@ -519,7 +526,7 @@ function Index() {
                 className="justify-start gap-2"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleDownloadWebP();
+                  void handleDownloadWebP();
                 }}
                 size="sm"
                 variant="outline"
@@ -558,7 +565,8 @@ function Index() {
             UltraHDR (Android compatible) JPEGs.
           </li>
           <li>
-            <strong className="text-foreground">Tone mapping:</strong> ACES, Khronos Neutral, and AgX.
+            <strong className="text-foreground">Tone mapping:</strong> ACES, Khronos Neutral, and AgX. Native HDR (None)
+            is the default on HDR displays with WebGPU extended rgba16float support.
           </li>
           <li className="md:col-span-2">
             <strong className="text-foreground">CLI:</strong> A command-line tool is available for batch conversion and
